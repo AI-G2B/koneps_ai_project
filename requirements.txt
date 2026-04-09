@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 fastapi
 uvicorn
 sqlalchemy
@@ -5,6 +6,8 @@ pydantic
 requests
 python-dotenv
 apscheduler
+=======
+>>>>>>> origin/develop
 asyncpg==0.31.0
 numpy==2.4.4
 pgvector==0.4.2
