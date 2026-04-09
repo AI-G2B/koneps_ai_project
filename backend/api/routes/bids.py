@@ -54,7 +54,14 @@ def preview_collect(
                 "presmpt_prce": _format_price(r["bid"]["presmpt_prce"]),
                 "category_large": r["bid"]["pub_prcrmnt_lrg_clsfc_nm"],
                 "category_detail": r["bid"]["pub_prcrmnt_clsfc_nm"],
-                "attachments": len(r["attachments"]),
+                "attachments": [
+                    {
+                        "file_name": a["file_name"],
+                        "file_url": a["file_url"],
+                        "file_type": a["file_type"],
+                    }
+                    for a in r["attachments"]
+                ],
             }
             for r in results
         ],
