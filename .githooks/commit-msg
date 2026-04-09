@@ -1,0 +1,5 @@
+#!/bin/sh
+if grep -qi "co-authored-by: claude" "$1"; then
+  echo "❌ Claude co-author 태그가 감지되었습니다. 커밋 메시지에서 제거해주세요."
+  exit 1
+fi
