@@ -15,6 +15,18 @@ from backend.collector.naramarket import fetch_bids
 router = APIRouter()
 
 
+def _format_price(won: int | None) -> str | None:
+    if not won:
+        return None
+    eok = won // 100000000
+    man = (won % 100000000) // 10000
+    if eok and man:
+        return f"{eok}억 {man:,}만원"
+    if eok:
+        return f"{eok}억원"
+    return f"{man:,}만원"
+
+
 @router.get("/collect/preview", summary="수집 미리보기 (DB 저장 안 함)")
 def preview_collect(
     start_date: str | None = None,
@@ -47,15 +59,3 @@ def preview_collect(
             for r in results
         ],
     }
-
-
-def _format_price(won: int | None) -> str | None:
-    if not won:
-        return None
-    eok = won // 100000000
-    man = (won % 100000000) // 10000
-    if eok and man:
-        return f"{eok}억 {man:,}만원"
-    if eok:
-        return f"{eok}억원"
-    return f"{man:,}만원"
