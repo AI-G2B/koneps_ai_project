@@ -92,18 +92,21 @@ def parse_bid(item: dict) -> dict:
     """API 응답 → DB 저장용 딕셔너리"""
     return {
         "bid_ntce_no": item.get("bidNtceNo", ""),
+        "bid_ntce_ord": item.get("bidNtceOrd", ""),       # 입찰공고차수 (재공고 판별)
         "bid_ntce_nm": item.get("bidNtceNm", ""),
-        "ntce_instt_nm": item.get("ntceInsttNm", ""),  # 발주기관
-        "dmnd_instt_nm": item.get("dminsttNm", ""),  # 수요기관
-        "bid_clse_dt": item.get("bidClseDt", ""),  # 마감일시 ★
-        "ntce_date": item.get("bidNtceDt", ""),
-        "openg_dt": item.get("opengDt", ""),
+        "ntce_instt_nm": item.get("ntceInsttNm", ""),     # 공고기관명
+        "dminstt_nm": item.get("dminsttNm", ""),           # 수요기관명
+        "bid_clse_dt": item.get("bidClseDt", ""),          # 입찰마감일시 ★
+        "bid_ntce_dt": item.get("bidNtceDt", ""),          # 입찰공고일시
+        "openg_dt": item.get("opengDt", ""),               # 개찰일시
         "presmpt_prce": _safe_int(item.get("presmptPrce")),
         "asign_bdgt_amt": _safe_int(item.get("asignBdgtAmt")),
         "ntce_kind_nm": item.get("ntceKindNm", ""),
         "cntrct_cncls_mthd_nm": item.get("cntrctCnclsMthdNm", ""),
         "pub_prcrmnt_lrg_clsfc_nm": item.get("pubPrcrmntLrgClsfcNm", ""),
         "pub_prcrmnt_clsfc_nm": item.get("pubPrcrmntClsfcNm", ""),
+        "info_biz_yn": item.get("infoBizYn", ""),          # 정보화사업여부 Y/N
+        "bid_ntce_dtl_url": item.get("bidNtceDtlUrl", ""), # 공고 상세 URL
         "is_canceled": "취소" in item.get("ntceKindNm", ""),
         "is_corrected": "정정" in item.get("ntceKindNm", ""),
     }
