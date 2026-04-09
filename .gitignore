@@ -1,7 +1,10 @@
+CLAUDE.md
+
 # Python
-__pycache__/
-*.pyc
+__pycache__/  # Python이 .py 파일을 컴파일한 캐시 폴더 (자동 생성, git 불필요)
+*.pyc         # 컴파일된 바이트코드 파일
 venv/
+.venv/
 .env
 
 # Node
@@ -13,3 +16,5 @@ build/
 
 # Mac
 .DS_Stores
+
+.env
