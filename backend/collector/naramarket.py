@@ -6,8 +6,10 @@
 → 강주현 DB에 저장 → 강현묵 AI 분석
 """
 
-import requests
 import os
+from datetime import datetime
+
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -53,7 +55,7 @@ CONSULTING_KEYWORDS = [
 
 
 def _is_it_consulting(item: dict) -> bool:
-    """IT 컨설팅 공고인지 판별"""
+    """IT 컨설팅 공고인지 2단계 키워드 로직으로 판별한다."""
     name = item.get("bidNtceNm", "")
     name_lower = name.lower()
 
@@ -61,8 +63,13 @@ def _is_it_consulting(item: dict) -> bool:
     if any(kw.lower() in name_lower for kw in STANDALONE_KEYWORDS):
         return True
 
-    # 2) "컨설팅" 또는 "계획 수립" + IT 관련 키워드가 동시에 있으면 포함
-    trigger = "컨설팅" in name_lower or "계획 수립" in name_lower or "기본계획" in name_lower or "마스터플랜" in name_lower
+    # 2) 트리거 단어 + IT 관련 키워드가 동시에 있으면 포함
+    trigger = (
+        "컨설팅" in name_lower
+        or "계획 수립" in name_lower
+        or "기본계획" in name_lower
+        or "마스터플랜" in name_lower
+    )
     if trigger:
         if any(kw.lower() in name_lower for kw in CONSULTING_KEYWORDS):
             return True
@@ -71,12 +78,13 @@ def _is_it_consulting(item: dict) -> bool:
 
 
 def _is_service_bid(item: dict) -> bool:
-    """용역 공고인지 판별 - 물품/공사 제외"""
+    """용역 공고인지 판별한다 — 물품·공사·시설 공고는 제외한다."""
     large = item.get("pubPrcrmntLrgClsfcNm", "")
     return not any(exc in large for exc in ["물품", "공사", "시설"])
 
 
 def _safe_int(value) -> int | None:
+    """문자열 또는 None을 안전하게 int로 변환한다. 변환 불가 시 None 반환."""
     try:
         return int(value) if value else None
     except (ValueError, TypeError):
@@ -89,7 +97,7 @@ def _safe_int(value) -> int | None:
 
 
 def parse_bid(item: dict) -> dict:
-    """API 응답 → DB 저장용 딕셔너리"""
+    """API 응답 단건을 DB 저장용 딕셔너리로 변환한다."""
     return {
         "bid_ntce_no": item.get("bidNtceNo", ""),
         "bid_ntce_ord": item.get("bidNtceOrd", ""),       # 입찰공고차수 (재공고 판별)
@@ -101,7 +109,7 @@ def parse_bid(item: dict) -> dict:
         "openg_dt": item.get("opengDt", ""),               # 개찰일시
         "presmpt_prce": _safe_int(item.get("presmptPrce")),
         "asign_bdgt_amt": _safe_int(item.get("asignBdgtAmt")),
-        "ntce_kind_nm": item.get("ntceKindNm", ""),
+        "ntce_kind_nm": item.get("ntceKindNm", ""),        # 신규·정정·재공고·취소
         "cntrct_cncls_mthd_nm": item.get("cntrctCnclsMthdNm", ""),
         "pub_prcrmnt_lrg_clsfc_nm": item.get("pubPrcrmntLrgClsfcNm", ""),
         "pub_prcrmnt_clsfc_nm": item.get("pubPrcrmntClsfcNm", ""),
@@ -113,7 +121,7 @@ def parse_bid(item: dict) -> dict:
 
 
 def parse_attachments(item: dict) -> list[dict]:
-    """첨부파일 URL/이름 파싱 (API 응답에 최대 5개)"""
+    """API 응답에서 첨부파일 URL·이름을 파싱한다 (최대 5개)."""
     attachments = []
     for i in range(1, 6):
         url = item.get(f"ntceSpecDocUrl{i}", "")
@@ -124,8 +132,8 @@ def parse_attachments(item: dict) -> list[dict]:
                 {
                     "file_name": name,
                     "file_url": url,
-                    "file_type": ext,  # pdf / hwp / doc 등
-                    "parse_status": "pending",  # 강현묵이 파싱 후 done으로 바꿈
+                    "file_type": ext,          # pdf / hwp / doc 등
+                    "parse_status": "pending", # 강현묵이 파싱 후 done으로 변경
                 }
             )
     return attachments
@@ -138,27 +146,31 @@ def parse_attachments(item: dict) -> list[dict]:
 
 def fetch_bids(start_date: str, end_date: str, it_only: bool = True) -> list[dict]:
     """
-    나라장터 OpenAPI 호출 → 공고 목록 반환
+    나라장터 OpenAPI를 호출하여 공고 목록을 반환한다.
 
     Args:
         start_date : 조회 시작일 YYYYMMDD (예: "20260401")
-        end_date   : 조회 종료일 YYYYMMDD (예: "20260409")
+        end_date   : 조회 종료일 YYYYMMDD (예: "20260409"), 최대 7일 범위
         it_only    : True면 IT 컨설팅 공고만, False면 용역 전체
 
     Returns:
-        [
-            {
-                "bid": { ... },           # parse_bid() 결과
-                "attachments": [ ... ]    # parse_attachments() 결과
-            },
-            ...
-        ]
+        [{"bid": {...}, "attachments": [...]}, ...]
+
+    Raises:
+        ValueError: API 키 누락 또는 조회 범위 7일 초과 시
+        RuntimeError: API 호출 실패 시
     """
     if not API_KEY:
         raise ValueError(".env에 NARA_API_KEY가 없습니다.")
 
+    # 최대 조회 범위 7일 초과 금지
+    start_dt = datetime.strptime(start_date, "%Y%m%d")
+    end_dt = datetime.strptime(end_date, "%Y%m%d")
+    if (end_dt - start_dt).days > 7:
+        raise ValueError("조회 범위는 최대 7일까지만 허용됩니다.")
+
     results = []
-    seen = set()  # 중복 공고 제거용
+    seen: set[str] = set()  # 중복 공고 제거용
     page = 1
 
     while True:
@@ -167,7 +179,7 @@ def fetch_bids(start_date: str, end_date: str, it_only: bool = True) -> list[dic
             "numOfRows": 100,
             "pageNo": page,
             "inqryDiv": 1,
-            "inqryBgnDt": start_date + "0000",
+            "inqryBgnDt": start_date + "0000",  # API 날짜 형식: YYYYMMDD0000
             "inqryEndDt": end_date + "2359",
             "type": "json",
         }
@@ -190,13 +202,13 @@ def fetch_bids(start_date: str, end_date: str, it_only: bool = True) -> list[dic
 
         for item in items:
             ntce_no = item.get("bidNtceNo", "")
-            if ntce_no in seen:  # 중복 제거
+            if ntce_no in seen:                            # 중복 제거
                 continue
-            if not _is_service_bid(item):  # 물품/공사 제외
+            if not _is_service_bid(item):                  # 물품·공사 제외
                 continue
-            if "취소" in item.get("ntceKindNm", ""):  # 취소공고 제외
+            if "취소" in item.get("ntceKindNm", ""):       # 취소공고 제외
                 continue
-            if it_only and not _is_it_consulting(item):  # IT 필터
+            if it_only and not _is_it_consulting(item):    # IT 필터
                 continue
             seen.add(ntce_no)
             results.append(

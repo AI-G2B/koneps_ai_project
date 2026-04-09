@@ -6,9 +6,9 @@ naramarket.py에서 받은 file_url로 PDF/HWP 다운로드
 → 강현묵 파싱 모듈이 이 파일 경로를 받아서 텍스트 추출
 """
 
-import requests
-import os
 from pathlib import Path
+
+import requests
 
 # 다운로드 저장 폴더
 DOWNLOAD_DIR = Path("downloads")
@@ -16,7 +16,7 @@ DOWNLOAD_DIR = Path("downloads")
 
 def download_file(file_url: str, file_name: str) -> str | None:
     """
-    URL에서 파일 다운로드 후 로컬 경로 반환
+    URL에서 파일을 다운로드하여 로컬 경로를 반환한다.
 
     Args:
         file_url  : 나라장터 첨부파일 다운로드 URL
@@ -28,7 +28,7 @@ def download_file(file_url: str, file_name: str) -> str | None:
     DOWNLOAD_DIR.mkdir(exist_ok=True)
     save_path = DOWNLOAD_DIR / file_name
 
-    # 이미 다운로드된 파일이면 재다운로드 스킵
+    # 이미 다운로드된 파일이면 재다운로드 skip
     if save_path.exists():
         return str(save_path)
 
@@ -46,13 +46,13 @@ def download_file(file_url: str, file_name: str) -> str | None:
 
 def download_attachments(attachments: list[dict]) -> list[dict]:
     """
-    공고의 첨부파일 목록을 순서대로 다운로드
+    공고의 첨부파일 목록을 순서대로 다운로드하고 로컬 경로를 추가한다.
 
     Args:
         attachments: naramarket.parse_attachments() 결과 리스트
 
     Returns:
-        각 항목에 "local_path" 키 추가된 리스트
+        각 항목에 "local_path" 키가 추가된 리스트
         (다운로드 실패 시 local_path = None)
     """
     result = []
