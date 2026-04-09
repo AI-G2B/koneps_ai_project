@@ -26,7 +26,6 @@ STANDALONE_KEYWORDS = [
     "정보화전략",
     "정보화계획",
     "디지털전환",
-    "마스터플랜",
 ]
 
 # "컨설팅"과 함께 있어야 걸리는 IT 관련 키워드
@@ -63,7 +62,7 @@ def _is_it_consulting(item: dict) -> bool:
         return True
 
     # 2) "컨설팅" 또는 "계획 수립" + IT 관련 키워드가 동시에 있으면 포함
-    trigger = "컨설팅" in name_lower or "계획 수립" in name_lower or "기본계획" in name_lower
+    trigger = "컨설팅" in name_lower or "계획 수립" in name_lower or "기본계획" in name_lower or "마스터플랜" in name_lower
     if trigger:
         if any(kw.lower() in name_lower for kw in CONSULTING_KEYWORDS):
             return True
@@ -191,6 +190,8 @@ def fetch_bids(start_date: str, end_date: str, it_only: bool = True) -> list[dic
             if ntce_no in seen:  # 중복 제거
                 continue
             if not _is_service_bid(item):  # 물품/공사 제외
+                continue
+            if "취소" in item.get("ntceKindNm", ""):  # 취소공고 제외
                 continue
             if it_only and not _is_it_consulting(item):  # IT 필터
                 continue
