@@ -3,17 +3,22 @@
 담당: 최서원
 
 GET  /bids/collect/preview → DB 저장 없이 수집 미리보기
-POST /bids/collect         → 공고 수집 후 DB 저장 (강주현 DB 완성 후 구현)
-GET  /bids                 → 저장된 공고 목록 (강주현 DB 완성 후 구현)
-GET  /bids/{bid_ntce_no}   → 공고 상세 (강주현 DB 완성 후 구현)
+POST /bids/collect         → 공고 수집 후 DB 저장
+GET  /bids                 → 저장된 공고 목록 (미구현)
+GET  /bids/{bid_ntce_no}   → 공고 상세 (미구현)
 """
 
-from datetime import date
+from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.collector.naramarket import fetch_bids
+from backend.collector.file_downloader import download_attachments
+from backend.collector.naramarket import _classify_notice_type, fetch_bids
+from backend.db.crud import create_notice, get_notice_by_bid_no
+from backend.db.database import get_db
+from backend.db.models import Notice
 
 router = APIRouter()
 
@@ -47,6 +52,13 @@ class BidPreviewResponse(BaseModel):
     """공고 미리보기 응답 스키마"""
     count: int
     bids: list[BidPreviewItem]
+
+
+class CollectResponse(BaseModel):
+    """공고 수집 결과 응답 스키마"""
+    saved: int    # DB에 새로 저장된 공고 수
+    skipped: int  # 중복으로 건너뛴 공고 수
+    errors: int   # 저장 실패한 공고 수
 
 
 # ──────────────────────────────────────
