@@ -3,6 +3,7 @@ from sqlalchemy import select
 from .models import Notice, AnalysisResult, RiskFactor, ProposalOutline
 
 
+# notices
 async def get_notice_by_id(db: AsyncSession, notice_id: int):
     result = await db.execute(select(Notice).where(Notice.id == notice_id))
     return result.scalar_one_or_none()
@@ -40,6 +41,8 @@ async def update_pipeline_status(db: AsyncSession, notice_id: int, status: str, 
         await db.commit()
     return notice
 
+
+# analysis_results
 async def get_analysis_by_notice_id(db: AsyncSession, notice_id: int):
     result = await db.execute(
         select(AnalysisResult).where(AnalysisResult.notice_id == notice_id)
@@ -57,6 +60,8 @@ async def upsert_analysis(db: AsyncSession, notice_id: int, data: dict):
     await db.commit()
     return existing
 
+
+# risk_factors
 async def get_risk_factors_by_notice(db: AsyncSession, notice_id: int):
     result = await db.execute(
         select(RiskFactor)
@@ -71,6 +76,8 @@ async def create_risk_factors(db: AsyncSession, notice_id: int, factors: list[di
     await db.commit()
     return objs
 
+
+# proposal_outlines
 async def get_active_outline(db: AsyncSession, notice_id: int):
     result = await db.execute(
         select(ProposalOutline)
