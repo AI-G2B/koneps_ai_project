@@ -54,6 +54,7 @@ CONSULTING_KEYWORDS = [
 # ──────────────────────────────────────
 
 
+# 주의: 이 함수의 키워드를 수정하면 _classify_notice_type()도 함께 확인할 것
 def _is_it_consulting(item: dict) -> bool:
     """IT 컨설팅 공고인지 2단계 키워드 로직으로 판별한다."""
     name = item.get("bidNtceNm", "")
@@ -77,13 +78,45 @@ def _is_it_consulting(item: dict) -> bool:
     return False
 
 
+def _classify_notice_type(bid_ntce_nm: str) -> tuple[str, bool, str | None]:
+    """
+    공고명을 분석하여 공고 유형을 분류한다.
+
+    Returns:
+        (notice_type, is_isp_ismp, isp_ismp_type)
+        - notice_type  : "ISP" | "ISMP" | "일반"
+        - is_isp_ismp  : ISP 또는 ISMP 여부
+        - isp_ismp_type: "ISP" | "ISMP" | None
+    """
+    name_lower = bid_ntce_nm.lower()
+
+    # ISMP 판별 (ISP보다 먼저 검사 — "ISMP"에 "ISP"가 포함되어 있기 때문)
+    if (
+        "ismp" in name_lower
+        or "정보시스템마스터플랜" in name_lower
+        or "마스터플랜" in name_lower
+    ):
+        return "ISMP", True, "ISMP"
+
+    # ISP 판별
+    if (
+        "isp" in name_lower
+        or "정보화전략" in name_lower
+        or "정보화계획" in name_lower
+    ):
+        return "ISP", True, "ISP"
+
+    # 일반 IT 컨설팅 (필터는 통과했으나 ISP/ISMP 키워드 없음)
+    return "일반", False, None
+
+
 def _is_service_bid(item: dict) -> bool:
     """용역 공고인지 판별한다 — 물품·공사·시설 공고는 제외한다."""
     large = item.get("pubPrcrmntLrgClsfcNm", "")
     return not any(exc in large for exc in ["물품", "공사", "시설"])
 
 
-def _safe_int(value) -> int | None:
+def _safe_int(value: int | str | None) -> int | None:
     """문자열 또는 None을 안전하게 int로 변환한다. 변환 불가 시 None 반환."""
     try:
         return int(value) if value else None
@@ -100,23 +133,24 @@ def parse_bid(item: dict) -> dict:
     """API 응답 단건을 DB 저장용 딕셔너리로 변환한다."""
     return {
         "bid_ntce_no": item.get("bidNtceNo", ""),
-        "bid_ntce_ord": item.get("bidNtceOrd", ""),       # 입찰공고차수 (재공고 판별)
+        "bid_ntce_ord": item.get("bidNtceOrd", ""),  # 입찰공고차수 (재공고 판별)
         "bid_ntce_nm": item.get("bidNtceNm", ""),
-        "ntce_instt_nm": item.get("ntceInsttNm", ""),     # 공고기관명
-        "dminstt_nm": item.get("dminsttNm", ""),           # 수요기관명
-        "bid_clse_dt": item.get("bidClseDt", ""),          # 입찰마감일시 ★
-        "bid_ntce_dt": item.get("bidNtceDt", ""),          # 입찰공고일시
-        "openg_dt": item.get("opengDt", ""),               # 개찰일시
+        "ntce_instt_nm": item.get("ntceInsttNm", ""),  # 공고기관명
+        "dminstt_nm": item.get("dminsttNm", ""),  # 수요기관명
+        "bid_clse_dt": item.get("bidClseDt", ""),  # 입찰마감일시 ★
+        "bid_ntce_dt": item.get("bidNtceDt", ""),  # 입찰공고일시
+        "openg_dt": item.get("opengDt", ""),  # 개찰일시
         "presmpt_prce": _safe_int(item.get("presmptPrce")),
         "asign_bdgt_amt": _safe_int(item.get("asignBdgtAmt")),
-        "ntce_kind_nm": item.get("ntceKindNm", ""),        # 신규·정정·재공고·취소
+        "ntce_kind_nm": item.get("ntceKindNm", ""),  # 신규·정정·재공고·취소
         "cntrct_cncls_mthd_nm": item.get("cntrctCnclsMthdNm", ""),
         "pub_prcrmnt_lrg_clsfc_nm": item.get("pubPrcrmntLrgClsfcNm", ""),
         "pub_prcrmnt_clsfc_nm": item.get("pubPrcrmntClsfcNm", ""),
-        "info_biz_yn": item.get("infoBizYn", ""),          # 정보화사업여부 Y/N
-        "bid_ntce_dtl_url": item.get("bidNtceDtlUrl", ""), # 공고 상세 URL
+        "info_biz_yn": item.get("infoBizYn", ""),  # 정보화사업여부 Y/N
+        "bid_ntce_dtl_url": item.get("bidNtceDtlUrl", ""),  # 공고 상세 URL
         "is_canceled": "취소" in item.get("ntceKindNm", ""),
         "is_corrected": "정정" in item.get("ntceKindNm", ""),
+        "bid_mtd_nm": item.get("bidMethdNm", ""),  # 입찰방식명
     }
 
 
@@ -132,8 +166,8 @@ def parse_attachments(item: dict) -> list[dict]:
                 {
                     "file_name": name,
                     "file_url": url,
-                    "file_type": ext,          # pdf / hwp / doc 등
-                    "parse_status": "pending", # 강현묵이 파싱 후 done으로 변경
+                    "file_type": ext,  # pdf / hwp / doc 등
+                    "parse_status": "pending",  # 강현묵이 파싱 후 done으로 변경
                 }
             )
     return attachments
@@ -202,13 +236,13 @@ def fetch_bids(start_date: str, end_date: str, it_only: bool = True) -> list[dic
 
         for item in items:
             ntce_no = item.get("bidNtceNo", "")
-            if ntce_no in seen:                            # 중복 제거
+            if ntce_no in seen:  # 중복 제거
                 continue
-            if not _is_service_bid(item):                  # 물품·공사 제외
+            if not _is_service_bid(item):  # 물품·공사 제외
                 continue
-            if "취소" in item.get("ntceKindNm", ""):       # 취소공고 제외
+            if "취소" in item.get("ntceKindNm", ""):  # 취소공고 제외
                 continue
-            if it_only and not _is_it_consulting(item):    # IT 필터
+            if it_only and not _is_it_consulting(item):  # IT 필터
                 continue
             seen.add(ntce_no)
             results.append(
