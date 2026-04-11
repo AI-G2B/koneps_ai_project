@@ -116,7 +116,7 @@ def _is_service_bid(item: dict) -> bool:
     return not any(exc in large for exc in ["물품", "공사", "시설"])
 
 
-def _safe_int(value) -> int | None:
+def _safe_int(value: int | str | None) -> int | None:
     """문자열 또는 None을 안전하게 int로 변환한다. 변환 불가 시 None 반환."""
     try:
         return int(value) if value else None
