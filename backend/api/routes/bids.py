@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.collector.file_downloader import download_attachments
 from backend.collector.naramarket import _classify_notice_type, fetch_bids
-from backend.db.crud import create_notice, get_notice_by_bid_no
+from backend.db.crud import create_notice, get_notice_by_bid_no, get_notices
 from backend.db.database import get_db
 from backend.db.models import Notice
 
@@ -61,6 +61,28 @@ class CollectResponse(BaseModel):
     errors: int   # 저장 실패한 공고 수
 
 
+class BidListItem(BaseModel):
+    """공고 목록 단건 스키마"""
+    id: int
+    bid_ntce_no: str
+    bid_ntce_nm: str
+    ntce_instt_nm: str | None
+    is_isp_ismp: bool
+    isp_ismp_type: str | None
+    presmpt_prce: float | None
+    bid_clse_dt: datetime | None
+    pipeline_status: str
+
+    class Config:
+        from_attributes = True
+
+
+class BidListResponse(BaseModel):
+    """공고 목록 응답 스키마"""
+    total: int
+    bids: list[BidListItem]
+
+
 # ──────────────────────────────────────
 # 헬퍼 함수
 # ──────────────────────────────────────
@@ -94,6 +116,21 @@ def _format_price(won: int | None) -> str | None:
 # ──────────────────────────────────────
 # 엔드포인트
 # ──────────────────────────────────────
+
+
+@router.get("", summary="저장된 공고 목록 조회", response_model=BidListResponse)
+async def list_bids(
+    limit: int = 20,
+    offset: int = 0,
+    isp_ismp_only: bool = False,
+    db: AsyncSession = Depends(get_db),
+) -> BidListResponse:
+    """DB에 저장된 공고 목록을 입찰마감일 오름차순으로 반환한다."""
+    notices = await get_notices(db, limit=limit, offset=offset, isp_ismp_only=isp_ismp_only)
+    return BidListResponse(
+        total=len(notices),
+        bids=[BidListItem.model_validate(n) for n in notices],
+    )
 
 
 @router.get("/collect/preview", summary="수집 미리보기 (DB 저장 안 함)", response_model=BidPreviewResponse)

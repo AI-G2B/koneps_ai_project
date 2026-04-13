@@ -17,6 +17,21 @@ async def get_notice_by_bid_no(db: AsyncSession, bid_ntce_no: str, bid_ntce_ord:
     )
     return result.scalar_one_or_none()
 
+async def get_notices(
+    db: AsyncSession,
+    limit: int = 20,
+    offset: int = 0,
+    isp_ismp_only: bool = False,
+) -> list[Notice]:
+    """공고 목록을 입찰마감일 오름차순으로 반환한다."""
+    query = select(Notice)
+    if isp_ismp_only:
+        query = query.where(Notice.is_isp_ismp == True)
+    query = query.order_by(Notice.bid_clse_dt.asc()).limit(limit).offset(offset)
+    result = await db.execute(query)
+    return result.scalars().all()
+
+
 async def get_notices_isp_ismp(db: AsyncSession, limit: int = 20):
     result = await db.execute(
         select(Notice)
