@@ -66,6 +66,18 @@ class CollectResponse(BaseModel):
 # ──────────────────────────────────────
 
 
+def _parse_dt(value: str | None) -> datetime | None:
+    """나라장터 API 날짜 문자열을 timezone-aware datetime으로 변환한다."""
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y%m%d%H%M"):
+        try:
+            return datetime.strptime(value, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    return None
+
+
 def _format_price(won: int | None) -> str | None:
     """원 단위 금액을 억원·만원 한국어 표기로 변환한다."""
     if not won:
@@ -123,3 +135,70 @@ def preview_collect(
     ]
 
     return BidPreviewResponse(count=len(bids), bids=bids)
+
+
+@router.post("/collect", summary="공고 수집 후 DB 저장", response_model=CollectResponse)
+async def collect_bids(
+    start_date: str | None = None,
+    end_date: str | None = None,
+    it_only: bool = True,
+    db: AsyncSession = Depends(get_db),
+) -> CollectResponse:
+    """나라장터 공고를 수집하여 DB에 저장한다. 중복 공고는 건너뛴다."""
+    today = date.today().strftime("%Y%m%d")
+    start = start_date or today
+    end = end_date or today
+
+    try:
+        results = fetch_bids(start, end, it_only)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    saved = skipped = errors = 0
+
+    for r in results:
+        bid = r["bid"]
+
+        # 중복 체크 — 이미 DB에 있으면 건너뜀
+        existing = await get_notice_by_bid_no(db, bid["bid_ntce_no"], bid["bid_ntce_ord"])
+        if existing:
+            skipped += 1
+            continue
+
+        # ISP/ISMP 유형 분류
+        notice_type, is_isp_ismp, isp_ismp_type = _classify_notice_type(bid["bid_ntce_nm"])
+
+        # 첨부파일 다운로드
+        attachments = download_attachments(r["attachments"])
+        first = next((a for a in attachments if a["local_path"]), None)
+
+        try:
+            notice = Notice(
+                bid_ntce_no=bid["bid_ntce_no"],
+                bid_ntce_ord=bid["bid_ntce_ord"],
+                notice_type=notice_type,
+                bid_ntce_nm=bid["bid_ntce_nm"],
+                ntce_instt_nm=bid["ntce_instt_nm"],
+                dminstt_nm=bid["dminstt_nm"],
+                bid_mtd_nm=bid["bid_mtd_nm"],
+                cntrct_cncls_mthd_nm=bid["cntrct_cncls_mthd_nm"],
+                is_isp_ismp=is_isp_ismp,
+                isp_ismp_type=isp_ismp_type,
+                presmpt_prce=bid["presmpt_prce"],
+                asign_bdgt_amt=bid["asign_bdgt_amt"],
+                bid_clse_dt=_parse_dt(bid["bid_clse_dt"]),
+                bid_ntce_dt=_parse_dt(bid["bid_ntce_dt"]),
+                openg_dt=_parse_dt(bid["openg_dt"]),
+                bid_ntce_dtl_url=bid["bid_ntce_dtl_url"],
+                attach_file_url=first["file_url"] if first else None,
+                raw_file_path=first["local_path"] if first else None,
+                raw_file_ext=first["file_type"] if first else None,
+                pipeline_status="collected",
+                collected_at=datetime.now(timezone.utc),
+            )
+            await create_notice(db, notice)
+            saved += 1
+        except Exception:
+            errors += 1
+
+    return CollectResponse(saved=saved, skipped=skipped, errors=errors)
