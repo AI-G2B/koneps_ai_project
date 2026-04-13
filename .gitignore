@@ -11,6 +11,9 @@ venv/
 node_modules/
 build/
 
+# 첨부파일 다운로드 폴더
+downloads/
+
 # DB
 *.sqlite
 
