@@ -67,6 +67,7 @@ class BidListItem(BaseModel):
     bid_ntce_no: str
     bid_ntce_nm: str
     ntce_instt_nm: str | None
+    ntce_kind_nm: str | None
     is_isp_ismp: bool
     isp_ismp_type: str | None
     presmpt_prce: float | None
@@ -123,10 +124,11 @@ async def list_bids(
     limit: int = 20,
     offset: int = 0,
     isp_ismp_only: bool = False,
+    ntce_kind: str | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> BidListResponse:
     """DB에 저장된 공고 목록을 입찰마감일 오름차순으로 반환한다."""
-    notices = await get_notices(db, limit=limit, offset=offset, isp_ismp_only=isp_ismp_only)
+    notices = await get_notices(db, limit=limit, offset=offset, isp_ismp_only=isp_ismp_only, ntce_kind=ntce_kind)
     return BidListResponse(
         total=len(notices),
         bids=[BidListItem.model_validate(n) for n in notices],
@@ -179,6 +181,7 @@ async def collect_bids(
     start_date: str | None = None,
     end_date: str | None = None,
     it_only: bool = True,
+    download: bool = False,
     db: AsyncSession = Depends(get_db),
 ) -> CollectResponse:
     """나라장터 공고를 수집하여 DB에 저장한다. 중복 공고는 건너뛴다."""
@@ -205,9 +208,12 @@ async def collect_bids(
         # ISP/ISMP 유형 분류
         notice_type, is_isp_ismp, isp_ismp_type = _classify_notice_type(bid["bid_ntce_nm"])
 
-        # 첨부파일 다운로드
-        attachments = download_attachments(r["attachments"])
-        first = next((a for a in attachments if a["local_path"]), None)
+        # 첨부파일 다운로드 (download=True 일 때만 실행)
+        if download:
+            attachments = download_attachments(r["attachments"])
+            first = next((a for a in attachments if a["local_path"]), None)
+        else:
+            first = None
 
         try:
             notice = Notice(
@@ -226,6 +232,7 @@ async def collect_bids(
                 bid_clse_dt=_parse_dt(bid["bid_clse_dt"]),
                 bid_ntce_dt=_parse_dt(bid["bid_ntce_dt"]),
                 openg_dt=_parse_dt(bid["openg_dt"]),
+                ntce_kind_nm=bid.get("ntce_kind_nm"),
                 bid_ntce_dtl_url=bid["bid_ntce_dtl_url"],
                 attach_file_url=first["file_url"] if first else None,
                 raw_file_path=first["local_path"] if first else None,

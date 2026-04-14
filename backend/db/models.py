@@ -30,6 +30,7 @@ class Notice(Base):
     exec_term_start_dt:   Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     exec_term_end_dt:     Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     bid_ntce_dtl_url:     Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
+    ntce_kind_nm:         Mapped[Optional[str]]  = mapped_column(String(20), nullable=True)
     attach_file_url:      Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     raw_file_path:        Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     raw_file_ext:         Mapped[Optional[str]]  = mapped_column(String(10), nullable=True)

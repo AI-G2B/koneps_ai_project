@@ -22,11 +22,14 @@ async def get_notices(
     limit: int = 20,
     offset: int = 0,
     isp_ismp_only: bool = False,
+    ntce_kind: str | None = None,
 ) -> list[Notice]:
     """공고 목록을 입찰마감일 오름차순으로 반환한다."""
     query = select(Notice)
     if isp_ismp_only:
         query = query.where(Notice.is_isp_ismp == True)
+    if ntce_kind:
+        query = query.where(Notice.ntce_kind_nm == ntce_kind)
     query = query.order_by(Notice.bid_clse_dt.asc()).limit(limit).offset(offset)
     result = await db.execute(query)
     return result.scalars().all()
