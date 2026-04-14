@@ -1,5 +1,7 @@
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from .models import Notice, AnalysisResult, RiskFactor, ProposalOutline
 
 
@@ -93,6 +95,44 @@ async def create_risk_factors(db: AsyncSession, notice_id: int, factors: list[di
     db.add_all(objs)
     await db.commit()
     return objs
+
+
+async def get_dashboard_stats(db: AsyncSession) -> dict:
+    """대시보드 상단 통계 카드 4개 데이터를 반환한다."""
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    three_days_later = now + timedelta(days=3)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # 오늘 신규 공고 수
+    today_count = await db.scalar(
+        select(func.count()).where(Notice.collected_at >= today_start)
+    )
+
+    # 마감 임박 공고 수 (3일 이내)
+    deadline_count = await db.scalar(
+        select(func.count()).where(
+            Notice.bid_clse_dt >= now,
+            Notice.bid_clse_dt <= three_days_later,
+        )
+    )
+
+    # AI 분석 완료 수 (이번 달)
+    analysis_count = await db.scalar(
+        select(func.count()).where(AnalysisResult.analyzed_at >= month_start)
+    )
+
+    # 제안 공고 수 (proposal_outlines 전체)
+    proposal_count = await db.scalar(
+        select(func.count()).select_from(ProposalOutline)
+    )
+
+    return {
+        "today_new": today_count or 0,
+        "deadline_soon": deadline_count or 0,
+        "analysis_done": analysis_count or 0,
+        "proposal_count": proposal_count or 0,
+    }
 
 
 # proposal_outlines

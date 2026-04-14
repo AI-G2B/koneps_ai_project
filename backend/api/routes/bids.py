@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.collector.file_downloader import download_attachments
 from backend.collector.naramarket import _classify_notice_type, fetch_bids
-from backend.db.crud import create_notice, get_notice_by_bid_no, get_notices
+from backend.db.crud import create_notice, get_dashboard_stats, get_notice_by_bid_no, get_notices
 from backend.db.database import get_db
 from backend.db.models import Notice
 
@@ -59,6 +59,14 @@ class CollectResponse(BaseModel):
     saved: int    # DB에 새로 저장된 공고 수
     skipped: int  # 중복으로 건너뛴 공고 수
     errors: int   # 저장 실패한 공고 수
+
+
+class DashboardStatsResponse(BaseModel):
+    """대시보드 상단 통계 카드 응답 스키마"""
+    today_new: int       # 오늘 신규 공고
+    deadline_soon: int   # 마감 임박 (3일 이내)
+    analysis_done: int   # AI 분석 완료 (이번 달)
+    proposal_count: int  # 제안 공고 수
 
 
 class BidListItem(BaseModel):
@@ -117,6 +125,15 @@ def _format_price(won: int | None) -> str | None:
 # ──────────────────────────────────────
 # 엔드포인트
 # ──────────────────────────────────────
+
+
+@router.get("/stats", summary="대시보드 통계 카드", response_model=DashboardStatsResponse)
+async def dashboard_stats(
+    db: AsyncSession = Depends(get_db),
+) -> DashboardStatsResponse:
+    """대시보드 상단 통계 카드 4개 데이터를 반환한다."""
+    stats = await get_dashboard_stats(db)
+    return DashboardStatsResponse(**stats)
 
 
 @router.get("", summary="저장된 공고 목록 조회", response_model=BidListResponse)
