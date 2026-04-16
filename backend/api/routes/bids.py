@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.collector.naramarket import fetch_bids
 from backend.collector.service import collect_and_save
-from backend.db.crud import get_dashboard_stats, get_notice_detail, get_notices, get_type_stats
+from backend.db.crud import get_attachments_by_notice, get_dashboard_stats, get_notice_detail, get_notices, get_type_stats
 from backend.db.database import get_db
 
 router = APIRouter()
@@ -29,9 +29,15 @@ router = APIRouter()
 
 class AttachmentSchema(BaseModel):
     """첨부파일 단건 스키마"""
+    id: int
     file_name: str
     file_url: str
     file_type: str
+    local_path: str | None
+    parse_status: str
+
+    class Config:
+        from_attributes = True
 
 
 class BidPreviewItem(BaseModel):
@@ -118,11 +124,9 @@ class BidDetailResponse(BaseModel):
     bid_ntce_dt: datetime | None
     openg_dt: datetime | None
     bid_ntce_dtl_url: str | None
-    attach_file_url: str | None
-    raw_file_path: str | None
-    raw_file_ext: str | None
     pipeline_status: str
     collected_at: datetime | None
+    attachments: list[AttachmentSchema] = []
 
     class Config:
         from_attributes = True
@@ -262,4 +266,7 @@ async def get_bid_detail(
     notice = await get_notice_detail(db, bid_ntce_no)
     if not notice:
         raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
-    return BidDetailResponse.model_validate(notice)
+    attachments = await get_attachments_by_notice(db, notice.id)
+    response = BidDetailResponse.model_validate(notice)
+    response.attachments = [AttachmentSchema.model_validate(a) for a in attachments]
+    return response

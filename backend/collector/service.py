@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.collector.file_downloader import download_attachments
 from backend.collector.naramarket import _classify_notice_type, fetch_bids
-from backend.db.crud import create_notice, get_notice_by_bid_no
+from backend.db.crud import create_attachments, create_notice, get_notice_by_bid_no
 from backend.db.models import Notice
 
 
@@ -66,11 +66,7 @@ async def collect_and_save(
         notice_type, is_isp_ismp, isp_ismp_type = _classify_notice_type(bid["bid_ntce_nm"])
 
         # 첨부파일 다운로드 (download=True 일 때만 실행)
-        if download:
-            attachments = download_attachments(r["attachments"])
-            first = next((a for a in attachments if a["local_path"]), None)
-        else:
-            first = None
+        downloaded = download_attachments(r["attachments"]) if download else r["attachments"]
 
         try:
             notice = Notice(
@@ -91,13 +87,27 @@ async def collect_and_save(
                 openg_dt=_parse_dt(bid["openg_dt"]),
                 ntce_kind_nm=bid.get("ntce_kind_nm"),
                 bid_ntce_dtl_url=bid["bid_ntce_dtl_url"],
-                attach_file_url=first["file_url"] if first else None,
-                raw_file_path=first["local_path"] if first else None,
-                raw_file_ext=first["file_type"] if first else None,
                 pipeline_status="collected",
                 collected_at=datetime.now(timezone.utc),
             )
             await create_notice(db, notice)
+
+            # 전체 첨부파일 저장
+            now = datetime.now(timezone.utc)
+            attachment_rows = [
+                {
+                    "file_name": a["file_name"],
+                    "file_url": a["file_url"],
+                    "file_type": a["file_type"],
+                    "local_path": a.get("local_path"),
+                    "parse_status": "pending",
+                    "downloaded_at": now if a.get("local_path") else None,
+                }
+                for a in downloaded
+            ]
+            if attachment_rows:
+                await create_attachments(db, notice.id, attachment_rows)
+
             saved += 1
         except Exception:
             errors += 1

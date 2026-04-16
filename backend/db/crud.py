@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
-from .models import Notice, AnalysisResult, RiskFactor, ProposalOutline
+from .models import Notice, Attachment, AnalysisResult, RiskFactor, ProposalOutline
 
 
 # notices
@@ -62,6 +62,22 @@ async def get_notices_isp_ismp(db: AsyncSession, limit: int = 20):
         .limit(limit)
     )
     return result.scalars().all()
+
+async def create_attachments(db: AsyncSession, notice_id: int, attachments: list[dict]) -> list[Attachment]:
+    """공고 첨부파일 목록을 DB에 저장한다."""
+    objs = [Attachment(notice_id=notice_id, **a) for a in attachments]
+    db.add_all(objs)
+    await db.commit()
+    return objs
+
+
+async def get_attachments_by_notice(db: AsyncSession, notice_id: int) -> list[Attachment]:
+    """공고 ID로 첨부파일 목록을 반환한다."""
+    result = await db.execute(
+        select(Attachment).where(Attachment.notice_id == notice_id)
+    )
+    return result.scalars().all()
+
 
 async def create_notice(db: AsyncSession, notice: Notice):
     db.add(notice)

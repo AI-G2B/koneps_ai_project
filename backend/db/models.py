@@ -31,18 +31,31 @@ class Notice(Base):
     exec_term_end_dt:     Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     bid_ntce_dtl_url:     Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     ntce_kind_nm:         Mapped[Optional[str]]  = mapped_column(String(20), nullable=True)
-    attach_file_url:      Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
-    raw_file_path:        Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
-    raw_file_ext:         Mapped[Optional[str]]  = mapped_column(String(10), nullable=True)
     pipeline_status:      Mapped[str]            = mapped_column(String(20), default="collected")
     parse_error_msg:      Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     content_embedding:    Mapped[Optional[list]] = mapped_column(Vector(1536), nullable=True)
     collected_at:         Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     updated_at:           Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
-    analysis_result:   Mapped["AnalysisResult"]        = relationship("AnalysisResult", back_populates="notice", uselist=False)
-    risk_factors:      Mapped[list["RiskFactor"]]      = relationship("RiskFactor", back_populates="notice")
-    proposal_outlines: Mapped[list["ProposalOutline"]] = relationship("ProposalOutline", back_populates="notice")
+    attachments:       Mapped[list["Attachment"]]       = relationship("Attachment", back_populates="notice", cascade="all, delete-orphan")
+    analysis_result:   Mapped["AnalysisResult"]         = relationship("AnalysisResult", back_populates="notice", uselist=False)
+    risk_factors:      Mapped[list["RiskFactor"]]       = relationship("RiskFactor", back_populates="notice")
+    proposal_outlines: Mapped[list["ProposalOutline"]]  = relationship("ProposalOutline", back_populates="notice")
+
+
+class Attachment(Base):
+    __tablename__ = "attachments"
+
+    id:           Mapped[int]            = mapped_column(primary_key=True)
+    notice_id:    Mapped[int]            = mapped_column(ForeignKey("notices.id", ondelete="CASCADE"))
+    file_name:    Mapped[str]            = mapped_column(String(300))
+    file_url:     Mapped[str]            = mapped_column(Text)
+    file_type:    Mapped[str]            = mapped_column(String(20))          # pdf / hwp / doc 등
+    local_path:   Mapped[Optional[str]]  = mapped_column(Text, nullable=True) # 다운로드 후 로컬 경로
+    parse_status: Mapped[str]            = mapped_column(String(20), default="pending")  # pending / done / failed
+    downloaded_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+    notice: Mapped["Notice"] = relationship("Notice", back_populates="attachments")
 
 
 class AnalysisResult(Base):
