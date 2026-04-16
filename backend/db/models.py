@@ -1,5 +1,5 @@
-from sqlalchemy import String, Boolean, Numeric, Text, Date, SmallInteger, ForeignKey
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMPTZ
+from sqlalchemy import String, Boolean, Numeric, Text, Date, SmallInteger, ForeignKey, TIMESTAMP
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
 from typing import Optional
@@ -23,25 +23,39 @@ class Notice(Base):
     isp_ismp_type:        Mapped[Optional[str]]  = mapped_column(String(10), nullable=True)
     asign_bdgt_amt:       Mapped[Optional[float]]= mapped_column(Numeric(18, 2), nullable=True)
     presmpt_prce:         Mapped[Optional[float]]= mapped_column(Numeric(18, 2), nullable=True)
-    bid_clse_dt:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMPTZ, nullable=True)
-    bid_ntce_dt:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMPTZ, nullable=True)
-    ntce_end_dt:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMPTZ, nullable=True)
-    openg_dt:             Mapped[Optional[datetime]] = mapped_column(TIMESTAMPTZ, nullable=True)
+    bid_clse_dt:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    bid_ntce_dt:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    ntce_end_dt:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    openg_dt:             Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     exec_term_start_dt:   Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     exec_term_end_dt:     Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     bid_ntce_dtl_url:     Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
-    attach_file_url:      Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
-    raw_file_path:        Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
-    raw_file_ext:         Mapped[Optional[str]]  = mapped_column(String(10), nullable=True)
+    ntce_kind_nm:         Mapped[Optional[str]]  = mapped_column(String(20), nullable=True)
     pipeline_status:      Mapped[str]            = mapped_column(String(20), default="collected")
     parse_error_msg:      Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     content_embedding:    Mapped[Optional[list]] = mapped_column(Vector(1536), nullable=True)
-    collected_at:         Mapped[Optional[datetime]] = mapped_column(TIMESTAMPTZ, nullable=True)
-    updated_at:           Mapped[Optional[datetime]] = mapped_column(TIMESTAMPTZ, nullable=True)
+    collected_at:         Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    updated_at:           Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
-    analysis_result:   Mapped["AnalysisResult"]        = relationship("AnalysisResult", back_populates="notice", uselist=False)
-    risk_factors:      Mapped[list["RiskFactor"]]      = relationship("RiskFactor", back_populates="notice")
-    proposal_outlines: Mapped[list["ProposalOutline"]] = relationship("ProposalOutline", back_populates="notice")
+    attachments:       Mapped[list["Attachment"]]       = relationship("Attachment", back_populates="notice", cascade="all, delete-orphan")
+    analysis_result:   Mapped["AnalysisResult"]         = relationship("AnalysisResult", back_populates="notice", uselist=False)
+    risk_factors:      Mapped[list["RiskFactor"]]       = relationship("RiskFactor", back_populates="notice")
+    proposal_outlines: Mapped[list["ProposalOutline"]]  = relationship("ProposalOutline", back_populates="notice")
+
+
+class Attachment(Base):
+    __tablename__ = "attachments"
+
+    id:           Mapped[int]            = mapped_column(primary_key=True)
+    notice_id:    Mapped[int]            = mapped_column(ForeignKey("notices.id", ondelete="CASCADE"))
+    file_name:    Mapped[str]            = mapped_column(String(300))
+    file_url:     Mapped[str]            = mapped_column(Text)
+    file_type:    Mapped[str]            = mapped_column(String(20))          # pdf / hwp / doc 등
+    local_path:   Mapped[Optional[str]]  = mapped_column(Text, nullable=True) # 다운로드 후 로컬 경로
+    parse_status: Mapped[str]            = mapped_column(String(20), default="pending")  # pending / done / failed
+    downloaded_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+
+    notice: Mapped["Notice"] = relationship("Notice", back_populates="attachments")
 
 
 class AnalysisResult(Base):
@@ -62,7 +76,7 @@ class AnalysisResult(Base):
     task_scope:          Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     joint_supply_yn:     Mapped[Optional[bool]] = mapped_column(nullable=True)
     joint_supply_detail: Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
-    submit_deadline:     Mapped[Optional[datetime]] = mapped_column(TIMESTAMPTZ, nullable=True)
+    submit_deadline:     Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     required_docs:       Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     exec_location:       Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     key_tech_spec:       Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
@@ -71,8 +85,8 @@ class AnalysisResult(Base):
     confidence_score:    Mapped[Optional[float]]= mapped_column(Numeric(4, 3), nullable=True)
     model_used:          Mapped[Optional[str]]  = mapped_column(String(50), nullable=True)
     prompt_version:      Mapped[Optional[str]]  = mapped_column(String(20), nullable=True)
-    analyzed_at:         Mapped[Optional[datetime]] = mapped_column(TIMESTAMPTZ, nullable=True)
-    updated_at:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMPTZ, nullable=True)
+    analyzed_at:         Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    updated_at:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
     notice: Mapped["Notice"] = relationship("Notice", back_populates="analysis_result")
 
@@ -90,7 +104,7 @@ class RiskFactor(Base):
     page_no:             Mapped[Optional[int]] = mapped_column(nullable=True)
     mitigation_suggest:  Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     sort_order:          Mapped[int]           = mapped_column(default=0)
-    created_at:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMPTZ, nullable=True)
+    created_at:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
 
     notice: Mapped["Notice"] = relationship("Notice", back_populates="risk_factors")
 
@@ -105,7 +119,7 @@ class ProposalOutline(Base):
     total_pages_estimate:  Mapped[Optional[int]] = mapped_column(nullable=True)
     model_used:            Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     prompt_version:        Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    generated_at:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMPTZ, nullable=True)
+    generated_at:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     is_active:             Mapped[bool]          = mapped_column(Boolean, default=True)
 
     notice:   Mapped["Notice"]               = relationship("Notice", back_populates="proposal_outlines")
