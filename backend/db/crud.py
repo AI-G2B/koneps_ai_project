@@ -10,6 +10,17 @@ async def get_notice_by_id(db: AsyncSession, notice_id: int):
     result = await db.execute(select(Notice).where(Notice.id == notice_id))
     return result.scalar_one_or_none()
 
+async def get_notice_detail(db: AsyncSession, bid_ntce_no: str) -> Notice | None:
+    """공고번호로 가장 최신 차수의 공고 상세를 반환한다."""
+    result = await db.execute(
+        select(Notice)
+        .where(Notice.bid_ntce_no == bid_ntce_no)
+        .order_by(Notice.bid_ntce_ord.desc())
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
 async def get_notice_by_bid_no(db: AsyncSession, bid_ntce_no: str, bid_ntce_ord: str = "00"):
     result = await db.execute(
         select(Notice).where(

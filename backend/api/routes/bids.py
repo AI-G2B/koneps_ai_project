@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.collector.naramarket import fetch_bids
 from backend.collector.service import collect_and_save
-from backend.db.crud import get_dashboard_stats, get_notices, get_type_stats
+from backend.db.crud import get_dashboard_stats, get_notice_detail, get_notices, get_type_stats
 from backend.db.database import get_db
 
 router = APIRouter()
@@ -96,6 +96,36 @@ class BidListResponse(BaseModel):
     """공고 목록 응답 스키마"""
     total: int
     bids: list[BidListItem]
+
+
+class BidDetailResponse(BaseModel):
+    """공고 상세 응답 스키마"""
+    id: int
+    bid_ntce_no: str
+    bid_ntce_ord: str
+    notice_type: str
+    bid_ntce_nm: str
+    ntce_instt_nm: str | None
+    dminstt_nm: str | None
+    bid_mtd_nm: str | None
+    cntrct_cncls_mthd_nm: str | None
+    ntce_kind_nm: str | None
+    is_isp_ismp: bool
+    isp_ismp_type: str | None
+    asign_bdgt_amt: float | None
+    presmpt_prce: float | None
+    bid_clse_dt: datetime | None
+    bid_ntce_dt: datetime | None
+    openg_dt: datetime | None
+    bid_ntce_dtl_url: str | None
+    attach_file_url: str | None
+    raw_file_path: str | None
+    raw_file_ext: str | None
+    pipeline_status: str
+    collected_at: datetime | None
+
+    class Config:
+        from_attributes = True
 
 
 # ──────────────────────────────────────
@@ -221,3 +251,15 @@ async def collect_bids(
         raise HTTPException(status_code=502, detail=str(e))
 
     return CollectResponse(**result)
+
+
+@router.get("/{bid_ntce_no}", summary="공고 상세 조회", response_model=BidDetailResponse)
+async def get_bid_detail(
+    bid_ntce_no: str,
+    db: AsyncSession = Depends(get_db),
+) -> BidDetailResponse:
+    """공고번호로 공고 상세 정보를 반환한다. 재공고가 있으면 최신 차수를 반환한다."""
+    notice = await get_notice_detail(db, bid_ntce_no)
+    if not notice:
+        raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
+    return BidDetailResponse.model_validate(notice)
