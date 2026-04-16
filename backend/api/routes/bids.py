@@ -14,11 +14,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.collector.file_downloader import download_attachments
-from backend.collector.naramarket import _classify_notice_type, fetch_bids
-from backend.db.crud import create_notice, get_dashboard_stats, get_notice_by_bid_no, get_notices
+from backend.collector.naramarket import fetch_bids
+from backend.collector.service import collect_and_save
+from backend.db.crud import get_dashboard_stats, get_notices, get_type_stats
 from backend.db.database import get_db
-from backend.db.models import Notice
 
 router = APIRouter()
 
@@ -61,6 +60,13 @@ class CollectResponse(BaseModel):
     errors: int   # 저장 실패한 공고 수
 
 
+class TypeStatItem(BaseModel):
+    """유형별 통계 단건 스키마"""
+    type: str
+    count: int
+    ratio: float
+
+
 class DashboardStatsResponse(BaseModel):
     """대시보드 상단 통계 카드 응답 스키마"""
     today_new: int       # 오늘 신규 공고
@@ -97,18 +103,6 @@ class BidListResponse(BaseModel):
 # ──────────────────────────────────────
 
 
-def _parse_dt(value: str | None) -> datetime | None:
-    """나라장터 API 날짜 문자열을 timezone-aware datetime으로 변환한다."""
-    if not value:
-        return None
-    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y%m%d%H%M"):
-        try:
-            return datetime.strptime(value, fmt).replace(tzinfo=timezone.utc)
-        except ValueError:
-            continue
-    return None
-
-
 def _format_price(won: int | None) -> str | None:
     """원 단위 금액을 억원·만원 한국어 표기로 변환한다."""
     if not won:
@@ -136,16 +130,31 @@ async def dashboard_stats(
     return DashboardStatsResponse(**stats)
 
 
+@router.get("/type-stats", summary="공고 유형별 통계 (도넛 차트)", response_model=list[TypeStatItem])
+async def type_stats(
+    db: AsyncSession = Depends(get_db),
+) -> list[TypeStatItem]:
+    """ISP/ISMP/기타 유형별 건수와 비율을 반환한다."""
+    stats = await get_type_stats(db)
+    return [TypeStatItem(**s) for s in stats]
+
+
 @router.get("", summary="저장된 공고 목록 조회", response_model=BidListResponse)
 async def list_bids(
     limit: int = 20,
     offset: int = 0,
     isp_ismp_only: bool = False,
     ntce_kind: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
     db: AsyncSession = Depends(get_db),
 ) -> BidListResponse:
     """DB에 저장된 공고 목록을 입찰마감일 오름차순으로 반환한다."""
-    notices = await get_notices(db, limit=limit, offset=offset, isp_ismp_only=isp_ismp_only, ntce_kind=ntce_kind)
+    # date_from, date_to는 YYYY-MM-DD 형식으로 받아 datetime으로 변환
+    dt_from = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc) if date_from else None
+    dt_to = datetime.strptime(date_to, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc) if date_to else None
+
+    notices = await get_notices(db, limit=limit, offset=offset, isp_ismp_only=isp_ismp_only, ntce_kind=ntce_kind, date_from=dt_from, date_to=dt_to)
     return BidListResponse(
         total=len(notices),
         bids=[BidListItem.model_validate(n) for n in notices],
@@ -207,59 +216,8 @@ async def collect_bids(
     end = end_date or today
 
     try:
-        results = fetch_bids(start, end, it_only)
+        result = await collect_and_save(db, start, end, it_only=it_only, download=download)
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=502, detail=str(e))
 
-    saved = skipped = errors = 0
-
-    for r in results:
-        bid = r["bid"]
-
-        # 중복 체크 — 이미 DB에 있으면 건너뜀
-        existing = await get_notice_by_bid_no(db, bid["bid_ntce_no"], bid["bid_ntce_ord"])
-        if existing:
-            skipped += 1
-            continue
-
-        # ISP/ISMP 유형 분류
-        notice_type, is_isp_ismp, isp_ismp_type = _classify_notice_type(bid["bid_ntce_nm"])
-
-        # 첨부파일 다운로드 (download=True 일 때만 실행)
-        if download:
-            attachments = download_attachments(r["attachments"])
-            first = next((a for a in attachments if a["local_path"]), None)
-        else:
-            first = None
-
-        try:
-            notice = Notice(
-                bid_ntce_no=bid["bid_ntce_no"],
-                bid_ntce_ord=bid["bid_ntce_ord"],
-                notice_type=notice_type,
-                bid_ntce_nm=bid["bid_ntce_nm"],
-                ntce_instt_nm=bid["ntce_instt_nm"],
-                dminstt_nm=bid["dminstt_nm"],
-                bid_mtd_nm=bid["bid_mtd_nm"],
-                cntrct_cncls_mthd_nm=bid["cntrct_cncls_mthd_nm"],
-                is_isp_ismp=is_isp_ismp,
-                isp_ismp_type=isp_ismp_type,
-                presmpt_prce=bid["presmpt_prce"],
-                asign_bdgt_amt=bid["asign_bdgt_amt"],
-                bid_clse_dt=_parse_dt(bid["bid_clse_dt"]),
-                bid_ntce_dt=_parse_dt(bid["bid_ntce_dt"]),
-                openg_dt=_parse_dt(bid["openg_dt"]),
-                ntce_kind_nm=bid.get("ntce_kind_nm"),
-                bid_ntce_dtl_url=bid["bid_ntce_dtl_url"],
-                attach_file_url=first["file_url"] if first else None,
-                raw_file_path=first["local_path"] if first else None,
-                raw_file_ext=first["file_type"] if first else None,
-                pipeline_status="collected",
-                collected_at=datetime.now(timezone.utc),
-            )
-            await create_notice(db, notice)
-            saved += 1
-        except Exception:
-            errors += 1
-
-    return CollectResponse(saved=saved, skipped=skipped, errors=errors)
+    return CollectResponse(**result)
