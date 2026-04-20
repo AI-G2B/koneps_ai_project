@@ -6,11 +6,24 @@ import { BidTable } from './components/BidTable';
 import { BidDetailPanel } from './components/BidDetailPanel';
 import { BottomWidgets } from './components/BottomWidgets';
 import { LoginPage, type User } from './components/LoginPage';
+import { SettingsPage } from './components/SettingsPage';
 import { bids, type Bid } from './components/mockData';
+
+export type PageType = '대시보드' | '공고 목록' | 'AI 분석' | '제안목차' | '현황 요약' | '전략 리포트' | '설정' | '도움말';
+
+export interface AgencySettings {
+  preferred: string[];
+  avoided: string[];
+}
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [selectedBid, setSelectedBid] = useState<Bid>(bids[0]);
+  const [activePage, setActivePage] = useState<PageType>('대시보드');
+  const [agencySettings, setAgencySettings] = useState<AgencySettings>({
+    preferred: ['행정안전부', '국토교통부'],
+    avoided: ['금융감독원'],
+  });
 
   if (!user) {
     return <LoginPage onLogin={setUser} />;
@@ -25,7 +38,7 @@ export default function App() {
         minWidth: '1200px',
       }}
     >
-      <Sidebar role={user.role} />
+      <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <DashboardHeader user={user} onLogout={() => setUser(null)} />
         <main
@@ -39,13 +52,23 @@ export default function App() {
             scrollbarColor: 'var(--dash-scrollbar) transparent',
           }}
         >
-          <KpiCards />
-          <div className="flex gap-4" style={{ minHeight: '440px' }}>
-            <BidTable selectedBid={selectedBid} onSelectBid={setSelectedBid} />
-            <BidDetailPanel bid={selectedBid} />
-          </div>
-          <BottomWidgets />
-          <div style={{ height: '4px' }} />
+          {activePage === '설정' ? (
+            <SettingsPage settings={agencySettings} onSave={setAgencySettings} />
+          ) : (
+            <>
+              <KpiCards />
+              <div className="flex gap-4" style={{ minHeight: '440px' }}>
+                <BidTable
+                  selectedBid={selectedBid}
+                  onSelectBid={setSelectedBid}
+                  agencySettings={agencySettings}
+                />
+                <BidDetailPanel bid={selectedBid} />
+              </div>
+              <BottomWidgets />
+              <div style={{ height: '4px' }} />
+            </>
+          )}
         </main>
       </div>
     </div>
