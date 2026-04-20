@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DashboardHeader } from './components/DashboardHeader';
 import { KpiCards } from './components/KpiCards';
@@ -7,7 +7,8 @@ import { BidDetailPanel } from './components/BidDetailPanel';
 import { BottomWidgets } from './components/BottomWidgets';
 import { LoginPage, type User } from './components/LoginPage';
 import { SettingsPage } from './components/SettingsPage';
-import { bids, type Bid } from './components/mockData';
+import { type Bid } from './components/mockData';
+import { fetchBids, fetchBidById } from './services/api';
 
 export type PageType = '대시보드' | '공고 목록' | 'AI 분석' | '제안목차' | '현황 요약' | '전략 리포트' | '설정' | '도움말';
 
@@ -18,12 +19,39 @@ export interface AgencySettings {
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [selectedBid, setSelectedBid] = useState<Bid>(bids[0]);
+  const [bids, setBids] = useState<Bid[]>([]);
+  const [bidsLoading, setBidsLoading] = useState(true);
+  const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [activePage, setActivePage] = useState<PageType>('대시보드');
   const [agencySettings, setAgencySettings] = useState<AgencySettings>({
     preferred: ['행정안전부', '국토교통부'],
     avoided: ['금융감독원'],
   });
+
+  useEffect(() => {
+    setBidsLoading(true);
+    fetchBids()
+      .then((data) => {
+        setBids(data);
+        if (data.length > 0) setSelectedBid(data[0]);
+      })
+      .finally(() => setBidsLoading(false));
+  }, []);
+
+  const handleSelectBid = async (bid: Bid) => {
+    // 기본 정보 즉시 표시
+    setSelectedBid(bid);
+    // 이미 상세 데이터가 있으면 재조회 불필요
+    if (bid.detail) return;
+    setDetailLoading(true);
+    try {
+      const detailed = await fetchBidById(bid.id);
+      setSelectedBid(detailed);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   if (!user) {
     return <LoginPage onLogin={setUser} />;
@@ -56,14 +84,16 @@ export default function App() {
             <SettingsPage settings={agencySettings} onSave={setAgencySettings} />
           ) : (
             <>
-              <KpiCards />
+              <KpiCards bids={bids} bidsLoading={bidsLoading} />
               <div className="flex gap-4" style={{ minHeight: '440px' }}>
                 <BidTable
+                  bids={bids}
+                  bidsLoading={bidsLoading}
                   selectedBid={selectedBid}
-                  onSelectBid={setSelectedBid}
+                  onSelectBid={handleSelectBid}
                   agencySettings={agencySettings}
                 />
-                <BidDetailPanel bid={selectedBid} />
+                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} />
               </div>
               <BottomWidgets />
               <div style={{ height: '4px' }} />

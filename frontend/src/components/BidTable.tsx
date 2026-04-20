@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Eye, ExternalLink, Loader2, CheckCircle2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban } from 'lucide-react';
-import { bids, formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, TODAY } from './mockData';
+import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, TODAY } from './mockData';
 import type { AgencySettings } from '../App';
 
 export function RiskBadge({ risk }: { risk: RiskLevel }) {
@@ -56,12 +56,14 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 ];
 
 interface BidTableProps {
+  bids: Bid[];
+  bidsLoading?: boolean;
   selectedBid: Bid | null;
   onSelectBid: (bid: Bid) => void;
   agencySettings: AgencySettings;
 }
 
-export function BidTable({ selectedBid, onSelectBid, agencySettings }: BidTableProps) {
+export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings }: BidTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -157,7 +159,14 @@ export function BidTable({ selectedBid, onSelectBid, agencySettings }: BidTableP
             </tr>
           </thead>
           <tbody>
-            {sortedBids.length === 0 ? (
+            {bidsLoading ? (
+              <tr><td colSpan={8} style={{ padding: '40px', textAlign: 'center', fontSize: '13px' }}>
+                <span className="flex items-center justify-center gap-2" style={{ color: 'var(--dash-text-4)' }}>
+                  <Loader2 className="animate-spin" style={{ width: '16px', height: '16px' }} />
+                  공고 목록을 불러오는 중입니다…
+                </span>
+              </td></tr>
+            ) : sortedBids.length === 0 ? (
               <tr><td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>해당 기간에 수집된 공고가 없습니다</td></tr>
             ) : (
               sortedBids.map((bid) => (
