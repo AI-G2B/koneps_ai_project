@@ -1,6 +1,11 @@
-import { FileText, Clock, BrainCircuit, ShieldAlert, TrendingUp, TrendingDown } from 'lucide-react';
+import { FileText, Clock, BrainCircuit, ShieldAlert, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { bids, isDeadlineUrgent, TODAY } from './mockData';
+import { type Bid, isDeadlineUrgent, TODAY } from './mockData';
+
+interface KpiCardsProps {
+  bids: Bid[];
+  bidsLoading?: boolean;
+}
 
 interface KpiCardProps {
   title: string;
@@ -16,9 +21,10 @@ interface KpiCardProps {
   alert?: boolean;
   progress?: number;
   progressLabel?: string;
+  loading?: boolean;
 }
 
-function KpiCard({ title, value, unit, sub, trend, trendUp, icon: Icon, iconBgColor, iconColor, accentColor, alert, progress, progressLabel }: KpiCardProps) {
+function KpiCard({ title, value, unit, sub, trend, trendUp, icon: Icon, iconBgColor, iconColor, accentColor, alert, progress, progressLabel, loading }: KpiCardProps) {
   return (
     <div
       className="rounded-xl p-4 flex flex-col"
@@ -32,8 +38,14 @@ function KpiCard({ title, value, unit, sub, trend, trendUp, icon: Icon, iconBgCo
       </div>
 
       <div className="flex items-baseline gap-1.5 mb-2">
-        <span style={{ fontSize: '32px', fontWeight: 700, color: 'var(--dash-text)', lineHeight: 1 }}>{value}</span>
-        <span style={{ fontSize: '13px', color: 'var(--dash-text-3)' }}>{unit}</span>
+        {loading ? (
+          <Loader2 className="animate-spin" style={{ width: '24px', height: '24px', color: 'var(--dash-text-4)' }} />
+        ) : (
+          <>
+            <span style={{ fontSize: '32px', fontWeight: 700, color: 'var(--dash-text)', lineHeight: 1 }}>{value}</span>
+            <span style={{ fontSize: '13px', color: 'var(--dash-text-3)' }}>{unit}</span>
+          </>
+        )}
       </div>
 
       {progress !== undefined && (
@@ -64,7 +76,7 @@ function KpiCard({ title, value, unit, sub, trend, trendUp, icon: Icon, iconBgCo
   );
 }
 
-export function KpiCards() {
+export function KpiCards({ bids, bidsLoading = false }: KpiCardsProps) {
   // 오늘 수집된 공고
   const todayStr = TODAY.toISOString().slice(0, 10);
   const todayBids = bids.filter((b) => b.collectedAt === todayStr);
@@ -104,6 +116,7 @@ export function KpiCards() {
           iconBgColor="rgba(37,99,235,0.15)"
           iconColor="#2563EB"
           accentColor="#2563EB"
+          loading={bidsLoading}
         />
       </motion.div>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}>
@@ -119,6 +132,7 @@ export function KpiCards() {
           iconColor="#EF4444"
           accentColor="#EF4444"
           alert={urgentBids.length > 0}
+          loading={bidsLoading}
         />
       </motion.div>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
@@ -133,6 +147,7 @@ export function KpiCards() {
           accentColor="#22C55E"
           progress={analyzeProgress}
           progressLabel="분석 완료율"
+          loading={bidsLoading}
         />
       </motion.div>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.21 }}>
@@ -148,6 +163,7 @@ export function KpiCards() {
           iconColor="#F59E0B"
           accentColor="#F59E0B"
           alert={dangerBids.length > 0}
+          loading={bidsLoading}
         />
       </motion.div>
     </div>

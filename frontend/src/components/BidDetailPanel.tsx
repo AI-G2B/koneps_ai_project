@@ -4,13 +4,14 @@ import {
   BrainCircuit, ChevronRight, Zap, Phone, ScrollText, Loader2,
 } from 'lucide-react';
 import { type Bid, formatBudget, getDaysUntilDeadline } from './mockData';
-import { RiskBadge, AiStatusIndicator } from './BidTable';
+import { RiskBadge } from './BidTable';
 
 interface BidDetailPanelProps {
   bid: Bid | null;
+  detailLoading?: boolean;
 }
 
-export function BidDetailPanel({ bid }: BidDetailPanelProps) {
+export function BidDetailPanel({ bid, detailLoading = false }: BidDetailPanelProps) {
   if (!bid) {
     return (
       <div className="w-[390px] flex-shrink-0 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)' }}>
@@ -29,6 +30,8 @@ export function BidDetailPanel({ bid }: BidDetailPanelProps) {
   const detail = bid.detail;
   const riskFactors = bid.riskFactors ?? [];
   const isAnalyzing = bid.aiStatus === 'analyzing';
+  // 네트워크로 상세 조회 중이거나 AI 파이프라인이 분석 중인 경우
+  const showLoadingOverlay = detailLoading;
 
   const AI_ITEMS = detail ? [
     { icon: Target,    label: '사업 목적',   value: detail.purpose },
@@ -77,8 +80,19 @@ export function BidDetailPanel({ bid }: BidDetailPanelProps) {
       {/* 스크롤 영역 */}
       <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--dash-scrollbar) transparent' }}>
 
+        {/* 네트워크 상세 로딩 */}
+        {showLoadingOverlay && (
+          <div className="px-5 py-6 flex flex-col items-center justify-center" style={{ borderBottom: '1px solid var(--dash-border)' }}>
+            <Loader2 className="animate-spin mb-3" style={{ width: '28px', height: '28px', color: '#2563EB' }} />
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '4px' }}>상세 정보를 불러오는 중입니다</div>
+            <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
+              분석 결과 및 위험요소를 조회하고 있습니다.
+            </div>
+          </div>
+        )}
+
         {/* 분석 중 안내 */}
-        {isAnalyzing && (
+        {!showLoadingOverlay && isAnalyzing && (
           <div className="px-5 py-6 flex flex-col items-center justify-center" style={{ borderBottom: '1px solid var(--dash-border)' }}>
             <Loader2 className="animate-spin mb-3" style={{ width: '28px', height: '28px', color: '#F59E0B' }} />
             <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '4px' }}>AI 분석이 진행 중입니다</div>
