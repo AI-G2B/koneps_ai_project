@@ -7,7 +7,7 @@ import { BidDetailPanel } from './components/BidDetailPanel';
 import { BottomWidgets } from './components/BottomWidgets';
 import { LoginPage, type User } from './components/LoginPage';
 import { SettingsPage } from './components/SettingsPage';
-import { type Bid } from './components/mockData';
+import { type Bid, type BidStatus } from './components/mockData';
 import { fetchBids, fetchBidById } from './services/api';
 
 export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '현황 요약' | '전략 리포트' | '설정' | '도움말';
@@ -24,6 +24,24 @@ export default function App() {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [activePage, setActivePage] = useState<PageType>('대시보드');
+  const [bidStatuses, setBidStatuses] = useState<Map<string, BidStatus>>(new Map());
+
+  const toggleBookmark = (bidId: string) => {
+    setBidStatuses(prev => {
+      const next = new Map(prev);
+      next.set(bidId, next.get(bidId) === 'bookmarked' ? 'none' : 'bookmarked');
+      return next;
+    });
+  };
+
+  const setInProgress = (bidId: string) => {
+    setBidStatuses(prev => {
+      const next = new Map(prev);
+      next.set(bidId, 'inProgress');
+      return next;
+    });
+  };
+
   const [agencySettings, setAgencySettings] = useState<AgencySettings>({
     preferred: ['행정안전부', '국토교통부'],
     avoided: ['금융감독원'],
@@ -92,6 +110,9 @@ export default function App() {
                   selectedBid={selectedBid}
                   onSelectBid={handleSelectBid}
                   agencySettings={agencySettings}
+                  bidStatuses={bidStatuses}
+                  onToggleBookmark={toggleBookmark}
+                  onSetInProgress={setInProgress}
                 />
                 <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} />
               </div>

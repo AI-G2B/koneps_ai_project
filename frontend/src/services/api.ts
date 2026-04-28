@@ -89,7 +89,6 @@ function mapBidType(item: ApiBidListItem): BidType {
     const t = item.isp_ismp_type.toUpperCase();
     if (t === 'ISP') return 'ISP';
     if (t === 'ISMP') return 'ISMP';
-    if (t === 'SI') return 'SI';
   }
   return '기타';
 }
@@ -161,6 +160,7 @@ export function mapApiBidListItemToBid(item: ApiBidListItem): Bid {
     type: mapBidType(item),
     dangerCount: item.danger_count ?? 0,
     collectedAt: normalizeDate(item.bid_ntce_dt),
+    status: 'none',
   };
 }
 
@@ -181,6 +181,7 @@ export function mapApiBidDetailToBid(res: ApiBidDetailResponse): Bid {
     type: mapBidType(res),
     dangerCount: riskFactors.filter((r) => r.severity === 'high').length,
     collectedAt: normalizeDate(res.bid_ntce_dt),
+    status: 'none',
     detail: res.analysis_result
       ? mapAnalysisResultToBidDetail(res.analysis_result, budget)
       : undefined,

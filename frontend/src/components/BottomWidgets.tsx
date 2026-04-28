@@ -8,10 +8,9 @@ const DEADLINE_DAYS = [5, 6, 7, 10, 12, 15, 18, 22];
 const URGENT_DAYS = DEADLINE_DAYS.filter((d) => d >= TODAY_DATE && d <= TODAY_DATE + 3);
 
 const BID_TYPE_DATA = [
-  { name: 'ISP', value: 35, color: '#2563EB', count: 16 },
-  { name: 'ISMP', value: 25, color: '#F59E0B', count: 12 },
-  { name: 'SI', value: 25, color: '#22C55E', count: 12 },
-  { name: '기타', value: 15, color: '#8B5CF6', count: 7 },
+  { name: 'ISP', value: 47, color: '#2563EB', count: 16 },
+  { name: 'ISMP', value: 33, color: '#F59E0B', count: 12 },
+  { name: '기타', value: 20, color: '#8B5CF6', count: 7 },
 ];
 
 // April 2026: April 1 is Wednesday => index 2 in Mon-Sun week
