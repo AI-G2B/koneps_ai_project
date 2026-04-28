@@ -86,6 +86,9 @@ export default function App() {
     return <LoginPage onLogin={setUser} />;
   }
 
+  const isCeo = user.role === 'ceo';
+  const displayBids = isCeo ? bids.filter((b) => pursuedBids.has(b.id)) : bids;
+
   return (
     <div
       className="flex h-screen overflow-hidden"
@@ -129,10 +132,10 @@ export default function App() {
             />
           ) : (
             <>
-              <KpiCards bids={bids} bidsLoading={bidsLoading} />
+              <KpiCards bids={displayBids} bidsLoading={bidsLoading} ceoMode={isCeo} />
               <div className="flex gap-4" style={{ minHeight: '440px' }}>
                 <BidTable
-                  bids={bids}
+                  bids={displayBids}
                   bidsLoading={bidsLoading}
                   selectedBid={selectedBid}
                   onSelectBid={handleSelectBid}
@@ -142,6 +145,7 @@ export default function App() {
                   onSetInProgress={setInProgress}
                   pursuedBids={pursuedBids}
                   onTogglePursued={togglePursued}
+                  hideFilters={isCeo}
                 />
                 <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} />
               </div>

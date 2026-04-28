@@ -5,6 +5,7 @@ import { type Bid, isDeadlineUrgent, TODAY } from './mockData';
 interface KpiCardsProps {
   bids: Bid[];
   bidsLoading?: boolean;
+  ceoMode?: boolean;
 }
 
 interface KpiCardProps {
@@ -76,12 +77,12 @@ function KpiCard({ title, value, unit, sub, trend, trendUp, icon: Icon, iconBgCo
   );
 }
 
-export function KpiCards({ bids, bidsLoading = false }: KpiCardsProps) {
-  // 오늘 수집된 공고
+export function KpiCards({ bids, bidsLoading = false, ceoMode = false }: KpiCardsProps) {
   const todayStr = TODAY.toISOString().slice(0, 10);
-  const todayBids = bids.filter((b) => b.collectedAt === todayStr);
+  const urgentBids = bids.filter((b) => isDeadlineUrgent(b.deadline));
 
-  // 어제 수집된 공고 (트렌드 계산용)
+  // 영업담당자 모드 전용
+  const todayBids = bids.filter((b) => b.collectedAt === todayStr);
   const yesterday = new Date(TODAY);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.toISOString().slice(0, 10);
@@ -91,33 +92,44 @@ export function KpiCards({ bids, bidsLoading = false }: KpiCardsProps) {
   const diffCount = todayCount - yesterdayCount;
   const diffPct = yesterdayCount > 0 ? ((diffCount / yesterdayCount) * 100).toFixed(1) : '0';
 
-  // 마감 임박 (3일 이내)
-  const urgentBids = bids.filter((b) => isDeadlineUrgent(b.deadline));
-
   return (
     <div className="grid grid-cols-2 gap-4">
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
-        <KpiCard
-          title="오늘 신규 공고"
-          value={String(todayCount)}
-          unit="건"
-          sub={diffCount >= 0 ? `어제 대비 +${diffCount}건 증가` : `어제 대비 ${diffCount}건 감소`}
-          trend={`${diffCount >= 0 ? '+' : ''}${diffPct}%`}
-          trendUp={diffCount >= 0}
-          icon={FileText}
-          iconBgColor="rgba(37,99,235,0.15)"
-          iconColor="#2563EB"
-          accentColor="#2563EB"
-          loading={bidsLoading}
-        />
+        {ceoMode ? (
+          <KpiCard
+            title="총 추진 공고"
+            value={String(bids.length)}
+            unit="건"
+            sub="추진사업으로 등록된 공고"
+            icon={FileText}
+            iconBgColor="rgba(124,58,237,0.15)"
+            iconColor="#7C3AED"
+            accentColor="#7C3AED"
+            loading={bidsLoading}
+          />
+        ) : (
+          <KpiCard
+            title="오늘 신규 공고"
+            value={String(todayCount)}
+            unit="건"
+            sub={diffCount >= 0 ? `어제 대비 +${diffCount}건 증가` : `어제 대비 ${diffCount}건 감소`}
+            trend={`${diffCount >= 0 ? '+' : ''}${diffPct}%`}
+            trendUp={diffCount >= 0}
+            icon={FileText}
+            iconBgColor="rgba(37,99,235,0.15)"
+            iconColor="#2563EB"
+            accentColor="#2563EB"
+            loading={bidsLoading}
+          />
+        )}
       </motion.div>
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}>
         <KpiCard
-          title="마감 임박 공고"
+          title={ceoMode ? '마감 임박 추진 공고' : '마감 임박 공고'}
           value={String(urgentBids.length)}
           unit="건"
           sub="3일 이내 마감 예정"
-          trend={`+${urgentBids.length}건`}
+          trend={ceoMode ? undefined : `+${urgentBids.length}건`}
           trendUp={false}
           icon={Clock}
           iconBgColor="rgba(239,68,68,0.12)"

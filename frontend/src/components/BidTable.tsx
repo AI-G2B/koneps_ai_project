@@ -66,9 +66,10 @@ interface BidTableProps {
   onSetInProgress?: (bidId: string) => void;
   pursuedBids?: Set<string>;
   onTogglePursued?: (bidId: string) => void;
+  hideFilters?: boolean;
 }
 
-export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings, bidStatuses, onToggleBookmark, onSetInProgress, pursuedBids, onTogglePursued }: BidTableProps) {
+export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings, bidStatuses, onToggleBookmark, onSetInProgress, pursuedBids, onTogglePursued, hideFilters = false }: BidTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -88,7 +89,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
     return null;
   };
 
-  const filteredBids = bids.filter((bid) => {
+  const filteredBids = hideFilters ? bids : bids.filter((bid) => {
     const fromDate = getDateRange(dateFilter);
     if (fromDate && new Date(bid.collectedAt) < fromDate) return false;
     if (statusFilter === 'urgent') return isDeadlineUrgent(bid.deadline);
@@ -114,32 +115,38 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
   return (
     <div className="flex-1 min-w-0 rounded-xl flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)' }}>
       <div className="flex-shrink-0" style={{ padding: '12px 16px', borderBottom: '1px solid var(--dash-border)' }}>
-        <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center justify-between" style={{ marginBottom: hideFilters ? 0 : '8px' }}>
           <div className="flex items-center gap-3">
-            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)' }}>공고 목록</h2>
-            <span className="rounded-full" style={{ fontSize: '11px', padding: '1px 8px', backgroundColor: 'rgba(37,99,235,0.15)', color: '#2563EB' }}>{sortedBids.length}건</span>
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)' }}>
+              {hideFilters ? '추진 공고 목록' : '공고 목록'}
+            </h2>
+            <span className="rounded-full" style={{ fontSize: '11px', padding: '1px 8px', backgroundColor: hideFilters ? 'rgba(139,92,246,0.15)' : 'rgba(37,99,235,0.15)', color: hideFilters ? '#8B5CF6' : '#2563EB' }}>{sortedBids.length}건</span>
           </div>
+          {!hideFilters && (
+            <div className="flex items-center gap-2">
+              {STATUS_FILTERS.map((f) => (
+                <button key={f.key} onClick={() => setStatusFilter(f.key)} className="rounded-lg transition-colors"
+                  style={{ padding: '4px 10px', fontSize: '12px', backgroundColor: statusFilter === f.key ? f.key === 'all' ? '#2563EB' : f.key === 'urgent' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)' : 'transparent', color: statusFilter === f.key ? f.key === 'all' ? 'white' : f.key === 'urgent' ? '#EF4444' : '#F59E0B' : 'var(--dash-text-3)', border: `1px solid ${statusFilter === f.key ? f.key === 'all' ? 'transparent' : f.key === 'urgent' ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)' : 'var(--dash-border-btn)'}` }}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        {!hideFilters && (
           <div className="flex items-center gap-2">
-            {STATUS_FILTERS.map((f) => (
-              <button key={f.key} onClick={() => setStatusFilter(f.key)} className="rounded-lg transition-colors"
-                style={{ padding: '4px 10px', fontSize: '12px', backgroundColor: statusFilter === f.key ? f.key === 'all' ? '#2563EB' : f.key === 'urgent' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)' : 'transparent', color: statusFilter === f.key ? f.key === 'all' ? 'white' : f.key === 'urgent' ? '#EF4444' : '#F59E0B' : 'var(--dash-text-3)', border: `1px solid ${statusFilter === f.key ? f.key === 'all' ? 'transparent' : f.key === 'urgent' ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)' : 'var(--dash-border-btn)'}` }}>
-                {f.label}
-              </button>
-            ))}
+            <Calendar style={{ width: '13px', height: '13px', color: 'var(--dash-text-4)' }} />
+            <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>수집일:</span>
+            <div className="flex items-center gap-1">
+              {DATE_FILTERS.map((f) => (
+                <button key={f.key} onClick={() => setDateFilter(f.key)} className="rounded-md transition-colors"
+                  style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: dateFilter === f.key ? 'rgba(37,99,235,0.12)' : 'transparent', color: dateFilter === f.key ? '#2563EB' : 'var(--dash-text-4)', border: `1px solid ${dateFilter === f.key ? 'rgba(37,99,235,0.3)' : 'var(--dash-border-btn)'}`, fontWeight: dateFilter === f.key ? 600 : 400 }}>
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Calendar style={{ width: '13px', height: '13px', color: 'var(--dash-text-4)' }} />
-          <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>수집일:</span>
-          <div className="flex items-center gap-1">
-            {DATE_FILTERS.map((f) => (
-              <button key={f.key} onClick={() => setDateFilter(f.key)} className="rounded-md transition-colors"
-                style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: dateFilter === f.key ? 'rgba(37,99,235,0.12)' : 'transparent', color: dateFilter === f.key ? '#2563EB' : 'var(--dash-text-4)', border: `1px solid ${dateFilter === f.key ? 'rgba(37,99,235,0.3)' : 'var(--dash-border-btn)'}`, fontWeight: dateFilter === f.key ? 600 : 400 }}>
-                {f.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-auto">
