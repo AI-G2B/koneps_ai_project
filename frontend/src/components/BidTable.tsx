@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, ExternalLink, Loader2, CheckCircle2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Briefcase } from 'lucide-react';
+import { Eye, ExternalLink, Loader2, CheckCircle2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play } from 'lucide-react';
 import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidStatus, TODAY } from './mockData';
 import type { AgencySettings } from '../App';
 
@@ -232,6 +232,16 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
               <Ban style={{ width: '9px', height: '9px' }} />기피
             </span>
           )}
+          {bidStatus === 'bookmarked' && (
+            <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.15)', color: '#2563EB', flexShrink: 0, fontWeight: 500 }}>
+              <Bookmark style={{ width: '9px', height: '9px', fill: 'currentColor' }} />찜
+            </span>
+          )}
+          {bidStatus === 'inProgress' && (
+            <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(34,197,94,0.15)', color: '#22C55E', flexShrink: 0, fontWeight: 500 }}>
+              <Play style={{ width: '9px', height: '9px', fill: 'currentColor' }} />진행중
+            </span>
+          )}
           <div style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {bid.title}
           </div>
@@ -267,17 +277,18 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
             title="상세 보기">
             <Eye style={{ width: '14px', height: '14px' }} />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onToggleBookmark?.(bid.id); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: bidStatus === 'bookmarked' ? '#F59E0B' : 'var(--dash-text-3)', backgroundColor: bidStatus === 'bookmarked' ? 'rgba(245,158,11,0.12)' : 'transparent' }}
-            onMouseEnter={(e) => { if (bidStatus !== 'bookmarked') { (e.currentTarget as HTMLButtonElement).style.color = '#F59E0B'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(245,158,11,0.1)'; } }}
+          <button onClick={(e) => { e.stopPropagation(); onToggleBookmark?.(bid.id); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: bidStatus === 'bookmarked' ? '#2563EB' : 'var(--dash-text-3)', backgroundColor: bidStatus === 'bookmarked' ? 'rgba(37,99,235,0.12)' : 'transparent' }}
+            onMouseEnter={(e) => { if (bidStatus !== 'bookmarked') { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; } }}
             onMouseLeave={(e) => { if (bidStatus !== 'bookmarked') { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; } }}
-            title="관심 공고">
-            <Bookmark style={{ width: '14px', height: '14px' }} />
+            title="찜하기">
+            <Bookmark style={{ width: '14px', height: '14px', fill: bidStatus === 'bookmarked' ? 'currentColor' : 'none' }} />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onSetInProgress?.(bid.id); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: bidStatus === 'inProgress' ? '#22C55E' : 'var(--dash-text-3)', backgroundColor: bidStatus === 'inProgress' ? 'rgba(34,197,94,0.12)' : 'transparent' }}
+          <button onClick={(e) => { e.stopPropagation(); onSetInProgress?.(bid.id); }} className="rounded-md flex items-center gap-1" style={{ padding: '0 6px', height: '28px', color: bidStatus === 'inProgress' ? '#22C55E' : 'var(--dash-text-3)', backgroundColor: bidStatus === 'inProgress' ? 'rgba(34,197,94,0.12)' : 'transparent' }}
             onMouseEnter={(e) => { if (bidStatus !== 'inProgress') { (e.currentTarget as HTMLButtonElement).style.color = '#22C55E'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,197,94,0.1)'; } }}
             onMouseLeave={(e) => { if (bidStatus !== 'inProgress') { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; } }}
-            title="진행 프로젝트">
-            <Briefcase style={{ width: '14px', height: '14px' }} />
+            title="진행하기">
+            <Play style={{ width: '12px', height: '12px', fill: bidStatus === 'inProgress' ? 'currentColor' : 'none', flexShrink: 0 }} />
+            {bidStatus === 'inProgress' && <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>진행중</span>}
           </button>
           <button onClick={(e) => e.stopPropagation()} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: 'var(--dash-text-3)', backgroundColor: 'transparent' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-item-bg-alt)'; }}
