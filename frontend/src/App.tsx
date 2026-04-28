@@ -8,6 +8,7 @@ import { LoginPage, type User } from './components/LoginPage';
 import { SettingsPage } from './components/SettingsPage';
 import { BookmarkPage } from './components/BookmarkPage';
 import { ProjectPage } from './components/ProjectPage';
+import { BottomWidgets } from './components/BottomWidgets';
 import { type Bid, type BidStatus } from './components/mockData';
 import { fetchBids, fetchBidById } from './services/api';
 
@@ -133,7 +134,7 @@ export default function App() {
                 />
                 <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} />
               </div>
-              <div style={{ height: '4px' }} />
+              <BottomWidgets bids={bids} />
             </>
           )}
         </main>
