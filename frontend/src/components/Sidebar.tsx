@@ -1,24 +1,60 @@
 import {
   LayoutDashboard, FileText, BrainCircuit, BookOpen,
-  Settings, Building2, ChevronRight, HelpCircle, BarChart3, TrendingUp,
+  Settings, Building2, ChevronRight, HelpCircle, TrendingUp,
+  Bookmark, Briefcase,
 } from 'lucide-react';
 import type { UserRole } from './LoginPage';
 import type { PageType } from '../App';
 
-const MANAGER_NAV: { icon: React.ElementType; label: PageType; badge?: string }[] = [
-  { icon: LayoutDashboard, label: '대시보드' },
-  { icon: FileText, label: '공고 목록', badge: '47' },
-  { icon: BrainCircuit, label: 'AI 분석', badge: '3' },
-  { icon: BookOpen, label: '제안목차' },
+type NavItem = { icon: React.ElementType; label: PageType; badge?: string };
+type NavSection = { label?: string; items: NavItem[] };
+
+const MANAGER_SECTIONS: NavSection[] = [
+  {
+    items: [{ icon: LayoutDashboard, label: '대시보드' }],
+  },
+  {
+    label: '공고 관리',
+    items: [
+      { icon: FileText, label: '공고 목록', badge: '47' },
+      { icon: Bookmark, label: '관심 공고' },
+      { icon: Briefcase, label: '진행 프로젝트' },
+    ],
+  },
+  {
+    label: '분석',
+    items: [
+      { icon: BrainCircuit, label: 'AI 분석', badge: '3' },
+      { icon: BookOpen, label: '제안목차' },
+    ],
+  },
 ];
 
-const CEO_NAV: { icon: React.ElementType; label: PageType }[] = [
-  { icon: LayoutDashboard, label: '대시보드' },
-  { icon: BarChart3, label: '현황 요약' },
-  { icon: TrendingUp, label: '전략 리포트' },
+const CEO_SECTIONS: NavSection[] = [
+  {
+    items: [
+      { icon: LayoutDashboard, label: '대시보드' },
+      { icon: Briefcase, label: '진행 프로젝트' },
+      { icon: TrendingUp, label: '전략 리포트' },
+    ],
+  },
 ];
 
-const BOTTOM_NAV: { icon: React.ElementType; label: PageType }[] = [
+const PROPOSAL_SECTIONS: NavSection[] = [
+  {
+    label: '공고 관리',
+    items: [{ icon: Briefcase, label: '진행 프로젝트' }],
+  },
+  {
+    label: '분석',
+    items: [
+      { icon: BookOpen, label: '제안목차' },
+      { icon: BrainCircuit, label: 'AI 분석' },
+    ],
+  },
+];
+
+const SYSTEM_ITEMS: NavItem[] = [
   { icon: Settings, label: '설정' },
   { icon: HelpCircle, label: '도움말' },
 ];
@@ -30,15 +66,20 @@ interface SidebarProps {
 }
 
 export function Sidebar({ role, activePage, onNavigate }: SidebarProps) {
-  const navItems = role === 'ceo' ? CEO_NAV : MANAGER_NAV;
-  const accentColor = role === 'ceo' ? '#7C3AED' : '#2563EB';
-  const accentBg = role === 'ceo' ? 'rgba(124,58,237,0.15)' : 'rgba(37,99,235,0.15)';
-  const badgeBg = role === 'ceo' ? 'rgba(124,58,237,0.2)' : 'rgba(37,99,235,0.2)';
+  const sections = role === 'ceo' ? CEO_SECTIONS : role === 'proposal' ? PROPOSAL_SECTIONS : MANAGER_SECTIONS;
+  const accentColor = role === 'ceo' ? '#7C3AED' : role === 'proposal' ? '#0891B2' : '#2563EB';
+  const accentBg = role === 'ceo' ? 'rgba(124,58,237,0.15)' : role === 'proposal' ? 'rgba(8,145,178,0.15)' : 'rgba(37,99,235,0.15)';
+  const badgeBg = role === 'ceo' ? 'rgba(124,58,237,0.2)' : role === 'proposal' ? 'rgba(8,145,178,0.2)' : 'rgba(37,99,235,0.2)';
   const logoGradient = role === 'ceo'
     ? 'linear-gradient(135deg, #7C3AED, #5B21B6)'
+    : role === 'proposal'
+    ? 'linear-gradient(135deg, #0891B2, #0E7490)'
     : 'linear-gradient(135deg, #2563EB, #1D4ED8)';
+  const roleLabel = role === 'ceo' ? 'CEO 모드' : role === 'proposal' ? '제안팀 모드' : '담당자 모드';
+  const roleBadgeBg = role === 'ceo' ? 'rgba(124,58,237,0.12)' : role === 'proposal' ? 'rgba(8,145,178,0.12)' : 'rgba(37,99,235,0.12)';
+  const roleBadgeBorder = role === 'ceo' ? 'rgba(124,58,237,0.25)' : role === 'proposal' ? 'rgba(8,145,178,0.25)' : 'rgba(37,99,235,0.25)';
 
-  const NavButton = ({ item }: { item: { icon: React.ElementType; label: PageType; badge?: string } }) => {
+  const NavButton = ({ item }: { item: NavItem }) => {
     const isActive = activePage === item.label;
     return (
       <button
@@ -60,6 +101,12 @@ export function Sidebar({ role, activePage, onNavigate }: SidebarProps) {
     );
   };
 
+  const SectionLabel = ({ label }: { label: string }) => (
+    <div style={{ fontSize: '10px', color: 'var(--dash-text-5)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 8px', margin: '20px 0 8px' }}>
+      {label}
+    </div>
+  );
+
   return (
     <div className="w-[220px] flex-shrink-0 flex flex-col h-full" style={{ backgroundColor: 'var(--dash-surface)', borderRight: '1px solid var(--dash-border)' }}>
       {/* Logo */}
@@ -75,21 +122,27 @@ export function Sidebar({ role, activePage, onNavigate }: SidebarProps) {
 
       {/* Role badge */}
       <div style={{ padding: '10px 12px 4px' }}>
-        <span className="inline-flex items-center rounded-md" style={{ fontSize: '10px', padding: '3px 8px', backgroundColor: role === 'ceo' ? 'rgba(124,58,237,0.12)' : 'rgba(37,99,235,0.12)', color: accentColor, border: `1px solid ${role === 'ceo' ? 'rgba(124,58,237,0.25)' : 'rgba(37,99,235,0.25)'}`, fontWeight: 500 }}>
-          {role === 'ceo' ? 'CEO 모드' : '담당자 모드'}
+        <span className="inline-flex items-center rounded-md" style={{ fontSize: '10px', padding: '3px 8px', backgroundColor: roleBadgeBg, color: accentColor, border: `1px solid ${roleBadgeBorder}`, fontWeight: 500 }}>
+          {roleLabel}
         </span>
       </div>
 
       {/* Main Nav */}
       <nav className="flex-1 px-3 pt-2 overflow-y-auto">
-        <div style={{ fontSize: '10px', color: 'var(--dash-text-5)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 8px', marginBottom: '8px' }}>메인 메뉴</div>
-        <div className="space-y-0.5">
-          {navItems.map((item) => <NavButton key={item.label} item={item} />)}
-        </div>
+        {sections.map((section, idx) => (
+          <div key={idx}>
+            {section.label
+              ? <SectionLabel label={section.label} />
+              : idx > 0 && <div style={{ marginTop: '20px' }} />}
+            <div className="space-y-0.5">
+              {section.items.map((item) => <NavButton key={item.label} item={item} />)}
+            </div>
+          </div>
+        ))}
 
-        <div style={{ fontSize: '10px', color: 'var(--dash-text-5)', textTransform: 'uppercase', letterSpacing: '0.08em', padding: '0 8px', margin: '20px 0 8px' }}>시스템</div>
+        <SectionLabel label="시스템" />
         <div className="space-y-0.5">
-          {BOTTOM_NAV.map((item) => <NavButton key={item.label} item={item} />)}
+          {SYSTEM_ITEMS.map((item) => <NavButton key={item.label} item={item} />)}
         </div>
       </nav>
 

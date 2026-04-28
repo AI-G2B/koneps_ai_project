@@ -10,7 +10,7 @@ import { SettingsPage } from './components/SettingsPage';
 import { type Bid } from './components/mockData';
 import { fetchBids, fetchBidById } from './services/api';
 
-export type PageType = '대시보드' | '공고 목록' | 'AI 분석' | '제안목차' | '현황 요약' | '전략 리포트' | '설정' | '도움말';
+export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '현황 요약' | '전략 리포트' | '설정' | '도움말';
 
 export interface AgencySettings {
   preferred: string[];
