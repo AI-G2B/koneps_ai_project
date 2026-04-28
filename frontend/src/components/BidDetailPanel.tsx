@@ -1,10 +1,12 @@
+import { useEffect, useState } from 'react';
 import {
   Target, Clock, Wallet, Truck, Code2, Gavel, BarChart2, Shield,
   GitBranch, Percent, AlertTriangle, FileText, ArrowRight,
   BrainCircuit, ChevronRight, Zap, Phone, ScrollText, Loader2,
 } from 'lucide-react';
-import { type Bid, formatBudget, getDaysUntilDeadline } from './mockData';
+import { type Bid, type AiStatusType, formatBudget, getDaysUntilDeadline } from './mockData';
 import { RiskBadge } from './BidTable';
+import { useToast } from './ToastProvider';
 
 interface BidDetailPanelProps {
   bid: Bid | null;
@@ -13,6 +15,20 @@ interface BidDetailPanelProps {
 }
 
 export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposal }: BidDetailPanelProps) {
+  const { showToast } = useToast();
+  const [localAiStatus, setLocalAiStatus] = useState<AiStatusType>(bid?.aiStatus ?? 'complete');
+
+  useEffect(() => {
+    const status = bid?.aiStatus ?? 'complete';
+    setLocalAiStatus(status);
+    if (!bid || status !== 'analyzing') return;
+    const timer = setTimeout(() => {
+      setLocalAiStatus('complete');
+      showToast('success', `AI 분석이 완료되었습니다 — ${bid.title}`);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [bid?.id, showToast]);
+
   if (!bid) {
     return (
       <div className="w-[390px] flex-shrink-0 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)' }}>
@@ -30,7 +46,7 @@ export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposa
   const isUrgent = daysLeft <= 3;
   const detail = bid.detail;
   const riskFactors = bid.riskFactors ?? [];
-  const isAnalyzing = bid.aiStatus === 'analyzing';
+  const isAnalyzing = localAiStatus === 'analyzing';
   // 네트워크로 상세 조회 중이거나 AI 파이프라인이 분석 중인 경우
   const showLoadingOverlay = detailLoading;
 
