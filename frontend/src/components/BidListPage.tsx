@@ -78,8 +78,6 @@ export function BidListPage({ bids, bidStatuses, onToggleBookmark, onSetInProgre
           overflow: 'hidden',
           border: '1px solid var(--dash-border)',
           backgroundColor: 'var(--dash-card)',
-          marginRight: isSlideOpen ? '42vw' : 0,
-          transition: 'margin-right 250ms ease',
         }}
       >
         <LeftPanel
@@ -145,7 +143,7 @@ function LeftPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, selec
   });
 
   return (
-    <div className="flex flex-col" style={{ flex: 3, minWidth: 0, overflow: 'hidden' }}>
+    <div className="flex flex-col" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
       <div className="flex-shrink-0" style={{ padding: '12px 16px', borderBottom: '1px solid var(--dash-border)' }}>
         <div className="flex items-center justify-between" style={{ marginBottom: '8px' }}>
           <div className="flex items-center gap-2">
@@ -386,7 +384,7 @@ function RightPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, onOp
   }, [focusBidId, activeTab]);
 
   return (
-    <div className="flex flex-col" style={{ flex: 2, minWidth: 0, overflow: 'hidden' }}>
+    <div className="flex flex-col" style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
       {/* 탭 헤더 */}
       <div className="flex-shrink-0" style={{ padding: '12px 16px', borderBottom: '1px solid var(--dash-border)' }}>
         <div className="flex items-center gap-2" style={{ marginBottom: '10px' }}>

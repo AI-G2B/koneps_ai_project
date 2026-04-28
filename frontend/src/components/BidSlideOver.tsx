@@ -52,24 +52,41 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, onToggleBookma
   ] : [];
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        height: '100vh',
-        width: '42vw',
-        minWidth: '480px',
-        zIndex: 50,
-        transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 250ms ease',
-        backgroundColor: 'var(--dash-card)',
-        borderLeft: '1px solid var(--dash-border)',
-        display: 'flex',
-        flexDirection: 'column',
-        boxShadow: '-8px 0 32px rgba(0,0,0,0.18)',
-      }}
-    >
+    <>
+      {/* 딤 오버레이 */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: 'rgba(0,0,0,0.15)',
+          zIndex: 49,
+          opacity: isOpen ? 1 : 0,
+          pointerEvents: isOpen ? 'auto' : 'none',
+          transition: isOpen ? 'opacity 250ms ease-out' : 'opacity 200ms ease-in',
+        }}
+      />
+      {/* 슬라이드 오버 패널 */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          height: '100vh',
+          width: '480px',
+          zIndex: 50,
+          transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition: isOpen ? 'transform 250ms ease-out' : 'transform 200ms ease-in',
+          backgroundColor: 'var(--dash-card)',
+          borderLeft: '1px solid var(--dash-border)',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '-8px 0 32px rgba(0,0,0,0.18)',
+        }}
+      >
       {bid && (
         <>
           {/* ── 헤더 ── */}
@@ -382,6 +399,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, onToggleBookma
         </>
       )}
     </div>
+    </>
   );
 }
 
