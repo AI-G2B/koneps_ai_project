@@ -8,6 +8,7 @@ import { LoginPage, type User } from './components/LoginPage';
 import { SettingsPage } from './components/SettingsPage';
 import { BookmarkPage } from './components/BookmarkPage';
 import { ProjectPage } from './components/ProjectPage';
+import { BidListPage } from './components/BidListPage';
 import { type Bid, type BidStatus } from './components/mockData';
 import { fetchBids, fetchBidById } from './services/api';
 
@@ -114,6 +115,13 @@ export default function App() {
         >
           {activePage === '설정' ? (
             <SettingsPage settings={agencySettings} onSave={setAgencySettings} />
+          ) : activePage === '공고 목록' ? (
+            <BidListPage
+              bids={bids}
+              bidStatuses={bidStatuses}
+              onToggleBookmark={toggleBookmark}
+              onSetInProgress={setInProgress}
+            />
           ) : activePage === '관심 공고' ? (
             <BookmarkPage
               bids={bids}
