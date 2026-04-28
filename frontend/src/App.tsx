@@ -4,7 +4,6 @@ import { DashboardHeader } from './components/DashboardHeader';
 import { KpiCards } from './components/KpiCards';
 import { BidTable } from './components/BidTable';
 import { BidDetailPanel } from './components/BidDetailPanel';
-import { BottomWidgets } from './components/BottomWidgets';
 import { LoginPage, type User } from './components/LoginPage';
 import { SettingsPage } from './components/SettingsPage';
 import { BookmarkPage } from './components/BookmarkPage';
@@ -132,9 +131,8 @@ export default function App() {
                   onToggleBookmark={toggleBookmark}
                   onSetInProgress={setInProgress}
                 />
-                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} />
+                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} />
               </div>
-              <BottomWidgets />
               <div style={{ height: '4px' }} />
             </>
           )}

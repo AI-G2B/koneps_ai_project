@@ -9,9 +9,10 @@ import { RiskBadge } from './BidTable';
 interface BidDetailPanelProps {
   bid: Bid | null;
   detailLoading?: boolean;
+  onNavigateToProposal?: () => void;
 }
 
-export function BidDetailPanel({ bid, detailLoading = false }: BidDetailPanelProps) {
+export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposal }: BidDetailPanelProps) {
   if (!bid) {
     return (
       <div className="w-[390px] flex-shrink-0 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)' }}>
@@ -153,6 +154,7 @@ export function BidDetailPanel({ bid, detailLoading = false }: BidDetailPanelPro
       <div className="flex-shrink-0 px-5 py-4" style={{ borderTop: '1px solid var(--dash-border)' }}>
         <button
           disabled={isAnalyzing}
+          onClick={() => { if (!isAnalyzing) onNavigateToProposal?.(); }}
           className="w-full flex items-center justify-center gap-2 rounded-xl transition-all"
           style={{ padding: '11px 16px', fontSize: '14px', fontWeight: 600, color: 'white', background: isAnalyzing ? '#94A3B8' : 'linear-gradient(135deg, #2563EB, #1D4ED8)', boxShadow: isAnalyzing ? 'none' : '0 4px 16px rgba(37,99,235,0.3)', cursor: isAnalyzing ? 'not-allowed' : 'pointer' }}
           onMouseEnter={(e) => { if (!isAnalyzing) { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(37,99,235,0.4)'; }}}
