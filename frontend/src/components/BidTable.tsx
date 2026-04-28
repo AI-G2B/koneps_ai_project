@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, ExternalLink, Loader2, CheckCircle2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play } from 'lucide-react';
+import { Eye, ExternalLink, Loader2, CheckCircle2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Flag } from 'lucide-react';
 import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidStatus, TODAY } from './mockData';
 import type { AgencySettings } from '../App';
 
@@ -64,9 +64,11 @@ interface BidTableProps {
   bidStatuses?: Map<string, BidStatus>;
   onToggleBookmark?: (bidId: string) => void;
   onSetInProgress?: (bidId: string) => void;
+  pursuedBids?: Set<string>;
+  onTogglePursued?: (bidId: string) => void;
 }
 
-export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings, bidStatuses, onToggleBookmark, onSetInProgress }: BidTableProps) {
+export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings, bidStatuses, onToggleBookmark, onSetInProgress, pursuedBids, onTogglePursued }: BidTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -185,6 +187,8 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
                   bidStatus={bidStatuses?.get(bid.id) ?? 'none'}
                   onToggleBookmark={onToggleBookmark}
                   onSetInProgress={onSetInProgress}
+                  isPursued={pursuedBids?.has(bid.id) ?? false}
+                  onTogglePursued={onTogglePursued}
                 />
               ))
             )}
@@ -204,24 +208,29 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
   );
 }
 
-function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, bidStatus, onToggleBookmark, onSetInProgress }: {
+function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, bidStatus, onToggleBookmark, onSetInProgress, isPursued, onTogglePursued }: {
   bid: Bid; isSelected: boolean; urgent: boolean; daysLeft: number; onSelect: () => void;
   isPreferred: boolean; isAvoided: boolean;
   bidStatus: BidStatus;
   onToggleBookmark?: (bidId: string) => void;
   onSetInProgress?: (bidId: string) => void;
+  isPursued: boolean;
+  onTogglePursued?: (bidId: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const rowBg = isSelected ? 'rgba(37,99,235,0.1)' : hovered ? 'var(--dash-row-hover)' : 'transparent';
 
   return (
     <tr onClick={onSelect} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-      style={{ backgroundColor: rowBg, borderBottom: '1px solid var(--dash-border-faint)', borderLeft: `2px solid ${isSelected ? '#2563EB' : isAvoided ? '#EF4444' : isPreferred ? '#2563EB' : 'transparent'}`, cursor: 'pointer', transition: 'background-color 0.15s, border-left-color 0.15s' }}>
+      style={{ backgroundColor: rowBg, borderBottom: '1px solid var(--dash-border-faint)', borderLeft: `2px solid ${isSelected ? '#2563EB' : isPursued ? '#8B5CF6' : isAvoided ? '#EF4444' : isPreferred ? '#2563EB' : 'transparent'}`, cursor: 'pointer', transition: 'background-color 0.15s, border-left-color 0.15s' }}>
       <td style={{ padding: '10px 12px' }}>
         <span style={{ fontSize: '11px', color: 'var(--dash-text-4)', fontFamily: 'monospace' }}>{bid.number.split('-').slice(-1)[0]}</span>
       </td>
       <td style={{ padding: '10px 12px', maxWidth: '200px' }}>
-        <div className="flex items-center gap-1.5" style={{ marginBottom: '2px' }}>
+        <div style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '3px' }}>
+          {bid.title}
+        </div>
+        <div className="flex items-center gap-1" style={{ flexWrap: 'wrap', rowGap: '2px' }}>
           {isPreferred && (
             <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#2563EB', flexShrink: 0 }}>
               <Star style={{ width: '9px', height: '9px' }} />선호
@@ -242,13 +251,17 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
               <Play style={{ width: '9px', height: '9px', fill: 'currentColor' }} />진행중
             </span>
           )}
-          <div style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {bid.title}
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA' }}>{bid.type}</span>
-          <span style={{ fontSize: '10px', color: 'var(--dash-text-5)' }}>{bid.number}</span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onTogglePursued?.(bid.id); }}
+            className="flex items-center gap-0.5 rounded"
+            style={{ fontSize: '10px', padding: '0 4px', flexShrink: 0, fontWeight: 500, cursor: 'pointer', border: `1px solid ${isPursued ? 'rgba(139,92,246,0.3)' : 'rgba(100,116,139,0.2)'}`, backgroundColor: isPursued ? 'rgba(139,92,246,0.15)' : 'rgba(100,116,139,0.1)', color: isPursued ? '#8B5CF6' : '#94A3B8' }}
+            title="추진사업 토글"
+          >
+            <Flag style={{ width: '9px', height: '9px', fill: isPursued ? 'currentColor' : 'none' }} />
+            {isPursued ? '추진' : '미정'}
+          </button>
+          <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA', flexShrink: 0 }}>{bid.type}</span>
+          <span style={{ fontSize: '10px', color: 'var(--dash-text-5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bid.number}</span>
         </div>
       </td>
       <td style={{ padding: '10px 12px' }}>
@@ -268,7 +281,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
         </div>
       </td>
       <td style={{ padding: '10px 12px' }}><RiskBadge risk={bid.risk} /></td>
-      <td style={{ padding: '10px 12px' }}><AiStatusIndicator status={bid.aiStatus} /></td>
+      <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}><AiStatusIndicator status={bid.aiStatus} /></td>
       <td style={{ padding: '10px 12px' }}>
         <div className="flex items-center gap-1">
           <button onClick={(e) => { e.stopPropagation(); onSelect(); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: 'var(--dash-text-3)', backgroundColor: 'transparent' }}

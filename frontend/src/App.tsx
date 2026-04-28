@@ -8,7 +8,6 @@ import { LoginPage, type User } from './components/LoginPage';
 import { SettingsPage } from './components/SettingsPage';
 import { BookmarkPage } from './components/BookmarkPage';
 import { ProjectPage } from './components/ProjectPage';
-import { BottomWidgets } from './components/BottomWidgets';
 import { type Bid, type BidStatus } from './components/mockData';
 import { fetchBids, fetchBidById } from './services/api';
 
@@ -27,6 +26,16 @@ export default function App() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [activePage, setActivePage] = useState<PageType>('대시보드');
   const [bidStatuses, setBidStatuses] = useState<Map<string, BidStatus>>(new Map());
+  const [pursuedBids, setPursuedBids] = useState<Set<string>>(new Set());
+
+  const togglePursued = (bidId: string) => {
+    setPursuedBids(prev => {
+      const next = new Set(prev);
+      if (next.has(bidId)) next.delete(bidId);
+      else next.add(bidId);
+      return next;
+    });
+  };
 
   const toggleBookmark = (bidId: string) => {
     setBidStatuses(prev => {
@@ -131,10 +140,11 @@ export default function App() {
                   bidStatuses={bidStatuses}
                   onToggleBookmark={toggleBookmark}
                   onSetInProgress={setInProgress}
+                  pursuedBids={pursuedBids}
+                  onTogglePursued={togglePursued}
                 />
                 <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} />
               </div>
-              <BottomWidgets bids={bids} />
             </>
           )}
         </main>
