@@ -3,6 +3,7 @@ import {
   Target, Clock, Wallet, Truck, Code2, Gavel, BarChart2, Shield,
   GitBranch, Percent, AlertTriangle, FileText, ArrowRight,
   BrainCircuit, ChevronRight, Zap, Phone, ScrollText, Loader2,
+  ExternalLink, Download,
 } from 'lucide-react';
 import { type Bid, type AiStatusType, formatBudget, getDaysUntilDeadline } from './mockData';
 import { RiskBadge } from './BidTable';
@@ -75,11 +76,33 @@ export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposa
             {isAnalyzing ? 'AI 분석 중' : 'AI 분석 완료'}
           </span>
           <RiskBadge risk={bid.risk} />
-          {isUrgent && (
-            <span className="ml-auto rounded-full" style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)', fontWeight: 600 }}>
-              D-{daysLeft}
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 ml-auto">
+            {isUrgent && (
+              <span className="rounded-full" style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)', fontWeight: 600 }}>
+                D-{daysLeft}
+              </span>
+            )}
+            <button
+              title="나라장터 원문 링크"
+              onClick={() => window.open('https://www.g2b.go.kr', '_blank')}
+              className="flex items-center justify-center rounded-md transition-colors"
+              style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
+            >
+              <ExternalLink style={{ width: '12px', height: '12px' }} />
+            </button>
+            <button
+              title="RFP 다운로드"
+              onClick={() => showToast('info', '준비 중입니다')}
+              className="flex items-center justify-center rounded-md transition-colors"
+              style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
+            >
+              <Download style={{ width: '12px', height: '12px' }} />
+            </button>
+          </div>
         </div>
 
         <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', lineHeight: 1.5, marginBottom: '12px' }}>
