@@ -8,6 +8,7 @@ import { BottomWidgets } from './components/BottomWidgets';
 import { LoginPage, type User } from './components/LoginPage';
 import { SettingsPage } from './components/SettingsPage';
 import { BookmarkPage } from './components/BookmarkPage';
+import { ProjectPage } from './components/ProjectPage';
 import { type Bid, type BidStatus } from './components/mockData';
 import { fetchBids, fetchBidById } from './services/api';
 
@@ -107,6 +108,13 @@ export default function App() {
               bidStatuses={bidStatuses}
               onToggleBookmark={toggleBookmark}
               onSetInProgress={setInProgress}
+              onSelectBid={handleSelectBid}
+              selectedBid={selectedBid}
+            />
+          ) : activePage === '진행 프로젝트' ? (
+            <ProjectPage
+              bids={bids}
+              bidStatuses={bidStatuses}
               onSelectBid={handleSelectBid}
               selectedBid={selectedBid}
             />
