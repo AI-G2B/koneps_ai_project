@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { type Bid, type BidStatus, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
 import { RiskBadge } from './BidTable';
-import { BidDetailPanel } from './BidDetailPanel';
+import { BidSlideOver } from './BidSlideOver';
 
 type DateFilter = 'today' | 'yesterday' | '3days' | '1week' | 'all';
 type StatusFilter = 'all' | 'urgent' | 'danger';
@@ -34,21 +34,27 @@ interface BidListPageProps {
 
 export function BidListPage({ bids, bidStatuses, onToggleBookmark, onSetInProgress }: BidListPageProps) {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
+  const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('bookmarked');
   const [focusBidId, setFocusBidId] = useState<string | null>(null);
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
 
+  const openSlide = (bid: Bid) => {
+    setSelectedBid(bid);
+    setIsSlideOpen(true);
+  };
+
+  const closeSlide = () => setIsSlideOpen(false);
+
   const handleToggleBookmark = (bidId: string) => {
     const isCurrentlyBookmarked = bidStatuses.get(bidId) === 'bookmarked';
     if (isCurrentlyBookmarked) {
-      // 찜 해제: fade-out 후 실제 제거
       setRemovingIds(prev => new Set([...prev, bidId]));
       setTimeout(() => {
         onToggleBookmark(bidId);
         setRemovingIds(prev => { const n = new Set(prev); n.delete(bidId); return n; });
       }, 260);
     } else {
-      // 찜 추가: 탭 전환 + 스크롤
       onToggleBookmark(bidId);
       setActiveTab('bookmarked');
       setFocusBidId(bidId);
@@ -62,37 +68,62 @@ export function BidListPage({ bids, bidStatuses, onToggleBookmark, onSetInProgre
   };
 
   return (
-    <div className="flex gap-0" style={{ flex: 1, minHeight: 0, borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--dash-border)', backgroundColor: 'var(--dash-card)' }}>
-      <LeftPanel
-        bids={bids}
+    <>
+      <div
+        className="flex gap-0"
+        style={{
+          flex: 1,
+          minHeight: 0,
+          borderRadius: '12px',
+          overflow: 'hidden',
+          border: '1px solid var(--dash-border)',
+          backgroundColor: 'var(--dash-card)',
+          marginRight: isSlideOpen ? '42vw' : 0,
+          transition: 'margin-right 250ms ease',
+        }}
+      >
+        <LeftPanel
+          bids={bids}
+          bidStatuses={bidStatuses}
+          onToggleBookmark={handleToggleBookmark}
+          onSetInProgress={handleSetInProgress}
+          selectedBid={selectedBid}
+          onOpenSlide={openSlide}
+        />
+        <div style={{ width: '1px', backgroundColor: 'var(--dash-border)', flexShrink: 0 }} />
+        <RightPanel
+          bids={bids}
+          bidStatuses={bidStatuses}
+          onToggleBookmark={handleToggleBookmark}
+          onSetInProgress={handleSetInProgress}
+          onOpenSlide={openSlide}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          focusBidId={focusBidId}
+          removingIds={removingIds}
+        />
+      </div>
+
+      <BidSlideOver
+        bid={selectedBid}
+        isOpen={isSlideOpen}
+        onClose={closeSlide}
         bidStatuses={bidStatuses}
         onToggleBookmark={handleToggleBookmark}
         onSetInProgress={handleSetInProgress}
-        selectedBid={selectedBid}
-        onSelectBid={setSelectedBid}
       />
-      <div style={{ width: '1px', backgroundColor: 'var(--dash-border)', flexShrink: 0 }} />
-      <RightPanel
-        bids={bids}
-        bidStatuses={bidStatuses}
-        onToggleBookmark={handleToggleBookmark}
-        onSetInProgress={handleSetInProgress}
-        selectedBid={selectedBid}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        focusBidId={focusBidId}
-        removingIds={removingIds}
-      />
-    </div>
+    </>
   );
 }
 
+// ── Left Panel ───────────────────────────────────────────────────
+
 interface LeftPanelProps extends BidListPageProps {
   selectedBid: Bid | null;
-  onSelectBid: (bid: Bid) => void;
+  onOpenSlide: (bid: Bid) => void;
 }
 
-function LeftPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, selectedBid, onSelectBid }: LeftPanelProps) {
+function LeftPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, selectedBid, onOpenSlide }: LeftPanelProps) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
@@ -220,7 +251,7 @@ function LeftPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, selec
                   bid={bid}
                   isSelected={selectedBid?.id === bid.id}
                   bidStatus={bidStatuses.get(bid.id) ?? 'none'}
-                  onSelect={() => onSelectBid(bid)}
+                  onSelect={() => onOpenSlide(bid)}
                   onToggleBookmark={onToggleBookmark}
                   onSetInProgress={onSetInProgress}
                 />
@@ -328,22 +359,23 @@ function LeftRow({ bid, isSelected, bidStatus, onSelect, onToggleBookmark, onSet
   );
 }
 
+// ── Right Panel ──────────────────────────────────────────────────
+
 interface RightPanelProps extends BidListPageProps {
-  selectedBid: Bid | null;
+  onOpenSlide: (bid: Bid) => void;
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
   focusBidId: string | null;
   removingIds: Set<string>;
 }
 
-function RightPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, selectedBid, activeTab, setActiveTab, focusBidId, removingIds }: RightPanelProps) {
+function RightPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, onOpenSlide, activeTab, setActiveTab, focusBidId, removingIds }: RightPanelProps) {
   const cardListRef = useRef<HTMLDivElement>(null);
 
   const bookmarkedBids = bids.filter((b) => bidStatuses.get(b.id) === 'bookmarked');
   const inProgressBids = bids.filter((b) => bidStatuses.get(b.id) === 'inProgress');
   const listBids = activeTab === 'bookmarked' ? bookmarkedBids : inProgressBids;
 
-  // 탭 전환 후 해당 카드로 스크롤
   useEffect(() => {
     if (!focusBidId) return;
     const timer = setTimeout(() => {
@@ -355,99 +387,73 @@ function RightPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, sele
 
   return (
     <div className="flex flex-col" style={{ flex: 2, minWidth: 0, overflow: 'hidden' }}>
-
-      {/* 상단: 대상 리스트 - 고정 높이 */}
-      <div className="flex flex-col" style={{ flexShrink: 0, height: '260px', borderBottom: '1px solid var(--dash-border)' }}>
-        {/* 탭 헤더 */}
-        <div className="flex-shrink-0" style={{ padding: '12px 16px', borderBottom: '1px solid var(--dash-border)' }}>
-          <div className="flex items-center gap-2" style={{ marginBottom: '10px' }}>
-            <FileSearch style={{ width: '14px', height: '14px', color: '#7C3AED' }} />
-            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)' }}>대상 리스트</h2>
-          </div>
-          <div className="flex gap-1">
-            {([
-              { key: 'bookmarked' as TabType, label: '찜한 공고', count: bookmarkedBids.length, activeColor: '#2563EB', activeBg: 'rgba(37,99,235,0.12)', activeBorder: 'rgba(37,99,235,0.3)' },
-              { key: 'inProgress' as TabType, label: '진행중 공고', count: inProgressBids.length, activeColor: '#22C55E', activeBg: 'rgba(34,197,94,0.12)', activeBorder: 'rgba(34,197,94,0.3)' },
-            ] as const).map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className="flex items-center gap-1.5 rounded-lg transition-colors"
+      {/* 탭 헤더 */}
+      <div className="flex-shrink-0" style={{ padding: '12px 16px', borderBottom: '1px solid var(--dash-border)' }}>
+        <div className="flex items-center gap-2" style={{ marginBottom: '10px' }}>
+          <FileSearch style={{ width: '14px', height: '14px', color: '#7C3AED' }} />
+          <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)' }}>대상 리스트</h2>
+        </div>
+        <div className="flex gap-1">
+          {([
+            { key: 'bookmarked' as TabType, label: '찜한 공고', count: bookmarkedBids.length, activeColor: '#2563EB', activeBg: 'rgba(37,99,235,0.12)', activeBorder: 'rgba(37,99,235,0.3)' },
+            { key: 'inProgress' as TabType, label: '진행중 공고', count: inProgressBids.length, activeColor: '#22C55E', activeBg: 'rgba(34,197,94,0.12)', activeBorder: 'rgba(34,197,94,0.3)' },
+          ] as const).map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className="flex items-center gap-1.5 rounded-lg transition-colors"
+              style={{
+                padding: '5px 12px',
+                fontSize: '12px',
+                fontWeight: activeTab === tab.key ? 600 : 400,
+                color: activeTab === tab.key ? tab.activeColor : 'var(--dash-text-3)',
+                backgroundColor: activeTab === tab.key ? tab.activeBg : 'transparent',
+                border: `1px solid ${activeTab === tab.key ? tab.activeBorder : 'var(--dash-border-btn)'}`,
+              }}
+            >
+              {tab.label}
+              <span
+                className="rounded-full"
                 style={{
-                  padding: '5px 12px',
-                  fontSize: '12px',
-                  fontWeight: activeTab === tab.key ? 600 : 400,
-                  color: activeTab === tab.key ? tab.activeColor : 'var(--dash-text-3)',
-                  backgroundColor: activeTab === tab.key ? tab.activeBg : 'transparent',
-                  border: `1px solid ${activeTab === tab.key ? tab.activeBorder : 'var(--dash-border-btn)'}`,
+                  fontSize: '10px',
+                  padding: '0 5px',
+                  minWidth: '16px',
+                  textAlign: 'center',
+                  backgroundColor: activeTab === tab.key ? tab.activeColor : 'var(--dash-item-bg)',
+                  color: activeTab === tab.key ? 'white' : 'var(--dash-text-4)',
                 }}
               >
-                {tab.label}
-                <span
-                  className="rounded-full"
-                  style={{
-                    fontSize: '10px',
-                    padding: '0 5px',
-                    minWidth: '16px',
-                    textAlign: 'center',
-                    backgroundColor: activeTab === tab.key ? tab.activeColor : 'var(--dash-item-bg)',
-                    color: activeTab === tab.key ? 'white' : 'var(--dash-text-4)',
-                  }}
-                >
-                  {tab.count}
-                </span>
-              </button>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 카드 목록 (전체 높이) */}
+      <div
+        ref={cardListRef}
+        className="flex-1 overflow-y-auto"
+        style={{ padding: '10px 12px', scrollbarWidth: 'thin', scrollbarColor: 'var(--dash-scrollbar) transparent' }}
+      >
+        {listBids.length === 0 ? (
+          <RightEmptyState tab={activeTab} />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+            {listBids.map((bid) => (
+              <RightCard
+                key={bid.id}
+                bid={bid}
+                bidStatus={bidStatuses.get(bid.id) ?? 'none'}
+                tab={activeTab}
+                isRemoving={removingIds.has(bid.id)}
+                onToggleBookmark={onToggleBookmark}
+                onSetInProgress={onSetInProgress}
+                onOpenSlide={onOpenSlide}
+              />
             ))}
           </div>
-        </div>
-
-        {/* 카드 목록 */}
-        <div
-          ref={cardListRef}
-          className="flex-1 overflow-y-auto"
-          style={{ padding: '10px 12px', scrollbarWidth: 'thin', scrollbarColor: 'var(--dash-scrollbar) transparent' }}
-        >
-          {listBids.length === 0 ? (
-            <RightEmptyState tab={activeTab} />
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
-              {listBids.map((bid) => (
-                <RightCard
-                  key={bid.id}
-                  bid={bid}
-                  bidStatus={bidStatuses.get(bid.id) ?? 'none'}
-                  tab={activeTab}
-                  isRemoving={removingIds.has(bid.id)}
-                  onToggleBookmark={onToggleBookmark}
-                  onSetInProgress={onSetInProgress}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 하단: 공고 상세 패널 */}
-      <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {selectedBid ? (
-          <BidDetailPanel bid={selectedBid} />
-        ) : (
-          <DetailEmptyState />
         )}
-      </div>
-    </div>
-  );
-}
-
-function DetailEmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center" style={{ height: '100%', gap: '12px', color: 'var(--dash-text-4)' }}>
-      <div className="rounded-2xl flex items-center justify-center" style={{ width: '48px', height: '48px', backgroundColor: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.12)' }}>
-        <Eye style={{ width: '20px', height: '20px', color: '#2563EB' }} />
-      </div>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--dash-text-3)', marginBottom: '4px' }}>공고를 선택하면 상세 정보가 표시됩니다</div>
-        <div style={{ fontSize: '12px', color: 'var(--dash-text-5)' }}>현황 리스트에서 공고 행을 클릭하세요</div>
       </div>
     </div>
   );
@@ -456,7 +462,7 @@ function DetailEmptyState() {
 function RightEmptyState({ tab }: { tab: TabType }) {
   const isBookmark = tab === 'bookmarked';
   return (
-    <div className="flex flex-col items-center justify-center" style={{ height: '100%', gap: '10px' }}>
+    <div className="flex flex-col items-center justify-center" style={{ height: '100%', minHeight: '200px', gap: '10px' }}>
       <div
         className="rounded-2xl flex items-center justify-center"
         style={{
@@ -483,13 +489,14 @@ function RightEmptyState({ tab }: { tab: TabType }) {
   );
 }
 
-function RightCard({ bid, bidStatus, tab, isRemoving, onToggleBookmark, onSetInProgress }: {
+function RightCard({ bid, bidStatus, tab, isRemoving, onToggleBookmark, onSetInProgress, onOpenSlide }: {
   bid: Bid;
   bidStatus: BidStatus;
   tab: TabType;
   isRemoving: boolean;
   onToggleBookmark: (bidId: string) => void;
   onSetInProgress: (bidId: string) => void;
+  onOpenSlide: (bid: Bid) => void;
 }) {
   const daysLeft = getDaysUntilDeadline(bid.deadline);
   const urgent = isDeadlineUrgent(bid.deadline);
@@ -497,6 +504,7 @@ function RightCard({ bid, bidStatus, tab, isRemoving, onToggleBookmark, onSetInP
   return (
     <div
       data-bid-id={bid.id}
+      onClick={() => onOpenSlide(bid)}
       className="rounded-xl"
       style={{
         padding: '10px 12px',
@@ -508,7 +516,10 @@ function RightCard({ bid, bidStatus, tab, isRemoving, onToggleBookmark, onSetInP
         transformOrigin: 'top',
         transition: 'opacity 0.25s ease, transform 0.25s ease',
         overflow: 'hidden',
+        cursor: 'pointer',
       }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg-alt)'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg)'; }}
     >
       {/* 배지 행 */}
       <div className="flex items-center gap-2" style={{ marginBottom: '5px' }}>
@@ -608,6 +619,7 @@ function RightCard({ bid, bidStatus, tab, isRemoving, onToggleBookmark, onSetInP
           </>
         ) : (
           <button
+            onClick={() => onOpenSlide(bid)}
             className="rounded-md flex items-center gap-1"
             style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--dash-text-3)', backgroundColor: 'transparent', border: '1px solid var(--dash-border-btn)', cursor: 'pointer' }}
             onMouseEnter={(e) => {
