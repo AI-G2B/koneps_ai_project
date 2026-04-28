@@ -7,6 +7,7 @@ import { BidDetailPanel } from './components/BidDetailPanel';
 import { BottomWidgets } from './components/BottomWidgets';
 import { LoginPage, type User } from './components/LoginPage';
 import { SettingsPage } from './components/SettingsPage';
+import { BookmarkPage } from './components/BookmarkPage';
 import { type Bid, type BidStatus } from './components/mockData';
 import { fetchBids, fetchBidById } from './services/api';
 
@@ -100,6 +101,15 @@ export default function App() {
         >
           {activePage === '설정' ? (
             <SettingsPage settings={agencySettings} onSave={setAgencySettings} />
+          ) : activePage === '관심 공고' ? (
+            <BookmarkPage
+              bids={bids}
+              bidStatuses={bidStatuses}
+              onToggleBookmark={toggleBookmark}
+              onSetInProgress={setInProgress}
+              onSelectBid={handleSelectBid}
+              selectedBid={selectedBid}
+            />
           ) : (
             <>
               <KpiCards bids={bids} bidsLoading={bidsLoading} />
