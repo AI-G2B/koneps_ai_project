@@ -39,8 +39,8 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         backgroundColor: 'var(--dash-card)',
         border: `1px solid ${c.border}`,
         boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-        minWidth: '300px',
-        maxWidth: '380px',
+        minWidth: '320px',
+        maxWidth: '480px',
         backdropFilter: 'blur(8px)',
       }}
     >
@@ -82,13 +82,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ showToast }}>
       <style>{`
         @keyframes toastSlideIn {
-          from { transform: translateX(110%); opacity: 0; }
-          to   { transform: translateX(0);    opacity: 1; }
+          from { transform: translateY(-20px); opacity: 0; }
+          to   { transform: translateY(0);     opacity: 1; }
+        }
+        @keyframes toastSlideOut {
+          from { transform: translateY(0);     opacity: 1; }
+          to   { transform: translateY(-20px); opacity: 0; }
         }
         .toast-enter { animation: toastSlideIn 0.25s cubic-bezier(0.16,1,0.3,1); }
       `}</style>
       {children}
-      <div style={{ position: 'fixed', bottom: '24px', right: '24px', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 9999 }}>
+      <div style={{ position: 'fixed', top: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 9999, alignItems: 'center' }}>
         {toasts.map((toast) => (
           <ToastItem
             key={toast.id}
