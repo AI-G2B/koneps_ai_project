@@ -2,8 +2,9 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { type Bid, formatBudget, TODAY } from './mockData';
+import { type Bid, type BidStatus, formatBudget, TODAY } from './mockData';
 import { RiskBadge } from './BidTable';
+import { BidSlideOver } from './BidSlideOver';
 
 const BID_TYPE_DATA = [
   { name: 'ISP', value: 47, color: '#2563EB', count: 16 },
@@ -157,7 +158,7 @@ interface PopupState {
   left: number;
 }
 
-function DeadlineCalendar({ bids }: { bids: Bid[] }) {
+function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideOver: (bid: Bid) => void }) {
   const [currentMonth, setCurrentMonth] = useState(
     () => new Date(TODAY.getFullYear(), TODAY.getMonth(), 1)
   );
@@ -382,7 +383,10 @@ function DeadlineCalendar({ bids }: { bids: Bid[] }) {
               <div
                 key={bid.id}
                 className="rounded-lg"
-                style={{ padding: '8px 10px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)' }}
+                onClick={() => { onOpenSlideOver(bid); setPopup(null); }}
+                style={{ padding: '8px 10px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)', cursor: 'pointer', transition: 'background-color 0.15s' }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg-alt)')}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg)')}
               >
                 <div
                   style={{
@@ -411,11 +415,34 @@ function DeadlineCalendar({ bids }: { bids: Bid[] }) {
   );
 }
 
-export function BottomWidgets({ bids }: { bids: Bid[] }) {
+export function BottomWidgets({ bids, bidStatuses, onToggleBookmark, onSetInProgress }: {
+  bids: Bid[];
+  bidStatuses: Map<string, BidStatus>;
+  onToggleBookmark: (bidId: string) => void;
+  onSetInProgress: (bidId: string) => void;
+}) {
+  const [slideOverBid, setSlideOverBid] = useState<Bid | null>(null);
+  const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
+
+  const openSlideOver = (bid: Bid) => {
+    setSlideOverBid(bid);
+    setIsSlideOverOpen(true);
+  };
+
   return (
-    <div className="flex gap-4">
-      <BidTypeChart />
-      <DeadlineCalendar bids={bids} />
-    </div>
+    <>
+      <div className="flex gap-4">
+        <DeadlineCalendar bids={bids} onOpenSlideOver={openSlideOver} />
+        <BidTypeChart />
+      </div>
+      <BidSlideOver
+        bid={slideOverBid}
+        isOpen={isSlideOverOpen}
+        onClose={() => setIsSlideOverOpen(false)}
+        bidStatuses={bidStatuses}
+        onToggleBookmark={onToggleBookmark}
+        onSetInProgress={onSetInProgress}
+      />
+    </>
   );
 }
