@@ -36,19 +36,22 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, onToggleBookma
   const riskFactors = bid?.riskFactors ?? [];
   const bidStatus = bid ? (bidStatuses.get(bid.id) ?? 'none') : 'none';
 
-  const AI_ITEMS = detail ? [
-    { icon: Target,     label: '사업목적',   value: detail.purpose },
-    { icon: Clock,      label: '수행기간',   value: detail.execPeriod },
-    { icon: Wallet,     label: '예산규모',   value: detail.budget },
+  const AI_HIGHLIGHT_ITEMS = detail ? [
+    { icon: Wallet,    label: '예산규모', value: detail.budget },
+    { icon: BarChart2, label: '평가방식', value: detail.evalMethod },
+    { icon: Clock,     label: '수행기간', value: detail.execPeriod },
+  ] : [];
+
+  const AI_DETAIL_ITEMS = detail ? [
     { icon: Truck,      label: '납품방식',   value: detail.deliveryMethod },
     { icon: Code2,      label: '기술요건',   value: detail.techRequirement },
     { icon: Gavel,      label: '입찰방식',   value: detail.bidMethod },
-    { icon: BarChart2,  label: '평가방식',   value: detail.evalMethod },
     { icon: Shield,     label: '보안요건',   value: detail.securityRequirement },
     { icon: GitBranch,  label: '하도급제한', value: detail.subcontractLimit },
     { icon: Percent,    label: '이행보증금', value: detail.performanceBond },
     { icon: ScrollText, label: '필수서류',   value: detail.requiredDocs },
     { icon: Phone,      label: '담당자',     value: detail.contactPerson },
+    { icon: Target,     label: '사업목적',   value: detail.purpose },
   ] : [];
 
   return (
@@ -296,7 +299,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, onToggleBookma
                 <SlideOverSectionTitle
                   icon={BrainCircuit}
                   title="AI 추출 핵심항목"
-                  badge={detail ? `${AI_ITEMS.length}건` : undefined}
+                  badge={detail ? `${AI_HIGHLIGHT_ITEMS.length + AI_DETAIL_ITEMS.length}건` : undefined}
                   accentColor="#2563EB"
                 />
                 {!detail ? (
@@ -304,29 +307,47 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, onToggleBookma
                     공고를 선택하면 AI 분석 결과가 표시됩니다
                   </div>
                 ) : (
-                  <div
-                    className="grid grid-cols-3 gap-2"
-                    style={{ marginTop: '12px' }}
-                  >
-                    {AI_ITEMS.map((item) => (
-                      <div
-                        key={item.label}
-                        className="flex items-start gap-2 rounded-lg"
-                        style={{ padding: '8px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)' }}
-                      >
-                        <item.icon style={{ width: '12px', height: '12px', color: '#2563EB', flexShrink: 0, marginTop: '1px' }} />
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: '10px', color: 'var(--dash-text-4)', marginBottom: '1px' }}>{item.label}</div>
-                          <div
-                            style={{ fontSize: '11px', color: 'var(--dash-text-detail)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                            title={item.value}
-                          >
+                  <>
+                    {/* 상단 하이라이트 카드 (3개) */}
+                    <div className="flex gap-2" style={{ marginTop: '12px' }}>
+                      {AI_HIGHLIGHT_ITEMS.map((item) => (
+                        <div
+                          key={item.label}
+                          className="flex flex-col rounded-lg"
+                          style={{ flex: 1, padding: '10px 12px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)' }}
+                        >
+                          <div className="flex items-center gap-1" style={{ marginBottom: '6px' }}>
+                            <item.icon style={{ width: '11px', height: '11px', color: '#2563EB', flexShrink: 0 }} />
+                            <div style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>{item.label}</div>
+                          </div>
+                          <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--dash-text)', lineHeight: 1.3 }} title={item.value}>
                             {item.value}
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                    {/* 나머지 항목 (2단 그리드) */}
+                    <div className="grid grid-cols-2 gap-2" style={{ marginTop: '8px' }}>
+                      {AI_DETAIL_ITEMS.map((item) => (
+                        <div
+                          key={item.label}
+                          className="flex items-start gap-2 rounded-lg"
+                          style={{ padding: '12px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)' }}
+                        >
+                          <item.icon style={{ width: '12px', height: '12px', color: '#2563EB', flexShrink: 0, marginTop: '1px' }} />
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: '10px', color: 'var(--dash-text-4)', marginBottom: '1px' }}>{item.label}</div>
+                            <div
+                              style={{ fontSize: '12px', color: 'var(--dash-text-detail)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', whiteSpace: 'normal' }}
+                              title={item.value}
+                            >
+                              {item.value}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}
