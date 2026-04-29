@@ -1,18 +1,19 @@
 import { useState } from 'react';
-import { Eye, ExternalLink, Loader2, CheckCircle2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Flag } from 'lucide-react';
+import type React from 'react';
+import { Eye, ExternalLink, Loader2, CheckCircle2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Flag, AlertCircle, AlertTriangle } from 'lucide-react';
 import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidStatus, TODAY } from './mockData';
 import type { AgencySettings } from '../App';
 
 export function RiskBadge({ risk }: { risk: RiskLevel }) {
-  const config: Record<RiskLevel, { label: string; bg: string; text: string; border: string }> = {
-    danger: { label: '위험', bg: 'rgba(239,68,68,0.12)', text: '#EF4444', border: 'rgba(239,68,68,0.3)' },
-    caution: { label: '주의', bg: 'rgba(249,115,22,0.12)', text: '#F97316', border: 'rgba(249,115,22,0.3)' },
-    good: { label: '양호', bg: 'rgba(34,197,94,0.12)', text: '#22C55E', border: 'rgba(34,197,94,0.3)' },
+  const config: Record<RiskLevel, { label: string; bg: string; text: string; border: string; icon: React.ReactNode }> = {
+    danger: { label: '위험', bg: 'rgba(239,68,68,0.12)', text: '#EF4444', border: 'rgba(239,68,68,0.3)', icon: <AlertCircle style={{ width: '11px', height: '11px', flexShrink: 0 }} /> },
+    caution: { label: '주의', bg: 'rgba(249,115,22,0.12)', text: '#F97316', border: 'rgba(249,115,22,0.3)', icon: <AlertTriangle style={{ width: '11px', height: '11px', flexShrink: 0 }} /> },
+    good: { label: '양호', bg: 'rgba(34,197,94,0.12)', text: '#22C55E', border: 'rgba(34,197,94,0.3)', icon: <CheckCircle2 style={{ width: '11px', height: '11px', flexShrink: 0 }} /> },
   };
   const c = config[risk];
   return (
-    <span className="inline-flex items-center rounded-md" style={{ padding: '2px 8px', fontSize: '11px', fontWeight: 500, backgroundColor: c.bg, color: c.text, border: `1px solid ${c.border}` }}>
-      {c.label}
+    <span className="inline-flex items-center gap-1 rounded-md" style={{ padding: '3px 10px', fontSize: '12px', fontWeight: 500, backgroundColor: c.bg, color: c.text, border: `1px solid ${c.border}` }}>
+      {c.icon}{c.label}
     </span>
   );
 }
@@ -249,13 +250,13 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
             </span>
           )}
           {bidStatus === 'bookmarked' && (
-            <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.15)', color: '#2563EB', flexShrink: 0, fontWeight: 500 }}>
-              <Bookmark style={{ width: '9px', height: '9px', fill: 'currentColor' }} />찜
+            <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '1px 5px', backgroundColor: 'rgba(37,99,235,0.15)', color: '#2563EB', flexShrink: 0, fontWeight: 500, border: '1px solid rgba(37,99,235,0.3)' }}>
+              <Bookmark style={{ width: '9px', height: '9px', fill: 'currentColor', flexShrink: 0 }} />찜
             </span>
           )}
           {bidStatus === 'inProgress' && (
-            <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(34,197,94,0.15)', color: '#22C55E', flexShrink: 0, fontWeight: 500 }}>
-              <Play style={{ width: '9px', height: '9px', fill: 'currentColor' }} />진행중
+            <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '1px 5px', backgroundColor: 'rgba(34,197,94,0.15)', color: '#22C55E', flexShrink: 0, fontWeight: 500, border: '1px solid rgba(34,197,94,0.3)' }}>
+              <Play style={{ width: '9px', height: '9px', fill: 'currentColor', flexShrink: 0 }} />진행중
             </span>
           )}
           <button

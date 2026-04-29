@@ -212,7 +212,7 @@ function LeftPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, selec
                 { label: '발주기관', width: '96px' },
                 { label: '예산', width: '84px' },
                 { label: '마감일', width: '84px' },
-                { label: '위험도', width: '66px' },
+                { label: '위험도', width: '76px' },
                 { label: '액션', width: '80px' },
               ].map((col) => (
                 <th
@@ -292,8 +292,8 @@ function LeftRow({ bid, isSelected, bidStatus, onSelect, onToggleBookmark, onSet
         transition: 'background-color 0.15s, border-left-color 0.15s',
       }}
     >
-      <td style={{ padding: '10px 12px', maxWidth: '220px' }}>
-        <div style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '3px' }}>
+      <td style={{ padding: '10px 12px' }}>
+        <div style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', lineHeight: 1.45, marginBottom: '3px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {bid.title}
         </div>
         <div className="flex items-center gap-1" style={{ flexWrap: 'wrap', rowGap: '2px' }}>
