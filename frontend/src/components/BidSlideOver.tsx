@@ -6,7 +6,7 @@ import {
   FileText, ArrowRight, BrainCircuit, ScrollText, Phone,
   ExternalLink, Download, Zap, Loader2, ChevronRight,
 } from 'lucide-react';
-import { type Bid, type BidStatus, formatBudget, getDaysUntilDeadline } from './mockData';
+import { type Bid, type BidStatus, type AiStatusType, formatBudget, getDaysUntilDeadline } from './mockData';
 import { RiskBadge } from './BidTable';
 import { useToast } from './ToastProvider';
 
@@ -15,11 +15,12 @@ interface BidSlideOverProps {
   isOpen: boolean;
   onClose: () => void;
   bidStatuses: Map<string, BidStatus>;
+  aiStatuses?: Record<string, AiStatusType>;
   onToggleBookmark: (bidId: string) => void;
   onSetInProgress: (bidId: string) => void;
 }
 
-export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, onToggleBookmark, onSetInProgress }: BidSlideOverProps) {
+export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, aiStatuses, onToggleBookmark, onSetInProgress }: BidSlideOverProps) {
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -31,7 +32,9 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, onToggleBookma
 
   const daysLeft = bid ? getDaysUntilDeadline(bid.deadline) : 0;
   const isUrgent = daysLeft <= 3;
-  const isAnalyzing = bid?.aiStatus === 'analyzing';
+  const aiStatus: AiStatusType = bid ? (aiStatuses?.[bid.id] ?? 'none') : 'none';
+  const isNoneOrPending = aiStatus === 'none' || aiStatus === 'pending';
+  const isAnalyzing = aiStatus === 'analyzing';
   const detail = bid?.detail;
   const riskFactors = bid?.riskFactors ?? [];
   const bidStatus = bid ? (bidStatuses.get(bid.id) ?? 'none') : 'none';
@@ -116,16 +119,17 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, onToggleBookma
                 style={{
                   fontSize: '11px',
                   padding: '2px 8px',
-                  backgroundColor: isAnalyzing ? 'rgba(245,158,11,0.15)' : 'rgba(37,99,235,0.15)',
-                  color: isAnalyzing ? '#F59E0B' : '#60A5FA',
-                  border: `1px solid ${isAnalyzing ? 'rgba(245,158,11,0.2)' : 'rgba(37,99,235,0.2)'}`,
+                  backgroundColor: isAnalyzing ? 'rgba(245,158,11,0.15)' : isNoneOrPending ? 'rgba(100,116,139,0.12)' : 'rgba(37,99,235,0.15)',
+                  color: isAnalyzing ? '#F59E0B' : isNoneOrPending ? 'var(--dash-text-4)' : '#60A5FA',
+                  border: `1px solid ${isAnalyzing ? 'rgba(245,158,11,0.2)' : isNoneOrPending ? 'rgba(100,116,139,0.2)' : 'rgba(37,99,235,0.2)'}`,
                 }}
               >
                 {isAnalyzing
                   ? <Loader2 className="animate-spin" style={{ width: '10px', height: '10px' }} />
+                  : isNoneOrPending ? null
                   : <Zap style={{ width: '10px', height: '10px' }} />
                 }
-                {isAnalyzing ? 'AI 분석 중' : 'AI 분석 완료'}
+                {isAnalyzing ? 'AI 분석 중' : isNoneOrPending ? '분석 전' : 'AI 분석 완료'}
               </span>
 
               {/* 위험도 배지 */}
@@ -277,6 +281,24 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, onToggleBookma
             className="flex-1 overflow-y-auto"
             style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--dash-scrollbar) transparent' }}
           >
+            {/* 분석 전 안내 */}
+            {isNoneOrPending && (
+              <div
+                className="flex flex-col items-center justify-center"
+                style={{ padding: '40px 20px', borderBottom: '1px solid var(--dash-border)' }}
+              >
+                <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+                  <BrainCircuit style={{ width: '20px', height: '20px', color: '#2563EB' }} />
+                </div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '4px' }}>
+                  AI 분석 대기 중
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
+                  찜하기 또는 진행하기를 누르면<br />AI 분석이 자동으로 시작됩니다.
+                </div>
+              </div>
+            )}
+
             {/* AI 분석 중 안내 */}
             {isAnalyzing && (
               <div
@@ -294,7 +316,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, onToggleBookma
             )}
 
             {/* AI 추출 핵심항목 */}
-            {!isAnalyzing && (
+            {!isAnalyzing && !isNoneOrPending && (
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--dash-border)' }}>
                 <SlideOverSectionTitle
                   icon={BrainCircuit}
@@ -353,7 +375,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, onToggleBookma
             )}
 
             {/* 위험요소 (독소조항) */}
-            {!isAnalyzing && (
+            {!isAnalyzing && !isNoneOrPending && (
               <div style={{ padding: '16px 20px' }}>
                 <SlideOverSectionTitle
                   icon={AlertTriangle}
@@ -388,23 +410,23 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, onToggleBookma
             style={{ padding: '12px 20px', borderTop: '1px solid var(--dash-border)' }}
           >
             <button
-              disabled={isAnalyzing}
+              disabled={aiStatus !== 'complete'}
               className="w-full flex items-center justify-center gap-2 rounded-xl transition-all"
               style={{
                 padding: '11px 16px',
                 fontSize: '14px',
                 fontWeight: 600,
                 color: 'white',
-                background: isAnalyzing ? '#94A3B8' : 'linear-gradient(135deg, #2563EB, #1D4ED8)',
-                boxShadow: isAnalyzing ? 'none' : '0 4px 16px rgba(37,99,235,0.3)',
-                cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+                background: aiStatus === 'complete' ? 'linear-gradient(135deg, #2563EB, #1D4ED8)' : '#94A3B8',
+                boxShadow: aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none',
+                cursor: aiStatus === 'complete' ? 'pointer' : 'not-allowed',
                 border: 'none',
               }}
-              onMouseEnter={(e) => { if (!isAnalyzing) { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(37,99,235,0.4)'; } }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = isAnalyzing ? 'none' : '0 4px 16px rgba(37,99,235,0.3)'; }}
+              onMouseEnter={(e) => { if (aiStatus === 'complete') { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(37,99,235,0.4)'; } }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none'; }}
             >
               <FileText style={{ width: '15px', height: '15px' }} />
-              {isAnalyzing ? '분석 완료 후 생성 가능' : '제안목차 생성'}
+              {aiStatus === 'complete' ? '제안목차 생성' : '분석 완료 후 생성 가능'}
               {!isAnalyzing && <ArrowRight style={{ width: '14px', height: '14px' }} />}
             </button>
             <button

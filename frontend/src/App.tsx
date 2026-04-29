@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { DashboardHeader } from './components/DashboardHeader';
 import { KpiCards } from './components/KpiCards';
@@ -10,7 +10,8 @@ import { BookmarkPage } from './components/BookmarkPage';
 import { ProjectPage } from './components/ProjectPage';
 import { BidListPage } from './components/BidListPage';
 import { BottomWidgets } from './components/BottomWidgets';
-import { type Bid, type BidStatus } from './components/mockData';
+import { type Bid, type BidStatus, type AiStatusType } from './components/mockData';
+import { useToast } from './components/ToastProvider';
 import { fetchBids, fetchBidById } from './services/api';
 
 export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '현황 요약' | '전략 리포트' | '설정' | '도움말';
@@ -28,7 +29,28 @@ export default function App() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [activePage, setActivePage] = useState<PageType>('대시보드');
   const [bidStatuses, setBidStatuses] = useState<Map<string, BidStatus>>(new Map());
+  const [aiStatuses, setAiStatuses] = useState<Record<string, AiStatusType>>({});
   const [pursuedBids, setPursuedBids] = useState<Set<string>>(new Set());
+  const { showToast } = useToast();
+  const analysisTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const requestAnalysis = (bidId: string) => {
+    if (analysisTimers.current[bidId]) return;
+    setAiStatuses(prev => {
+      const current = prev[bidId] ?? 'none';
+      if (current === 'analyzing' || current === 'complete') return prev;
+      return { ...prev, [bidId]: 'analyzing' };
+    });
+    analysisTimers.current[bidId] = setTimeout(() => {
+      delete analysisTimers.current[bidId];
+      setAiStatuses(prev => {
+        if ((prev[bidId] ?? 'none') !== 'analyzing') return prev;
+        const bid = bids.find(b => b.id === bidId);
+        if (bid) showToast('success', `AI 분석이 완료되었습니다 — ${bid.title}`);
+        return { ...prev, [bidId]: 'complete' };
+      });
+    }, 3000);
+  };
 
   const togglePursued = (bidId: string) => {
     setPursuedBids(prev => {
@@ -40,11 +62,13 @@ export default function App() {
   };
 
   const toggleBookmark = (bidId: string) => {
+    const newStatus = bidStatuses.get(bidId) === 'bookmarked' ? 'none' : 'bookmarked';
     setBidStatuses(prev => {
       const next = new Map(prev);
-      next.set(bidId, next.get(bidId) === 'bookmarked' ? 'none' : 'bookmarked');
+      next.set(bidId, newStatus);
       return next;
     });
+    if (newStatus === 'bookmarked') requestAnalysis(bidId);
   };
 
   const setInProgress = (bidId: string) => {
@@ -53,6 +77,7 @@ export default function App() {
       next.set(bidId, 'inProgress');
       return next;
     });
+    requestAnalysis(bidId);
   };
 
   const [agencySettings, setAgencySettings] = useState<AgencySettings>({
@@ -120,6 +145,7 @@ export default function App() {
             <BidListPage
               bids={bids}
               bidStatuses={bidStatuses}
+              aiStatuses={aiStatuses}
               onToggleBookmark={toggleBookmark}
               onSetInProgress={setInProgress}
             />
@@ -152,13 +178,14 @@ export default function App() {
                   onSelectBid={handleSelectBid}
                   agencySettings={agencySettings}
                   bidStatuses={bidStatuses}
+                  aiStatuses={aiStatuses}
                   onToggleBookmark={toggleBookmark}
                   onSetInProgress={setInProgress}
                   pursuedBids={pursuedBids}
                   onTogglePursued={togglePursued}
                   hideFilters={isCeo}
                 />
-                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} />
+                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} aiStatuses={aiStatuses} />
               </div>
               <BottomWidgets
                 bids={displayBids}

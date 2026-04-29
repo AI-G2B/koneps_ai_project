@@ -3,7 +3,7 @@ import {
   Bookmark, BookmarkX, Play, Building2, Banknote, Calendar,
   Eye, FileSearch, ListFilter,
 } from 'lucide-react';
-import { type Bid, type BidStatus, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
+import { type Bid, type BidStatus, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
 import { RiskBadge } from './BidTable';
 import { BidSlideOver } from './BidSlideOver';
 
@@ -28,11 +28,12 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 interface BidListPageProps {
   bids: Bid[];
   bidStatuses: Map<string, BidStatus>;
+  aiStatuses?: Record<string, AiStatusType>;
   onToggleBookmark: (bidId: string) => void;
   onSetInProgress: (bidId: string) => void;
 }
 
-export function BidListPage({ bids, bidStatuses, onToggleBookmark, onSetInProgress }: BidListPageProps) {
+export function BidListPage({ bids, bidStatuses, aiStatuses, onToggleBookmark, onSetInProgress }: BidListPageProps) {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('bookmarked');
@@ -107,6 +108,7 @@ export function BidListPage({ bids, bidStatuses, onToggleBookmark, onSetInProgre
         isOpen={isSlideOpen}
         onClose={closeSlide}
         bidStatuses={bidStatuses}
+        aiStatuses={aiStatuses}
         onToggleBookmark={handleToggleBookmark}
         onSetInProgress={handleSetInProgress}
       />

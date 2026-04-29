@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React from 'react';
 import {
   Target, Clock, Wallet, Truck, Code2, Gavel, BarChart2, Shield,
   GitBranch, Percent, AlertTriangle, FileText, ArrowRight,
@@ -13,22 +13,11 @@ interface BidDetailPanelProps {
   bid: Bid | null;
   detailLoading?: boolean;
   onNavigateToProposal?: () => void;
+  aiStatuses?: Record<string, AiStatusType>;
 }
 
-export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposal }: BidDetailPanelProps) {
+export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposal, aiStatuses }: BidDetailPanelProps) {
   const { showToast } = useToast();
-  const [localAiStatus, setLocalAiStatus] = useState<AiStatusType>(bid?.aiStatus ?? 'complete');
-
-  useEffect(() => {
-    const status = bid?.aiStatus ?? 'complete';
-    setLocalAiStatus(status);
-    if (!bid || status !== 'analyzing') return;
-    const timer = setTimeout(() => {
-      setLocalAiStatus('complete');
-      showToast('success', `AI 분석이 완료되었습니다 — ${bid.title}`);
-    }, 3000);
-    return () => clearTimeout(timer);
-  }, [bid?.id, showToast]);
 
   if (!bid) {
     return (
@@ -47,8 +36,9 @@ export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposa
   const isUrgent = daysLeft <= 3;
   const detail = bid.detail;
   const riskFactors = bid.riskFactors ?? [];
-  const isAnalyzing = localAiStatus === 'analyzing';
-  // 네트워크로 상세 조회 중이거나 AI 파이프라인이 분석 중인 경우
+  const aiStatus: AiStatusType = aiStatuses?.[bid.id] ?? 'none';
+  const isNoneOrPending = aiStatus === 'none' || aiStatus === 'pending';
+  const isAnalyzing = aiStatus === 'analyzing';
   const showLoadingOverlay = detailLoading;
 
   const AI_ITEMS = detail ? [
@@ -71,9 +61,9 @@ export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposa
       {/* 헤더 */}
       <div className="flex-shrink-0 px-5 py-4" style={{ borderBottom: '1px solid var(--dash-border)', background: 'var(--dash-panel-header)' }}>
         <div className="flex items-center gap-2 mb-2.5">
-          <span className="flex items-center gap-1.5 rounded-full" style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: isAnalyzing ? 'rgba(245,158,11,0.15)' : 'rgba(37,99,235,0.15)', color: isAnalyzing ? '#F59E0B' : '#60A5FA', border: `1px solid ${isAnalyzing ? 'rgba(245,158,11,0.2)' : 'rgba(37,99,235,0.2)'}` }}>
-            {isAnalyzing ? <Loader2 className="animate-spin" style={{ width: '10px', height: '10px' }} /> : <Zap style={{ width: '10px', height: '10px' }} />}
-            {isAnalyzing ? 'AI 분석 중' : 'AI 분석 완료'}
+          <span className="flex items-center gap-1.5 rounded-full" style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: isAnalyzing ? 'rgba(245,158,11,0.15)' : isNoneOrPending ? 'rgba(100,116,139,0.12)' : 'rgba(37,99,235,0.15)', color: isAnalyzing ? '#F59E0B' : isNoneOrPending ? 'var(--dash-text-4)' : '#60A5FA', border: `1px solid ${isAnalyzing ? 'rgba(245,158,11,0.2)' : isNoneOrPending ? 'rgba(100,116,139,0.2)' : 'rgba(37,99,235,0.2)'}` }}>
+            {isAnalyzing ? <Loader2 className="animate-spin" style={{ width: '10px', height: '10px' }} /> : isNoneOrPending ? null : <Zap style={{ width: '10px', height: '10px' }} />}
+            {isAnalyzing ? 'AI 분석 중' : isNoneOrPending ? '분석 전' : 'AI 분석 완료'}
           </span>
           <RiskBadge risk={bid.risk} />
           <div className="flex items-center gap-1.5 ml-auto">
@@ -131,6 +121,19 @@ export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposa
           </div>
         )}
 
+        {/* 분석 전 안내 */}
+        {!showLoadingOverlay && isNoneOrPending && (
+          <div className="px-5 py-6 flex flex-col items-center justify-center" style={{ borderBottom: '1px solid var(--dash-border)' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+              <BrainCircuit style={{ width: '20px', height: '20px', color: '#2563EB' }} />
+            </div>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '4px' }}>AI 분석 대기 중</div>
+            <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
+              찜하기 또는 진행하기를 누르면<br />AI 분석이 자동으로 시작됩니다.
+            </div>
+          </div>
+        )}
+
         {/* 분석 중 안내 */}
         {!showLoadingOverlay && isAnalyzing && (
           <div className="px-5 py-6 flex flex-col items-center justify-center" style={{ borderBottom: '1px solid var(--dash-border)' }}>
@@ -143,7 +146,7 @@ export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposa
         )}
 
         {/* AI 핵심 항목 */}
-        {!isAnalyzing && detail && (
+        {!isAnalyzing && !isNoneOrPending && detail && (
           <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--dash-border)' }}>
             <SectionTitle icon={BrainCircuit} title="AI 추출 핵심항목" badge="12" accentColor="#2563EB" />
             <div className="grid grid-cols-2 gap-2 mt-3">
@@ -163,7 +166,7 @@ export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposa
         )}
 
         {/* 위험요소 */}
-        {!isAnalyzing && (
+        {!isAnalyzing && !isNoneOrPending && (
           <div className="px-5 py-4">
             <SectionTitle
               icon={AlertTriangle}
@@ -192,16 +195,16 @@ export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposa
       {/* CTA */}
       <div className="flex-shrink-0 px-5 py-4" style={{ borderTop: '1px solid var(--dash-border)' }}>
         <button
-          disabled={isAnalyzing}
-          onClick={() => { if (!isAnalyzing) onNavigateToProposal?.(); }}
+          disabled={aiStatus !== 'complete'}
+          onClick={() => { if (aiStatus === 'complete') onNavigateToProposal?.(); }}
           className="w-full flex items-center justify-center gap-2 rounded-xl transition-all"
-          style={{ padding: '11px 16px', fontSize: '14px', fontWeight: 600, color: 'white', background: isAnalyzing ? '#94A3B8' : 'linear-gradient(135deg, #2563EB, #1D4ED8)', boxShadow: isAnalyzing ? 'none' : '0 4px 16px rgba(37,99,235,0.3)', cursor: isAnalyzing ? 'not-allowed' : 'pointer' }}
-          onMouseEnter={(e) => { if (!isAnalyzing) { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(37,99,235,0.4)'; }}}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = isAnalyzing ? 'none' : '0 4px 16px rgba(37,99,235,0.3)'; }}
+          style={{ padding: '11px 16px', fontSize: '14px', fontWeight: 600, color: 'white', background: aiStatus === 'complete' ? 'linear-gradient(135deg, #2563EB, #1D4ED8)' : '#94A3B8', boxShadow: aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none', cursor: aiStatus === 'complete' ? 'pointer' : 'not-allowed' }}
+          onMouseEnter={(e) => { if (aiStatus === 'complete') { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(37,99,235,0.4)'; }}}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none'; }}
         >
           <FileText style={{ width: '16px', height: '16px' }} />
-          {isAnalyzing ? '분석 완료 후 생성 가능' : '제안목차 생성'}
-          {!isAnalyzing && <ArrowRight style={{ width: '14px', height: '14px' }} />}
+          {aiStatus === 'complete' ? '제안목차 생성' : '분석 완료 후 생성 가능'}
+          {aiStatus === 'complete' && <ArrowRight style={{ width: '14px', height: '14px' }} />}
         </button>
         <button
           className="w-full flex items-center justify-center gap-1.5 rounded-xl transition-colors mt-2"

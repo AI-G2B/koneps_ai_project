@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type React from 'react';
 import { Eye, ExternalLink, Loader2, CheckCircle2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Flag, AlertCircle, AlertTriangle } from 'lucide-react';
-import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidStatus, TODAY } from './mockData';
+import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidStatus, type AiStatusType, TODAY } from './mockData';
 import type { AgencySettings } from '../App';
 
 export function RiskBadge({ risk }: { risk: RiskLevel }) {
@@ -18,7 +18,22 @@ export function RiskBadge({ risk }: { risk: RiskLevel }) {
   );
 }
 
-export function AiStatusIndicator({ status }: { status: 'analyzing' | 'complete' }) {
+export function AiStatusIndicator({ status }: { status: AiStatusType }) {
+  if (status === 'none') {
+    return <span style={{ fontSize: '12px', color: 'var(--dash-text-5)' }}>-</span>;
+  }
+  if (status === 'pending') {
+    return (
+      <span className="flex items-center gap-1.5" style={{ color: 'var(--dash-text-4)' }}>
+        <span className="flex gap-0.5 items-center">
+          {[0, 0.15, 0.3].map((delay, i) => (
+            <span key={i} className="rounded-full" style={{ width: '4px', height: '4px', backgroundColor: 'currentColor', animation: `pulse 1.2s ${delay}s ease-in-out infinite` }} />
+          ))}
+        </span>
+        <span style={{ fontSize: '12px' }}>대기중</span>
+      </span>
+    );
+  }
   if (status === 'analyzing') {
     return (
       <span className="flex items-center gap-1.5" style={{ color: '#F59E0B' }}>
@@ -63,6 +78,7 @@ interface BidTableProps {
   onSelectBid: (bid: Bid) => void;
   agencySettings: AgencySettings;
   bidStatuses?: Map<string, BidStatus>;
+  aiStatuses?: Record<string, AiStatusType>;
   onToggleBookmark?: (bidId: string) => void;
   onSetInProgress?: (bidId: string) => void;
   pursuedBids?: Set<string>;
@@ -70,7 +86,7 @@ interface BidTableProps {
   hideFilters?: boolean;
 }
 
-export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings, bidStatuses, onToggleBookmark, onSetInProgress, pursuedBids, onTogglePursued, hideFilters = false }: BidTableProps) {
+export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings, bidStatuses, aiStatuses, onToggleBookmark, onSetInProgress, pursuedBids, onTogglePursued, hideFilters = false }: BidTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -193,6 +209,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
                   isPreferred={agencySettings.preferred.includes(bid.agency)}
                   isAvoided={agencySettings.avoided.includes(bid.agency)}
                   bidStatus={bidStatuses?.get(bid.id) ?? 'none'}
+                  aiStatus={aiStatuses?.[bid.id] ?? 'none'}
                   onToggleBookmark={onToggleBookmark}
                   onSetInProgress={onSetInProgress}
                   isPursued={pursuedBids?.has(bid.id) ?? false}
@@ -216,10 +233,11 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
   );
 }
 
-function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, bidStatus, onToggleBookmark, onSetInProgress, isPursued, onTogglePursued }: {
+function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, bidStatus, aiStatus, onToggleBookmark, onSetInProgress, isPursued, onTogglePursued }: {
   bid: Bid; isSelected: boolean; urgent: boolean; daysLeft: number; onSelect: () => void;
   isPreferred: boolean; isAvoided: boolean;
   bidStatus: BidStatus;
+  aiStatus: AiStatusType;
   onToggleBookmark?: (bidId: string) => void;
   onSetInProgress?: (bidId: string) => void;
   isPursued: boolean;
@@ -289,7 +307,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
         </div>
       </td>
       <td style={{ padding: '10px 12px' }}><RiskBadge risk={bid.risk} /></td>
-      <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}><AiStatusIndicator status={bid.aiStatus} /></td>
+      <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}><AiStatusIndicator status={aiStatus} /></td>
       <td style={{ padding: '10px 12px' }}>
         <div className="flex items-center gap-1">
           <button onClick={(e) => { e.stopPropagation(); onSelect(); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: 'var(--dash-text-3)', backgroundColor: 'transparent' }}
