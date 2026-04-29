@@ -137,6 +137,8 @@ export default function App() {
               bidStatuses={bidStatuses}
               onSelectBid={handleSelectBid}
               selectedBid={selectedBid}
+              onToggleBookmark={toggleBookmark}
+              onSetInProgress={setInProgress}
             />
           ) : (
             <>

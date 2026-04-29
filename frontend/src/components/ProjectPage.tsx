@@ -3,12 +3,15 @@ import { Briefcase, Building2, Banknote, Calendar, ChevronLeft, ChevronRight, X 
 import { type Bid, type BidStatus, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
 import { RiskBadge, AiStatusIndicator } from './BidTable';
 import { BidDetailPanel } from './BidDetailPanel';
+import { BidSlideOver } from './BidSlideOver';
 
 interface ProjectPageProps {
   bids: Bid[];
   bidStatuses: Map<string, BidStatus>;
   onSelectBid: (bid: Bid) => void;
   selectedBid: Bid | null;
+  onToggleBookmark: (bidId: string) => void;
+  onSetInProgress: (bidId: string) => void;
 }
 
 const TODAY_YEAR = TODAY.getFullYear();
@@ -23,20 +26,41 @@ function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
-export function ProjectPage({ bids, bidStatuses, onSelectBid, selectedBid }: ProjectPageProps) {
+export function ProjectPage({ bids, bidStatuses, onSelectBid, selectedBid, onToggleBookmark, onSetInProgress }: ProjectPageProps) {
   const inProgressBids = bids.filter((bid) => bidStatuses.get(bid.id) === 'inProgress');
+  const [slideOverBid, setSlideOverBid] = useState<Bid | null>(null);
+  const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
+
+  const openSlideOver = (bid: Bid) => {
+    setSlideOverBid(bid);
+    setIsSlideOverOpen(true);
+  };
 
   return (
-    <div style={{ display: 'flex', gap: '16px', flex: 1, minHeight: 0 }}>
-      {/* 왼쪽: 카드 목록 + 캘린더 */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '16px', minHeight: 0 }}>
-        <CardList inProgressBids={inProgressBids} onSelectBid={onSelectBid} selectedBid={selectedBid} />
-        <ProjectCalendar inProgressBids={inProgressBids} onSelectBid={onSelectBid} />
-      </div>
+    <>
+      <div style={{ display: 'flex', gap: '16px', flex: 1, minHeight: 0 }}>
+        {/* 왼쪽: 카드 목록 + 캘린더 (가로 배열) */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '16px', minHeight: 0 }}>
+          <div style={{ flex: 2, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+            <CardList inProgressBids={inProgressBids} onSelectBid={onSelectBid} selectedBid={selectedBid} />
+          </div>
+          <div style={{ flex: 1, maxWidth: '320px', flexShrink: 0 }}>
+            <ProjectCalendar inProgressBids={inProgressBids} onOpenSlideOver={openSlideOver} />
+          </div>
+        </div>
 
-      {/* 오른쪽: 상세 패널 */}
-      <BidDetailPanel bid={selectedBid} />
-    </div>
+        {/* 오른쪽: 상세 패널 */}
+        <BidDetailPanel bid={selectedBid} />
+      </div>
+      <BidSlideOver
+        bid={slideOverBid}
+        isOpen={isSlideOverOpen}
+        onClose={() => setIsSlideOverOpen(false)}
+        bidStatuses={bidStatuses}
+        onToggleBookmark={onToggleBookmark}
+        onSetInProgress={onSetInProgress}
+      />
+    </>
   );
 }
 
@@ -148,7 +172,7 @@ function ProjectCard({ bid, isSelected, onSelect }: {
   );
 }
 
-function ProjectCalendar({ inProgressBids, onSelectBid }: { inProgressBids: Bid[]; onSelectBid: (bid: Bid) => void }) {
+function ProjectCalendar({ inProgressBids, onOpenSlideOver }: { inProgressBids: Bid[]; onOpenSlideOver: (bid: Bid) => void }) {
   const [calYear, setCalYear] = useState(TODAY_YEAR);
   const [calMonth, setCalMonth] = useState(TODAY_MONTH);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
@@ -188,7 +212,12 @@ function ProjectCalendar({ inProgressBids, onSelectBid }: { inProgressBids: Bid[
 
   const handleDayClick = (day: number) => {
     if (!deadlineMap.has(day)) return;
-    setSelectedDay(selectedDay === day ? null : day);
+    const bids = deadlineMap.get(day) ?? [];
+    if (bids.length === 1) {
+      onOpenSlideOver(bids[0]);
+    } else {
+      setSelectedDay(selectedDay === day ? null : day);
+    }
   };
 
   const popupBids = selectedDay ? (deadlineMap.get(selectedDay) ?? []) : [];
@@ -321,7 +350,7 @@ function ProjectCalendar({ inProgressBids, onSelectBid }: { inProgressBids: Bid[
             {popupBids.map((bid) => (
               <div
                 key={bid.id}
-                onClick={() => onSelectBid(bid)}
+                onClick={() => { onOpenSlideOver(bid); setSelectedDay(null); }}
                 style={{ padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--dash-surface)', border: '1px solid var(--dash-border)', cursor: 'pointer', transition: 'background-color 0.15s' }}
                 onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg-alt)')}
                 onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-surface)')}
