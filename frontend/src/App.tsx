@@ -10,7 +10,7 @@ import { BookmarkPage } from './components/BookmarkPage';
 import { ProjectPage } from './components/ProjectPage';
 import { BidListPage } from './components/BidListPage';
 import { BottomWidgets } from './components/BottomWidgets';
-import { type Bid, type BidStatus, type AiStatusType } from './components/mockData';
+import { type Bid, type BidFlags, type AiStatusType } from './components/mockData';
 import { useToast } from './components/ToastProvider';
 import { fetchBids, fetchBidById } from './services/api';
 
@@ -28,28 +28,41 @@ export default function App() {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [activePage, setActivePage] = useState<PageType>('대시보드');
-  const [bidStatuses, setBidStatuses] = useState<Map<string, BidStatus>>(new Map());
+  const [bidFlags, setBidFlags] = useState<Record<string, BidFlags>>({});
   const [aiStatuses, setAiStatuses] = useState<Record<string, AiStatusType>>({});
   const [pursuedBids, setPursuedBids] = useState<Set<string>>(new Set());
   const { showToast } = useToast();
+  // analysisTimers: 진행 중인 타이머 추적 (중복 방지)
   const analysisTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // aiStatusesRef: setState 외부에서 동기적으로 상태 확인하기 위한 미러 ref
+  const aiStatusesRef = useRef<Record<string, AiStatusType>>({});
 
   const requestAnalysis = (bidId: string) => {
+    const current = aiStatusesRef.current[bidId] ?? 'none';
+    if (current === 'analyzing' || current === 'complete') return;
     if (analysisTimers.current[bidId]) return;
-    setAiStatuses(prev => {
-      const current = prev[bidId] ?? 'none';
-      if (current === 'analyzing' || current === 'complete') return prev;
-      return { ...prev, [bidId]: 'analyzing' };
-    });
+
+    aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'analyzing' };
+    setAiStatuses(prev => ({ ...prev, [bidId]: 'analyzing' }));
+
     analysisTimers.current[bidId] = setTimeout(() => {
       delete analysisTimers.current[bidId];
-      setAiStatuses(prev => {
-        if ((prev[bidId] ?? 'none') !== 'analyzing') return prev;
-        const bid = bids.find(b => b.id === bidId);
-        if (bid) showToast('success', `AI 분석이 완료되었습니다 — ${bid.title}`);
-        return { ...prev, [bidId]: 'complete' };
-      });
+      // ref로 동기 확인 후 setState와 showToast를 완전히 분리
+      if ((aiStatusesRef.current[bidId] ?? 'none') !== 'analyzing') return;
+      aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'complete' };
+      setAiStatuses(prev => ({ ...prev, [bidId]: 'complete' }));
+      const bid = bids.find(b => b.id === bidId);
+      if (bid) showToast('success', `AI 분석이 완료되었습니다 — ${bid.title}`);
     }, 3000);
+  };
+
+  const resetAnalysis = (bidId: string) => {
+    if (analysisTimers.current[bidId]) {
+      clearTimeout(analysisTimers.current[bidId]);
+      delete analysisTimers.current[bidId];
+    }
+    aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'none' };
+    setAiStatuses(prev => ({ ...prev, [bidId]: 'none' }));
   };
 
   const togglePursued = (bidId: string) => {
@@ -62,22 +75,25 @@ export default function App() {
   };
 
   const toggleBookmark = (bidId: string) => {
-    const newStatus = bidStatuses.get(bidId) === 'bookmarked' ? 'none' : 'bookmarked';
-    setBidStatuses(prev => {
-      const next = new Map(prev);
-      next.set(bidId, newStatus);
-      return next;
-    });
-    if (newStatus === 'bookmarked') requestAnalysis(bidId);
+    const current = bidFlags[bidId] ?? { bookmarked: false, inProgress: false };
+    const newBookmarked = !current.bookmarked;
+    setBidFlags(prev => ({ ...prev, [bidId]: { ...current, bookmarked: newBookmarked } }));
+    if (newBookmarked) {
+      requestAnalysis(bidId);
+    } else if (!current.inProgress) {
+      resetAnalysis(bidId);
+    }
   };
 
-  const setInProgress = (bidId: string) => {
-    setBidStatuses(prev => {
-      const next = new Map(prev);
-      next.set(bidId, 'inProgress');
-      return next;
-    });
-    requestAnalysis(bidId);
+  const toggleInProgress = (bidId: string) => {
+    const current = bidFlags[bidId] ?? { bookmarked: false, inProgress: false };
+    const newInProgress = !current.inProgress;
+    setBidFlags(prev => ({ ...prev, [bidId]: { ...current, inProgress: newInProgress } }));
+    if (newInProgress) {
+      requestAnalysis(bidId);
+    } else if (!current.bookmarked) {
+      resetAnalysis(bidId);
+    }
   };
 
   const [agencySettings, setAgencySettings] = useState<AgencySettings>({
@@ -90,6 +106,7 @@ export default function App() {
     fetchBids()
       .then((data) => {
         setBids(data);
+        setBidFlags(Object.fromEntries(data.map(b => [b.id, { bookmarked: false, inProgress: false }])));
         if (data.length > 0) setSelectedBid(data[0]);
       })
       .finally(() => setBidsLoading(false));
@@ -144,28 +161,28 @@ export default function App() {
           ) : activePage === '공고 목록' ? (
             <BidListPage
               bids={bids}
-              bidStatuses={bidStatuses}
+              bidFlags={bidFlags}
               aiStatuses={aiStatuses}
               onToggleBookmark={toggleBookmark}
-              onSetInProgress={setInProgress}
+              onToggleInProgress={toggleInProgress}
             />
           ) : activePage === '관심 공고' ? (
             <BookmarkPage
               bids={bids}
-              bidStatuses={bidStatuses}
+              bidFlags={bidFlags}
               onToggleBookmark={toggleBookmark}
-              onSetInProgress={setInProgress}
+              onToggleInProgress={toggleInProgress}
               onSelectBid={handleSelectBid}
               selectedBid={selectedBid}
             />
           ) : activePage === '진행 프로젝트' ? (
             <ProjectPage
               bids={bids}
-              bidStatuses={bidStatuses}
+              bidFlags={bidFlags}
               onSelectBid={handleSelectBid}
               selectedBid={selectedBid}
               onToggleBookmark={toggleBookmark}
-              onSetInProgress={setInProgress}
+              onToggleInProgress={toggleInProgress}
             />
           ) : (
             <>
@@ -177,10 +194,10 @@ export default function App() {
                   selectedBid={selectedBid}
                   onSelectBid={handleSelectBid}
                   agencySettings={agencySettings}
-                  bidStatuses={bidStatuses}
+                  bidFlags={bidFlags}
                   aiStatuses={aiStatuses}
                   onToggleBookmark={toggleBookmark}
-                  onSetInProgress={setInProgress}
+                  onToggleInProgress={toggleInProgress}
                   pursuedBids={pursuedBids}
                   onTogglePursued={togglePursued}
                   hideFilters={isCeo}
@@ -189,9 +206,9 @@ export default function App() {
               </div>
               <BottomWidgets
                 bids={displayBids}
-                bidStatuses={bidStatuses}
+                bidFlags={bidFlags}
                 onToggleBookmark={toggleBookmark}
-                onSetInProgress={setInProgress}
+                onToggleInProgress={toggleInProgress}
               />
             </>
           )}

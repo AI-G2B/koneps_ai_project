@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type React from 'react';
 import { Eye, ExternalLink, Loader2, CheckCircle2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Flag, AlertCircle, AlertTriangle } from 'lucide-react';
-import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidStatus, type AiStatusType, TODAY } from './mockData';
+import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from './mockData';
 import type { AgencySettings } from '../App';
 
 export function RiskBadge({ risk }: { risk: RiskLevel }) {
@@ -77,16 +77,16 @@ interface BidTableProps {
   selectedBid: Bid | null;
   onSelectBid: (bid: Bid) => void;
   agencySettings: AgencySettings;
-  bidStatuses?: Map<string, BidStatus>;
+  bidFlags?: Record<string, BidFlags>;
   aiStatuses?: Record<string, AiStatusType>;
   onToggleBookmark?: (bidId: string) => void;
-  onSetInProgress?: (bidId: string) => void;
+  onToggleInProgress?: (bidId: string) => void;
   pursuedBids?: Set<string>;
   onTogglePursued?: (bidId: string) => void;
   hideFilters?: boolean;
 }
 
-export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings, bidStatuses, aiStatuses, onToggleBookmark, onSetInProgress, pursuedBids, onTogglePursued, hideFilters = false }: BidTableProps) {
+export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, pursuedBids, onTogglePursued, hideFilters = false }: BidTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -208,10 +208,10 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
                   onSelect={() => onSelectBid(bid)}
                   isPreferred={agencySettings.preferred.includes(bid.agency)}
                   isAvoided={agencySettings.avoided.includes(bid.agency)}
-                  bidStatus={bidStatuses?.get(bid.id) ?? 'none'}
+                  flags={bidFlags?.[bid.id] ?? { bookmarked: false, inProgress: false }}
                   aiStatus={aiStatuses?.[bid.id] ?? 'none'}
                   onToggleBookmark={onToggleBookmark}
-                  onSetInProgress={onSetInProgress}
+                  onToggleInProgress={onToggleInProgress}
                   isPursued={pursuedBids?.has(bid.id) ?? false}
                   onTogglePursued={onTogglePursued}
                 />
@@ -233,13 +233,13 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
   );
 }
 
-function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, bidStatus, aiStatus, onToggleBookmark, onSetInProgress, isPursued, onTogglePursued }: {
+function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, flags, aiStatus, onToggleBookmark, onToggleInProgress, isPursued, onTogglePursued }: {
   bid: Bid; isSelected: boolean; urgent: boolean; daysLeft: number; onSelect: () => void;
   isPreferred: boolean; isAvoided: boolean;
-  bidStatus: BidStatus;
+  flags: BidFlags;
   aiStatus: AiStatusType;
   onToggleBookmark?: (bidId: string) => void;
-  onSetInProgress?: (bidId: string) => void;
+  onToggleInProgress?: (bidId: string) => void;
   isPursued: boolean;
   onTogglePursued?: (bidId: string) => void;
 }) {
@@ -267,12 +267,12 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
               <Ban style={{ width: '9px', height: '9px' }} />기피
             </span>
           )}
-          {bidStatus === 'bookmarked' && (
+          {flags.bookmarked && (
             <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '1px 5px', backgroundColor: 'rgba(37,99,235,0.15)', color: '#2563EB', flexShrink: 0, fontWeight: 500, border: '1px solid rgba(37,99,235,0.3)' }}>
               <Bookmark style={{ width: '9px', height: '9px', fill: 'currentColor', flexShrink: 0 }} />찜
             </span>
           )}
-          {bidStatus === 'inProgress' && (
+          {flags.inProgress && (
             <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '1px 5px', backgroundColor: 'rgba(34,197,94,0.15)', color: '#22C55E', flexShrink: 0, fontWeight: 500, border: '1px solid rgba(34,197,94,0.3)' }}>
               <Play style={{ width: '9px', height: '9px', fill: 'currentColor', flexShrink: 0 }} />진행중
             </span>
@@ -316,18 +316,18 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
             title="상세 보기">
             <Eye style={{ width: '14px', height: '14px' }} />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onToggleBookmark?.(bid.id); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: bidStatus === 'bookmarked' ? '#2563EB' : 'var(--dash-text-3)', backgroundColor: bidStatus === 'bookmarked' ? 'rgba(37,99,235,0.12)' : 'transparent' }}
-            onMouseEnter={(e) => { if (bidStatus !== 'bookmarked') { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; } }}
-            onMouseLeave={(e) => { if (bidStatus !== 'bookmarked') { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; } }}
+          <button onClick={(e) => { e.stopPropagation(); onToggleBookmark?.(bid.id); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: flags.bookmarked ? '#2563EB' : 'var(--dash-text-3)', backgroundColor: flags.bookmarked ? 'rgba(37,99,235,0.12)' : 'transparent' }}
+            onMouseEnter={(e) => { if (!flags.bookmarked) { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; } }}
+            onMouseLeave={(e) => { if (!flags.bookmarked) { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; } }}
             title="찜하기">
-            <Bookmark style={{ width: '14px', height: '14px', fill: bidStatus === 'bookmarked' ? 'currentColor' : 'none' }} />
+            <Bookmark style={{ width: '14px', height: '14px', fill: flags.bookmarked ? 'currentColor' : 'none' }} />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onSetInProgress?.(bid.id); }} className="rounded-md flex items-center gap-1" style={{ padding: '0 6px', height: '28px', color: bidStatus === 'inProgress' ? '#22C55E' : 'var(--dash-text-3)', backgroundColor: bidStatus === 'inProgress' ? 'rgba(34,197,94,0.12)' : 'transparent' }}
-            onMouseEnter={(e) => { if (bidStatus !== 'inProgress') { (e.currentTarget as HTMLButtonElement).style.color = '#22C55E'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,197,94,0.1)'; } }}
-            onMouseLeave={(e) => { if (bidStatus !== 'inProgress') { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; } }}
+          <button onClick={(e) => { e.stopPropagation(); onToggleInProgress?.(bid.id); }} className="rounded-md flex items-center gap-1" style={{ padding: '0 6px', height: '28px', color: flags.inProgress ? '#22C55E' : 'var(--dash-text-3)', backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.12)' : 'transparent' }}
+            onMouseEnter={(e) => { if (!flags.inProgress) { (e.currentTarget as HTMLButtonElement).style.color = '#22C55E'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,197,94,0.1)'; } }}
+            onMouseLeave={(e) => { if (!flags.inProgress) { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; } }}
             title="진행하기">
-            <Play style={{ width: '12px', height: '12px', fill: bidStatus === 'inProgress' ? 'currentColor' : 'none', flexShrink: 0 }} />
-            {bidStatus === 'inProgress' && <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>진행중</span>}
+            <Play style={{ width: '12px', height: '12px', fill: flags.inProgress ? 'currentColor' : 'none', flexShrink: 0 }} />
+            {flags.inProgress && <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>진행중</span>}
           </button>
           <button onClick={(e) => e.stopPropagation()} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: 'var(--dash-text-3)', backgroundColor: 'transparent' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-item-bg-alt)'; }}

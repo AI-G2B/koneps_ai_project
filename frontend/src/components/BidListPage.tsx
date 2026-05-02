@@ -3,7 +3,7 @@ import {
   Bookmark, BookmarkX, Play, Building2, Banknote, Calendar,
   Eye, FileSearch, ListFilter,
 } from 'lucide-react';
-import { type Bid, type BidStatus, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
+import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
 import { RiskBadge } from './BidTable';
 import { BidSlideOver } from './BidSlideOver';
 
@@ -27,13 +27,13 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 
 interface BidListPageProps {
   bids: Bid[];
-  bidStatuses: Map<string, BidStatus>;
+  bidFlags: Record<string, BidFlags>;
   aiStatuses?: Record<string, AiStatusType>;
   onToggleBookmark: (bidId: string) => void;
-  onSetInProgress: (bidId: string) => void;
+  onToggleInProgress: (bidId: string) => void;
 }
 
-export function BidListPage({ bids, bidStatuses, aiStatuses, onToggleBookmark, onSetInProgress }: BidListPageProps) {
+export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress }: BidListPageProps) {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('bookmarked');
@@ -48,7 +48,7 @@ export function BidListPage({ bids, bidStatuses, aiStatuses, onToggleBookmark, o
   const closeSlide = () => setIsSlideOpen(false);
 
   const handleToggleBookmark = (bidId: string) => {
-    const isCurrentlyBookmarked = bidStatuses.get(bidId) === 'bookmarked';
+    const isCurrentlyBookmarked = bidFlags[bidId]?.bookmarked ?? false;
     if (isCurrentlyBookmarked) {
       setRemovingIds(prev => new Set([...prev, bidId]));
       setTimeout(() => {
@@ -62,10 +62,19 @@ export function BidListPage({ bids, bidStatuses, aiStatuses, onToggleBookmark, o
     }
   };
 
-  const handleSetInProgress = (bidId: string) => {
-    onSetInProgress(bidId);
-    setActiveTab('inProgress');
-    setFocusBidId(bidId);
+  const handleToggleInProgress = (bidId: string) => {
+    const isCurrentlyInProgress = bidFlags[bidId]?.inProgress ?? false;
+    if (isCurrentlyInProgress) {
+      setRemovingIds(prev => new Set([...prev, bidId]));
+      setTimeout(() => {
+        onToggleInProgress(bidId);
+        setRemovingIds(prev => { const n = new Set(prev); n.delete(bidId); return n; });
+      }, 260);
+    } else {
+      onToggleInProgress(bidId);
+      setActiveTab('inProgress');
+      setFocusBidId(bidId);
+    }
   };
 
   return (
@@ -83,18 +92,18 @@ export function BidListPage({ bids, bidStatuses, aiStatuses, onToggleBookmark, o
       >
         <LeftPanel
           bids={bids}
-          bidStatuses={bidStatuses}
+          bidFlags={bidFlags}
           onToggleBookmark={handleToggleBookmark}
-          onSetInProgress={handleSetInProgress}
+          onToggleInProgress={handleToggleInProgress}
           selectedBid={selectedBid}
           onOpenSlide={openSlide}
         />
         <div style={{ width: '1px', backgroundColor: 'var(--dash-border)', flexShrink: 0 }} />
         <RightPanel
           bids={bids}
-          bidStatuses={bidStatuses}
+          bidFlags={bidFlags}
           onToggleBookmark={handleToggleBookmark}
-          onSetInProgress={handleSetInProgress}
+          onToggleInProgress={handleToggleInProgress}
           onOpenSlide={openSlide}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -107,10 +116,10 @@ export function BidListPage({ bids, bidStatuses, aiStatuses, onToggleBookmark, o
         bid={selectedBid}
         isOpen={isSlideOpen}
         onClose={closeSlide}
-        bidStatuses={bidStatuses}
+        bidFlags={bidFlags}
         aiStatuses={aiStatuses}
         onToggleBookmark={handleToggleBookmark}
-        onSetInProgress={handleSetInProgress}
+        onToggleInProgress={handleToggleInProgress}
       />
     </>
   );
@@ -123,7 +132,7 @@ interface LeftPanelProps extends BidListPageProps {
   onOpenSlide: (bid: Bid) => void;
 }
 
-function LeftPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, selectedBid, onOpenSlide }: LeftPanelProps) {
+function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selectedBid, onOpenSlide }: LeftPanelProps) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
@@ -250,10 +259,10 @@ function LeftPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, selec
                   key={bid.id}
                   bid={bid}
                   isSelected={selectedBid?.id === bid.id}
-                  bidStatus={bidStatuses.get(bid.id) ?? 'none'}
+                  flags={bidFlags[bid.id] ?? { bookmarked: false, inProgress: false }}
                   onSelect={() => onOpenSlide(bid)}
                   onToggleBookmark={onToggleBookmark}
-                  onSetInProgress={onSetInProgress}
+                  onToggleInProgress={onToggleInProgress}
                 />
               ))
             )}
@@ -268,13 +277,13 @@ function LeftPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, selec
   );
 }
 
-function LeftRow({ bid, isSelected, bidStatus, onSelect, onToggleBookmark, onSetInProgress }: {
+function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleInProgress }: {
   bid: Bid;
   isSelected: boolean;
-  bidStatus: BidStatus;
+  flags: BidFlags;
   onSelect: () => void;
   onToggleBookmark: (bidId: string) => void;
-  onSetInProgress: (bidId: string) => void;
+  onToggleInProgress: (bidId: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const urgent = isDeadlineUrgent(bid.deadline);
@@ -299,12 +308,12 @@ function LeftRow({ bid, isSelected, bidStatus, onSelect, onToggleBookmark, onSet
           {bid.title}
         </div>
         <div className="flex items-center gap-1" style={{ flexWrap: 'wrap', rowGap: '2px' }}>
-          {bidStatus === 'bookmarked' && (
+          {flags.bookmarked && (
             <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.15)', color: '#2563EB', flexShrink: 0, fontWeight: 500 }}>
               <Bookmark style={{ width: '9px', height: '9px', fill: 'currentColor' }} />찜
             </span>
           )}
-          {bidStatus === 'inProgress' && (
+          {flags.inProgress && (
             <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(34,197,94,0.15)', color: '#22C55E', flexShrink: 0, fontWeight: 500 }}>
               <Play style={{ width: '9px', height: '9px', fill: 'currentColor' }} />진행중
             </span>
@@ -336,22 +345,22 @@ function LeftRow({ bid, isSelected, bidStatus, onSelect, onToggleBookmark, onSet
           <button
             onClick={() => onToggleBookmark(bid.id)}
             className="rounded-md flex items-center justify-center"
-            style={{ width: '28px', height: '28px', color: bidStatus === 'bookmarked' ? '#2563EB' : 'var(--dash-text-3)', backgroundColor: bidStatus === 'bookmarked' ? 'rgba(37,99,235,0.12)' : 'transparent', border: 'none' }}
-            onMouseEnter={(e) => { if (bidStatus !== 'bookmarked') (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; }}
-            onMouseLeave={(e) => { if (bidStatus !== 'bookmarked') (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; }}
+            style={{ width: '28px', height: '28px', color: flags.bookmarked ? '#2563EB' : 'var(--dash-text-3)', backgroundColor: flags.bookmarked ? 'rgba(37,99,235,0.12)' : 'transparent', border: 'none' }}
+            onMouseEnter={(e) => { if (!flags.bookmarked) (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; }}
+            onMouseLeave={(e) => { if (!flags.bookmarked) (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; }}
             title="찜하기"
           >
-            <Bookmark style={{ width: '14px', height: '14px', fill: bidStatus === 'bookmarked' ? 'currentColor' : 'none' }} />
+            <Bookmark style={{ width: '14px', height: '14px', fill: flags.bookmarked ? 'currentColor' : 'none' }} />
           </button>
           <button
-            onClick={() => onSetInProgress(bid.id)}
+            onClick={() => onToggleInProgress(bid.id)}
             className="rounded-md flex items-center justify-center"
-            style={{ width: '28px', height: '28px', color: bidStatus === 'inProgress' ? '#22C55E' : 'var(--dash-text-3)', backgroundColor: bidStatus === 'inProgress' ? 'rgba(34,197,94,0.12)' : 'transparent', border: 'none' }}
-            onMouseEnter={(e) => { if (bidStatus !== 'inProgress') (e.currentTarget as HTMLButtonElement).style.color = '#22C55E'; }}
-            onMouseLeave={(e) => { if (bidStatus !== 'inProgress') (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; }}
+            style={{ width: '28px', height: '28px', color: flags.inProgress ? '#22C55E' : 'var(--dash-text-3)', backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.12)' : 'transparent', border: 'none' }}
+            onMouseEnter={(e) => { if (!flags.inProgress) (e.currentTarget as HTMLButtonElement).style.color = '#22C55E'; }}
+            onMouseLeave={(e) => { if (!flags.inProgress) (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; }}
             title="진행하기"
           >
-            <Play style={{ width: '13px', height: '13px', fill: bidStatus === 'inProgress' ? 'currentColor' : 'none' }} />
+            <Play style={{ width: '13px', height: '13px', fill: flags.inProgress ? 'currentColor' : 'none' }} />
           </button>
         </div>
       </td>
@@ -369,11 +378,11 @@ interface RightPanelProps extends BidListPageProps {
   removingIds: Set<string>;
 }
 
-function RightPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, onOpenSlide, activeTab, setActiveTab, focusBidId, removingIds }: RightPanelProps) {
+function RightPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onOpenSlide, activeTab, setActiveTab, focusBidId, removingIds }: RightPanelProps) {
   const cardListRef = useRef<HTMLDivElement>(null);
 
-  const bookmarkedBids = bids.filter((b) => bidStatuses.get(b.id) === 'bookmarked');
-  const inProgressBids = bids.filter((b) => bidStatuses.get(b.id) === 'inProgress');
+  const bookmarkedBids = bids.filter((b) => bidFlags[b.id]?.bookmarked ?? false);
+  const inProgressBids = bids.filter((b) => bidFlags[b.id]?.inProgress ?? false);
   const listBids = activeTab === 'bookmarked' ? bookmarkedBids : inProgressBids;
 
   useEffect(() => {
@@ -444,11 +453,11 @@ function RightPanel({ bids, bidStatuses, onToggleBookmark, onSetInProgress, onOp
               <RightCard
                 key={bid.id}
                 bid={bid}
-                bidStatus={bidStatuses.get(bid.id) ?? 'none'}
+                flags={bidFlags[bid.id] ?? { bookmarked: false, inProgress: false }}
                 tab={activeTab}
                 isRemoving={removingIds.has(bid.id)}
                 onToggleBookmark={onToggleBookmark}
-                onSetInProgress={onSetInProgress}
+                onToggleInProgress={onToggleInProgress}
                 onOpenSlide={onOpenSlide}
               />
             ))}
@@ -489,13 +498,13 @@ function RightEmptyState({ tab }: { tab: TabType }) {
   );
 }
 
-function RightCard({ bid, bidStatus, tab, isRemoving, onToggleBookmark, onSetInProgress, onOpenSlide }: {
+function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInProgress, onOpenSlide }: {
   bid: Bid;
-  bidStatus: BidStatus;
+  flags: BidFlags;
   tab: TabType;
   isRemoving: boolean;
   onToggleBookmark: (bidId: string) => void;
-  onSetInProgress: (bidId: string) => void;
+  onToggleInProgress: (bidId: string) => void;
   onOpenSlide: (bid: Bid) => void;
 }) {
   const daysLeft = getDaysUntilDeadline(bid.deadline);
@@ -588,33 +597,33 @@ function RightCard({ bid, bidStatus, tab, isRemoving, onToggleBookmark, onSetInP
               찜 해제
             </button>
             <button
-              onClick={() => onSetInProgress(bid.id)}
+              onClick={() => onToggleInProgress(bid.id)}
               className="rounded-md flex items-center gap-1"
               style={{
                 padding: '3px 8px',
                 fontSize: '11px',
-                color: bidStatus === 'inProgress' ? '#22C55E' : 'var(--dash-text-3)',
-                backgroundColor: bidStatus === 'inProgress' ? 'rgba(34,197,94,0.12)' : 'transparent',
-                border: `1px solid ${bidStatus === 'inProgress' ? 'rgba(34,197,94,0.3)' : 'var(--dash-border-btn)'}`,
+                color: flags.inProgress ? '#22C55E' : 'var(--dash-text-3)',
+                backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.12)' : 'transparent',
+                border: `1px solid ${flags.inProgress ? 'rgba(34,197,94,0.3)' : 'var(--dash-border-btn)'}`,
                 cursor: 'pointer',
               }}
               onMouseEnter={(e) => {
-                if (bidStatus !== 'inProgress') {
+                if (!flags.inProgress) {
                   (e.currentTarget as HTMLButtonElement).style.color = '#22C55E';
                   (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,197,94,0.1)';
                   (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(34,197,94,0.3)';
                 }
               }}
               onMouseLeave={(e) => {
-                if (bidStatus !== 'inProgress') {
+                if (!flags.inProgress) {
                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)';
                   (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
                   (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-btn)';
                 }
               }}
             >
-              <Play style={{ width: '10px', height: '10px', fill: bidStatus === 'inProgress' ? 'currentColor' : 'none', flexShrink: 0 }} />
-              {bidStatus === 'inProgress' ? '진행중' : '진행하기'}
+              <Play style={{ width: '10px', height: '10px', fill: flags.inProgress ? 'currentColor' : 'none', flexShrink: 0 }} />
+              {flags.inProgress ? '진행중' : '진행하기'}
             </button>
           </>
         ) : (

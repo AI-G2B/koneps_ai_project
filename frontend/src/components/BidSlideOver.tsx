@@ -6,7 +6,7 @@ import {
   FileText, ArrowRight, BrainCircuit, ScrollText, Phone,
   ExternalLink, Download, Zap, Loader2, ChevronRight,
 } from 'lucide-react';
-import { type Bid, type BidStatus, type AiStatusType, formatBudget, getDaysUntilDeadline } from './mockData';
+import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline } from './mockData';
 import { RiskBadge } from './BidTable';
 import { useToast } from './ToastProvider';
 
@@ -14,13 +14,13 @@ interface BidSlideOverProps {
   bid: Bid | null;
   isOpen: boolean;
   onClose: () => void;
-  bidStatuses: Map<string, BidStatus>;
+  bidFlags: Record<string, BidFlags>;
   aiStatuses?: Record<string, AiStatusType>;
   onToggleBookmark: (bidId: string) => void;
-  onSetInProgress: (bidId: string) => void;
+  onToggleInProgress: (bidId: string) => void;
 }
 
-export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, aiStatuses, onToggleBookmark, onSetInProgress }: BidSlideOverProps) {
+export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress }: BidSlideOverProps) {
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, aiStatuses, on
   const isAnalyzing = aiStatus === 'analyzing';
   const detail = bid?.detail;
   const riskFactors = bid?.riskFactors ?? [];
-  const bidStatus = bid ? (bidStatuses.get(bid.id) ?? 'none') : 'none';
+  const flags = bid ? (bidFlags[bid.id] ?? { bookmarked: false, inProgress: false }) : { bookmarked: false, inProgress: false };
 
   const AI_HIGHLIGHT_ITEMS = detail ? [
     { icon: Wallet,    label: '예산규모', value: detail.budget },
@@ -217,27 +217,27 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, aiStatuses, on
                 padding: '6px 14px',
                 fontSize: '13px',
                 fontWeight: 500,
-                color: bidStatus === 'bookmarked' ? '#2563EB' : 'var(--dash-text-3)',
-                backgroundColor: bidStatus === 'bookmarked' ? 'rgba(37,99,235,0.1)' : 'transparent',
-                border: `1px solid ${bidStatus === 'bookmarked' ? 'rgba(37,99,235,0.3)' : 'var(--dash-border-btn)'}`,
+                color: flags.bookmarked ? '#2563EB' : 'var(--dash-text-3)',
+                backgroundColor: flags.bookmarked ? 'rgba(37,99,235,0.1)' : 'transparent',
+                border: `1px solid ${flags.bookmarked ? 'rgba(37,99,235,0.3)' : 'var(--dash-border-btn)'}`,
                 cursor: 'pointer',
               }}
               onMouseEnter={(e) => {
-                if (bidStatus !== 'bookmarked') {
+                if (!flags.bookmarked) {
                   (e.currentTarget as HTMLButtonElement).style.color = '#2563EB';
                   (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.3)';
                   (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.06)';
                 }
               }}
               onMouseLeave={(e) => {
-                if (bidStatus !== 'bookmarked') {
+                if (!flags.bookmarked) {
                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)';
                   (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-btn)';
                   (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
                 }
               }}
             >
-              {bidStatus === 'bookmarked'
+              {flags.bookmarked
                 ? <><BookmarkX style={{ width: '14px', height: '14px' }} />찜 해제</>
                 : <><Bookmark style={{ width: '14px', height: '14px' }} />찜하기</>
               }
@@ -245,34 +245,34 @@ export function BidSlideOver({ bid, isOpen, onClose, bidStatuses, aiStatuses, on
 
             {/* 진행하기 */}
             <button
-              onClick={() => onSetInProgress(bid.id)}
+              onClick={() => onToggleInProgress(bid.id)}
               className="flex items-center gap-1.5 rounded-lg transition-colors"
               style={{
                 padding: '6px 14px',
                 fontSize: '13px',
                 fontWeight: 500,
-                color: bidStatus === 'inProgress' ? '#22C55E' : 'var(--dash-text-3)',
-                backgroundColor: bidStatus === 'inProgress' ? 'rgba(34,197,94,0.1)' : 'transparent',
-                border: `1px solid ${bidStatus === 'inProgress' ? 'rgba(34,197,94,0.3)' : 'var(--dash-border-btn)'}`,
+                color: flags.inProgress ? '#22C55E' : 'var(--dash-text-3)',
+                backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.1)' : 'transparent',
+                border: `1px solid ${flags.inProgress ? 'rgba(34,197,94,0.3)' : 'var(--dash-border-btn)'}`,
                 cursor: 'pointer',
               }}
               onMouseEnter={(e) => {
-                if (bidStatus !== 'inProgress') {
+                if (!flags.inProgress) {
                   (e.currentTarget as HTMLButtonElement).style.color = '#22C55E';
                   (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(34,197,94,0.3)';
                   (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,197,94,0.06)';
                 }
               }}
               onMouseLeave={(e) => {
-                if (bidStatus !== 'inProgress') {
+                if (!flags.inProgress) {
                   (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)';
                   (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-btn)';
                   (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
                 }
               }}
             >
-              <Play style={{ width: '13px', height: '13px', fill: bidStatus === 'inProgress' ? 'currentColor' : 'none' }} />
-              {bidStatus === 'inProgress' ? '진행중' : '진행하기'}
+              <Play style={{ width: '13px', height: '13px', fill: flags.inProgress ? 'currentColor' : 'none' }} />
+              {flags.inProgress ? '진행중' : '진행하기'}
             </button>
           </div>
 

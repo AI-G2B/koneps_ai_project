@@ -1,7 +1,11 @@
 export type RiskLevel = 'danger' | 'caution' | 'good';
 export type AiStatusType = 'none' | 'pending' | 'analyzing' | 'complete';
 export type BidType = 'ISP' | 'ISMP' | '기타';
-export type BidStatus = 'none' | 'bookmarked' | 'inProgress';
+
+export interface BidFlags {
+  bookmarked: boolean;
+  inProgress: boolean;
+}
 
 export interface RiskFactor {
   title: string;
@@ -36,7 +40,6 @@ export interface Bid {
   type: BidType;
   dangerCount: number;
   collectedAt: string;
-  status: BidStatus;
   detail?: BidDetail;
   riskFactors?: RiskFactor[];
 }
@@ -48,7 +51,6 @@ export const bids: Bid[] = [
     id: '1', number: '나라-2026-04-11234', title: '행정안전부 전자정부 클라우드 전환 사업',
     agency: '행정안전부', budget: 2500000000, deadline: '2026-04-06',
     risk: 'danger', aiStatus: 'none', type: 'ISP', dangerCount: 3, collectedAt: '2026-04-04',
-    status: 'none',
     detail: {
       purpose: '전자정부 서비스 클라우드 전환 및 표준화',
       execPeriod: '12개월 (2026.06~2027.05)',
@@ -73,7 +75,6 @@ export const bids: Bid[] = [
     id: '2', number: '나라-2026-04-11235', title: '국토교통부 스마트시티 통합플랫폼 구축',
     agency: '국토교통부', budget: 1800000000, deadline: '2026-04-07',
     risk: 'caution', aiStatus: 'none', type: '기타', dangerCount: 1, collectedAt: '2026-04-04',
-    status: 'none',
     detail: {
       purpose: '스마트시티 데이터 통합 및 플랫폼 고도화',
       execPeriod: '10개월 (2026.07~2027.04)',
@@ -96,7 +97,6 @@ export const bids: Bid[] = [
     id: '3', number: '나라-2026-04-11236', title: '보건복지부 복지급여 통합관리시스템 고도화',
     agency: '보건복지부', budget: 950000000, deadline: '2026-04-10',
     risk: 'good', aiStatus: 'none', type: 'ISMP', dangerCount: 0, collectedAt: '2026-04-04',
-    status: 'none',
     detail: {
       purpose: '복지급여 통합관리 및 대국민 서비스 고도화',
       execPeriod: '8개월 (2026.06~2027.01)',
@@ -117,7 +117,6 @@ export const bids: Bid[] = [
     id: '4', number: '나라-2026-04-11237', title: '교육부 AI 기반 학습관리시스템 구축',
     agency: '교육부', budget: 3200000000, deadline: '2026-04-12',
     risk: 'caution', aiStatus: 'none', type: 'ISP', dangerCount: 2, collectedAt: '2026-04-03',
-    status: 'none',
     detail: {
       purpose: 'AI 기반 맞춤형 학습 지원 시스템 구축',
       execPeriod: '14개월 (2026.07~2027.08)',
@@ -141,7 +140,6 @@ export const bids: Bid[] = [
     id: '5', number: '나라-2026-04-11238', title: '금융감독원 내부통제 고도화 시스템',
     agency: '금융감독원', budget: 780000000, deadline: '2026-04-05',
     risk: 'danger', aiStatus: 'none', type: '기타', dangerCount: 4, collectedAt: '2026-04-03',
-    status: 'none',
     detail: {
       purpose: '내부통제 시스템 고도화 및 감시 체계 강화',
       execPeriod: '6개월 (2026.05~2026.10)',
@@ -167,7 +165,6 @@ export const bids: Bid[] = [
     id: '6', number: '나라-2026-04-11239', title: '중소벤처기업부 창업지원 데이터 플랫폼',
     agency: '중소벤처기업부', budget: 1200000000, deadline: '2026-04-15',
     risk: 'good', aiStatus: 'none', type: 'ISMP', dangerCount: 0, collectedAt: '2026-04-03',
-    status: 'none',
     detail: {
       purpose: '창업 지원 데이터 통합 및 분석 플랫폼 구축',
       execPeriod: '10개월 (2026.06~2027.03)',
@@ -188,7 +185,6 @@ export const bids: Bid[] = [
     id: '7', number: '나라-2026-04-11240', title: '환경부 탄소중립 모니터링 시스템 구축',
     agency: '환경부', budget: 2100000000, deadline: '2026-04-18',
     risk: 'good', aiStatus: 'none', type: '기타', dangerCount: 0, collectedAt: '2026-04-02',
-    status: 'none',
     detail: {
       purpose: '탄소중립 이행 현황 모니터링 및 분석 시스템 구축',
       execPeriod: '12개월 (2026.06~2027.05)',
@@ -209,7 +205,6 @@ export const bids: Bid[] = [
     id: '8', number: '나라-2026-04-11241', title: '경찰청 디지털포렌식 역량강화 시스템',
     agency: '경찰청', budget: 890000000, deadline: '2026-04-22',
     risk: 'caution', aiStatus: 'none', type: '기타', dangerCount: 1, collectedAt: '2026-04-02',
-    status: 'none',
     detail: {
       purpose: '디지털포렌식 수사 역량 강화 및 시스템 고도화',
       execPeriod: '8개월 (2026.06~2027.01)',
@@ -232,7 +227,6 @@ export const bids: Bid[] = [
     id: '9', number: '나라-2026-03-11220', title: '국세청 세무행정 디지털 전환 ISP',
     agency: '국세청', budget: 1500000000, deadline: '2026-04-20',
     risk: 'good', aiStatus: 'none', type: 'ISP', dangerCount: 0, collectedAt: '2026-03-31',
-    status: 'none',
     detail: {
       purpose: '세무행정 전반의 디지털 전환 전략 수립',
       execPeriod: '6개월 (2026.05~2026.10)',
@@ -253,7 +247,6 @@ export const bids: Bid[] = [
     id: '10', number: '나라-2026-03-11215', title: '산업통상자원부 에너지 데이터 플랫폼 구축',
     agency: '산업통상자원부', budget: 4200000000, deadline: '2026-04-25',
     risk: 'caution', aiStatus: 'none', type: 'ISMP', dangerCount: 1, collectedAt: '2026-03-30',
-    status: 'none',
     detail: {
       purpose: '에너지 데이터 수집/분석/활용 통합 플랫폼 구축',
       execPeriod: '16개월 (2026.06~2027.09)',
