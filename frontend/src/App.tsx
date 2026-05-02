@@ -21,6 +21,16 @@ export interface AgencySettings {
   avoided: string[];
 }
 
+export interface NotificationItem {
+  id: string;
+  bidId: string;
+  bidTitle: string;
+  message: string;
+  type: 'analysis_complete' | 'info' | 'warning';
+  createdAt: Date;
+  isRead: boolean;
+}
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [bids, setBids] = useState<Bid[]>([]);
@@ -31,7 +41,27 @@ export default function App() {
   const [bidFlags, setBidFlags] = useState<Record<string, BidFlags>>({});
   const [aiStatuses, setAiStatuses] = useState<Record<string, AiStatusType>>({});
   const [pursuedBids, setPursuedBids] = useState<Set<string>>(new Set());
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const { showToast } = useToast();
+
+  const addNotification = (item: Omit<NotificationItem, 'id' | 'createdAt' | 'isRead'>) => {
+    setNotifications(prev => [{
+      ...item,
+      id: crypto.randomUUID(),
+      createdAt: new Date(),
+      isRead: false,
+    }, ...prev]);
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
+
+  const markAsRead = (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+  };
+
+  const clearNotifications = () => setNotifications([]);
   // analysisTimers: 진행 중인 타이머 추적 (중복 방지)
   const analysisTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   // aiStatusesRef: setState 외부에서 동기적으로 상태 확인하기 위한 미러 ref
@@ -52,7 +82,10 @@ export default function App() {
       aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'complete' };
       setAiStatuses(prev => ({ ...prev, [bidId]: 'complete' }));
       const bid = bids.find(b => b.id === bidId);
-      if (bid) showToast('success', `AI 분석이 완료되었습니다 — ${bid.title}`);
+      if (bid) {
+        showToast('success', `AI 분석이 완료되었습니다 — ${bid.title}`);
+        addNotification({ bidId, bidTitle: bid.title, message: 'AI 분석이 완료되었습니다', type: 'analysis_complete' });
+      }
     }, 3000);
   };
 
@@ -144,7 +177,14 @@ export default function App() {
     >
       <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <DashboardHeader user={user} onLogout={() => setUser(null)} />
+        <DashboardHeader
+          user={user}
+          onLogout={() => setUser(null)}
+          notifications={notifications}
+          onMarkAllAsRead={markAllAsRead}
+          onMarkAsRead={markAsRead}
+          onClearNotifications={clearNotifications}
+        />
         <main
           className="flex-1 overflow-y-auto"
           style={{

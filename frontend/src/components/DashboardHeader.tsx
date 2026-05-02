@@ -1,20 +1,54 @@
-import { Search, Bell, ChevronDown, RefreshCw, Filter, Sun, Moon, LogOut } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Search, Bell, ChevronDown, RefreshCw, Filter, Sun, Moon, LogOut, BrainCircuit, Info, AlertTriangle, Trash2, CheckCheck } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type { User } from './LoginPage';
+import type { NotificationItem } from '../App';
 
 interface DashboardHeaderProps {
   user: User;
   onLogout: () => void;
+  notifications: NotificationItem[];
+  onMarkAllAsRead: () => void;
+  onMarkAsRead: (id: string) => void;
+  onClearNotifications: () => void;
 }
 
-export function DashboardHeader({ user, onLogout }: DashboardHeaderProps) {
+const getTimeAgo = (date: Date): string => {
+  const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diff < 60) return '방금 전';
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+  return `${Math.floor(diff / 86400)}일 전`;
+};
+
+const NOTIF_ICON: Record<NotificationItem['type'], { icon: React.ElementType; color: string; bg: string }> = {
+  analysis_complete: { icon: BrainCircuit, color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
+  info:              { icon: Info,          color: '#2563EB', bg: 'rgba(37,99,235,0.12)' },
+  warning:           { icon: AlertTriangle, color: '#F97316', bg: 'rgba(249,115,22,0.12)' },
+};
+
+export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead, onMarkAsRead, onClearNotifications }: DashboardHeaderProps) {
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const unread = notifications.filter(n => !n.isRead).length;
   const roleLabel = user.role === 'ceo' ? '대표이사' : '담당자';
   const avatarGradient = user.role === 'ceo'
     ? 'linear-gradient(135deg, #7C3AED, #5B21B6)'
     : 'linear-gradient(135deg, #2563EB, #1D4ED8)';
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isOpen]);
 
   return (
     <div
@@ -92,15 +126,140 @@ export function DashboardHeader({ user, onLogout }: DashboardHeaderProps) {
         </button>
 
         {/* Notification */}
-        <button
-          className="relative rounded-lg flex items-center justify-center transition-colors"
-          style={{ width: '36px', height: '36px', color: 'var(--dash-text-2)', backgroundColor: 'var(--dash-input-bg)', border: '1px solid var(--dash-border-btn)' }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-hover)'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-input-bg)'; }}
-        >
-          <Bell style={{ width: '16px', height: '16px' }} />
-          <span className="absolute rounded-full" style={{ top: '7px', right: '7px', width: '7px', height: '7px', backgroundColor: '#EF4444', border: '1.5px solid var(--dash-surface)' }} />
-        </button>
+        <div ref={dropdownRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setIsOpen(v => !v)}
+            className="relative rounded-lg flex items-center justify-center transition-colors"
+            style={{ width: '36px', height: '36px', color: isOpen ? 'var(--dash-text)' : 'var(--dash-text-2)', backgroundColor: isOpen ? 'var(--dash-hover)' : 'var(--dash-input-bg)', border: `1px solid ${isOpen ? 'rgba(37,99,235,0.3)' : 'var(--dash-border-btn)'}` }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-hover)'; }}
+            onMouseLeave={(e) => { if (!isOpen) { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-input-bg)'; } }}
+          >
+            <Bell style={{ width: '16px', height: '16px' }} />
+            {unread > 0 && (
+              <span
+                className="absolute flex items-center justify-center rounded-full"
+                style={{
+                  top: '5px', right: '5px',
+                  minWidth: unread > 9 ? '14px' : '8px',
+                  height: unread > 9 ? '14px' : '8px',
+                  padding: unread > 9 ? '0 3px' : '0',
+                  backgroundColor: '#EF4444',
+                  border: '1.5px solid var(--dash-surface)',
+                  fontSize: '9px',
+                  fontWeight: 700,
+                  color: 'white',
+                  lineHeight: 1,
+                }}
+              >
+                {unread > 9 ? '9+' : ''}
+              </span>
+            )}
+          </button>
+
+          {/* Dropdown */}
+          {isOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 8px)',
+                right: 0,
+                width: '360px',
+                maxHeight: '480px',
+                backgroundColor: 'var(--dash-card)',
+                border: '1px solid var(--dash-border)',
+                borderRadius: '12px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                zIndex: 100,
+                display: 'flex',
+                flexDirection: 'column',
+                overflow: 'hidden',
+              }}
+            >
+              {/* 드롭다운 헤더 */}
+              <div className="flex items-center" style={{ padding: '12px 16px', borderBottom: '1px solid var(--dash-border)', flexShrink: 0 }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)' }}>알림</span>
+                {unread > 0 && (
+                  <span className="rounded-full" style={{ marginLeft: '6px', fontSize: '10px', padding: '1px 6px', backgroundColor: 'rgba(37,99,235,0.15)', color: '#2563EB', fontWeight: 600 }}>
+                    {unread}건 미읽음
+                  </span>
+                )}
+                <div className="flex items-center gap-1 ml-auto">
+                  {notifications.length > 0 && unread > 0 && (
+                    <button
+                      onClick={onMarkAllAsRead}
+                      className="flex items-center gap-1 rounded-md"
+                      style={{ padding: '4px 8px', fontSize: '11px', color: '#2563EB', backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}
+                      onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.08)')}
+                      onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent')}
+                    >
+                      <CheckCheck style={{ width: '12px', height: '12px' }} />
+                      모두 읽음
+                    </button>
+                  )}
+                  {notifications.length > 0 && (
+                    <button
+                      onClick={onClearNotifications}
+                      className="flex items-center gap-1 rounded-md"
+                      style={{ padding: '4px 8px', fontSize: '11px', color: 'var(--dash-text-4)', backgroundColor: 'transparent', border: 'none', cursor: 'pointer' }}
+                      onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(239,68,68,0.08)')}
+                      onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent')}
+                    >
+                      <Trash2 style={{ width: '12px', height: '12px' }} />
+                      전체 삭제
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* 알림 목록 */}
+              <div style={{ overflowY: 'auto', scrollbarWidth: 'thin', scrollbarColor: 'var(--dash-scrollbar) transparent' }}>
+                {notifications.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center" style={{ padding: '40px 20px', gap: '10px' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Bell style={{ width: '18px', height: '18px', color: 'var(--dash-text-4)' }} />
+                    </div>
+                    <span style={{ fontSize: '13px', color: 'var(--dash-text-4)' }}>새로운 알림이 없습니다</span>
+                  </div>
+                ) : (
+                  notifications.map(n => {
+                    const cfg = NOTIF_ICON[n.type];
+                    const Icon = cfg.icon;
+                    return (
+                      <div
+                        key={n.id}
+                        onClick={() => onMarkAsRead(n.id)}
+                        className="flex items-start gap-3"
+                        style={{
+                          padding: '12px 16px',
+                          backgroundColor: n.isRead ? 'transparent' : 'rgba(37,99,235,0.05)',
+                          borderBottom: '1px solid var(--dash-border-faint)',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.15s',
+                        }}
+                        onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-row-hover)')}
+                        onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = n.isRead ? 'transparent' : 'rgba(37,99,235,0.05)')}
+                      >
+                        <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Icon style={{ width: '15px', height: '15px', color: cfg.color }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '2px' }}>
+                            {n.bidTitle}
+                          </div>
+                          <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '3px' }}>{n.message}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>{getTimeAgo(n.createdAt)}</div>
+                        </div>
+                        {!n.isRead && (
+                          <span style={{ width: '7px', height: '7px', borderRadius: '9999px', backgroundColor: '#2563EB', flexShrink: 0, marginTop: '5px' }} />
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--dash-border-btn)' }} />
 
