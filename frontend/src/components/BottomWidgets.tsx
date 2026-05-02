@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { type Bid, type BidStatus, formatBudget, TODAY } from './mockData';
+import { type Bid, type BidFlags, formatBudget, TODAY } from './mockData';
 import { RiskBadge } from './BidTable';
 import { BidSlideOver } from './BidSlideOver';
 
@@ -415,11 +415,12 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
   );
 }
 
-export function BottomWidgets({ bids, bidStatuses, onToggleBookmark, onSetInProgress }: {
+export function BottomWidgets({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail }: {
   bids: Bid[];
-  bidStatuses: Map<string, BidStatus>;
+  bidFlags: Record<string, BidFlags>;
   onToggleBookmark: (bidId: string) => void;
-  onSetInProgress: (bidId: string) => void;
+  onToggleInProgress: (bidId: string) => void;
+  onOpenAnalysisDetail?: (bid: Bid) => void;
 }) {
   const [slideOverBid, setSlideOverBid] = useState<Bid | null>(null);
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
@@ -439,9 +440,10 @@ export function BottomWidgets({ bids, bidStatuses, onToggleBookmark, onSetInProg
         bid={slideOverBid}
         isOpen={isSlideOverOpen}
         onClose={() => setIsSlideOverOpen(false)}
-        bidStatuses={bidStatuses}
+        bidFlags={bidFlags}
         onToggleBookmark={onToggleBookmark}
-        onSetInProgress={onSetInProgress}
+        onToggleInProgress={onToggleInProgress}
+        onOpenAnalysisDetail={onOpenAnalysisDetail}
       />
     </>
   );

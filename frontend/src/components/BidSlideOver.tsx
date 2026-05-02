@@ -18,9 +18,10 @@ interface BidSlideOverProps {
   aiStatuses?: Record<string, AiStatusType>;
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
+  onOpenAnalysisDetail?: (bid: Bid) => void;
 }
 
-export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress }: BidSlideOverProps) {
+export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail }: BidSlideOverProps) {
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -38,6 +39,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
   const detail = bid?.detail;
   const riskFactors = bid?.riskFactors ?? [];
   const flags = bid ? (bidFlags[bid.id] ?? { bookmarked: false, inProgress: false }) : { bookmarked: false, inProgress: false };
+  const isProposalSupported = bid?.type === 'ISP' || bid?.type === 'ISMP';
 
   const AI_HIGHLIGHT_ITEMS = detail ? [
     { icon: Wallet,    label: '예산규모', value: detail.budget },
@@ -410,27 +412,33 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
             style={{ padding: '12px 20px', borderTop: '1px solid var(--dash-border)' }}
           >
             <button
-              disabled={aiStatus !== 'complete'}
+              disabled={isProposalSupported && aiStatus !== 'complete'}
+              onClick={() => { if (!isProposalSupported) showToast('warning', '해당 사업 유형(SI/기타)은 아직 학습된 제안목차 템플릿이 없습니다.'); }}
               className="w-full flex items-center justify-center gap-2 rounded-xl transition-all"
               style={{
                 padding: '11px 16px',
                 fontSize: '14px',
                 fontWeight: 600,
                 color: 'white',
-                background: aiStatus === 'complete' ? 'linear-gradient(135deg, #2563EB, #1D4ED8)' : '#94A3B8',
-                boxShadow: aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none',
-                cursor: aiStatus === 'complete' ? 'pointer' : 'not-allowed',
+                background: isProposalSupported
+                  ? (aiStatus === 'complete' ? 'linear-gradient(135deg, #2563EB, #1D4ED8)' : '#94A3B8')
+                  : '#94A3B8',
+                boxShadow: isProposalSupported && aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none',
+                cursor: (!isProposalSupported || aiStatus === 'complete') ? 'pointer' : 'not-allowed',
                 border: 'none',
               }}
-              onMouseEnter={(e) => { if (aiStatus === 'complete') { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(37,99,235,0.4)'; } }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none'; }}
+              onMouseEnter={(e) => { if (isProposalSupported && aiStatus === 'complete') { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(37,99,235,0.4)'; } }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = isProposalSupported && aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none'; }}
             >
               <FileText style={{ width: '15px', height: '15px' }} />
-              {aiStatus === 'complete' ? '제안목차 생성' : '분석 완료 후 생성 가능'}
+              {isProposalSupported
+                ? (aiStatus === 'complete' ? '제안목차 생성' : '분석 완료 후 생성 가능')
+                : '제안목차 생성 (미지원)'}
               {!isAnalyzing && <ArrowRight style={{ width: '14px', height: '14px' }} />}
             </button>
             <button
               className="w-full flex items-center justify-center gap-1.5 rounded-xl transition-colors"
+              onClick={() => { if (bid) onOpenAnalysisDetail?.(bid); }}
               style={{ marginTop: '8px', padding: '9px 16px', fontSize: '13px', color: 'var(--dash-text-2)', backgroundColor: 'transparent', border: '1px solid var(--dash-border-med)', cursor: 'pointer' }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-item-bg-alt)'; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}

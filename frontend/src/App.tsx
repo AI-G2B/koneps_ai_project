@@ -12,6 +12,7 @@ import { BidListPage } from './components/BidListPage';
 import { BottomWidgets } from './components/BottomWidgets';
 import { type Bid, type BidFlags, type AiStatusType } from './components/mockData';
 import { useToast } from './components/ToastProvider';
+import { AnalysisDetailPage } from './components/AnalysisDetailPage';
 import { fetchBids, fetchBidById } from './services/api';
 
 export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '현황 요약' | '전략 리포트' | '설정' | '도움말';
@@ -129,6 +130,14 @@ export default function App() {
     }
   };
 
+  const [analysisDetailBid, setAnalysisDetailBid] = useState<Bid | null>(null);
+  const [showAnalysisDetail, setShowAnalysisDetail] = useState(false);
+
+  const openAnalysisDetail = (bid: Bid) => {
+    setAnalysisDetailBid(bid);
+    setShowAnalysisDetail(true);
+  };
+
   const [agencySettings, setAgencySettings] = useState<AgencySettings>({
     preferred: ['행정안전부', '국토교통부'],
     avoided: ['금융감독원'],
@@ -205,6 +214,7 @@ export default function App() {
               aiStatuses={aiStatuses}
               onToggleBookmark={toggleBookmark}
               onToggleInProgress={toggleInProgress}
+              onOpenAnalysisDetail={openAnalysisDetail}
             />
           ) : activePage === '관심 공고' ? (
             <BookmarkPage
@@ -223,6 +233,7 @@ export default function App() {
               selectedBid={selectedBid}
               onToggleBookmark={toggleBookmark}
               onToggleInProgress={toggleInProgress}
+              onOpenAnalysisDetail={openAnalysisDetail}
             />
           ) : (
             <>
@@ -242,18 +253,25 @@ export default function App() {
                   onTogglePursued={togglePursued}
                   hideFilters={isCeo}
                 />
-                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} aiStatuses={aiStatuses} />
+                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} />
               </div>
               <BottomWidgets
                 bids={displayBids}
                 bidFlags={bidFlags}
                 onToggleBookmark={toggleBookmark}
                 onToggleInProgress={toggleInProgress}
+                onOpenAnalysisDetail={openAnalysisDetail}
               />
             </>
           )}
         </main>
       </div>
+
+      {showAnalysisDetail && analysisDetailBid && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, overflowY: 'auto', backgroundColor: 'var(--dash-bg)' }}>
+          <AnalysisDetailPage bid={analysisDetailBid} onBack={() => setShowAnalysisDetail(false)} />
+        </div>
+      )}
     </div>
   );
 }

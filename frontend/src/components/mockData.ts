@@ -13,6 +13,20 @@ export interface RiskFactor {
   severity: 'high' | 'medium';
 }
 
+export interface RequirementItem {
+  category: string;
+  code: string;
+  name: string;
+  definition: string;
+  detail: string;
+}
+
+export interface AnalysisLog {
+  time: string;
+  message: string;
+  status: 'info' | 'success' | 'error';
+}
+
 export interface BidDetail {
   purpose: string;
   execPeriod: string;
@@ -26,6 +40,9 @@ export interface BidDetail {
   performanceBond: string;
   requiredDocs: string;
   contactPerson: string;
+  analysisModel?: string;
+  analysisLogs?: AnalysisLog[];
+  requirements?: RequirementItem[];
 }
 
 export interface Bid {
@@ -64,6 +81,24 @@ export const bids: Bid[] = [
       performanceBond: '계약금액의 10%',
       requiredDocs: '사업수행계획서, 유사실적증명서, 기술인력확인서',
       contactPerson: '김담당 (044-205-1234)',
+      analysisModel: 'claude-3-5-sonnet',
+      analysisLogs: [
+        { time: '10시 00분 00초', message: '샘플 분석본 로드', status: 'info' },
+        { time: '10시 00분 01초', message: 'AI 호출 시작 (model=claude-3-5-sonnet)', status: 'info' },
+        { time: '10시 01분 30초', message: 'AI 응답 수신 (90.8초)', status: 'success' },
+        { time: '10시 01분 30초', message: '응답 JSON 파싱', status: 'info' },
+        { time: '10시 01분 31초', message: 'DB 저장 완료', status: 'success' },
+      ],
+      requirements: [
+        { category: '현황분석 요구사항', code: 'ASR-001', name: '현행 서비스 구조 분석', definition: '기 구축된 시스템의 서비스 구조 및 기능 분석', detail: '기 구축된 시스템의 서비스 구조, 기능 구성, 사용자 이용 흐름, 서비스 연계 방식을 분석' },
+        { category: '현황분석 요구사항', code: 'ASR-002', name: '현행 데이터 흐름 분석', definition: '서비스 운영에 활용되는 데이터 흐름 분석', detail: '서비스 운영에 활용되는 데이터의 수집, 연계, 저장, 가공, 활용 흐름을 분석하여 데이터 고도화 방향 도출' },
+        { category: '전략 요구사항', code: 'STR-001', name: '목표모델 정의', definition: '클라우드 전환을 위한 목표 서비스 모델 정의', detail: '클라우드 전환을 위한 목표 서비스 모델, 목표 기능 체계 및 정보화 방향을 정의' },
+        { category: '전략 요구사항', code: 'STR-002', name: '전환 전략 수립', definition: '클라우드 전환 중장기 전략 수립', detail: '최신 클라우드 기술환경과 서비스 운영 방향을 반영하여 중장기 전환 전략과 추진 로드맵 수립' },
+        { category: '서비스 요구사항', code: 'SER-001', name: '사용자 유형별 서비스 모델 정의', definition: '주요 사용자 유형별 요구를 반영한 서비스 모델 정의', detail: '공무원, 민간 등 주요 사용자 유형별 요구와 활용 시나리오를 반영한 서비스 모델과 기능 구성 정의' },
+        { category: '기술 요구사항', code: 'TAR-001', name: 'AI 기술 적용 아키텍처 정의', definition: 'AI 기술 적용 방향 및 서비스 연계 아키텍처 정의', detail: 'LLM, RAG, 멀티모달 처리, 외부 서비스 연계 등 AI 기술의 적용 방향과 서비스 연계 아키텍처 정의' },
+        { category: '거버넌스 요구사항', code: 'GSR-001', name: '보안·개인정보 기준 수립', definition: '개인정보 보호 및 데이터 활용 통제 기준 수립', detail: '클라우드 전환 과정에서 적용할 개인정보 보호, 정보보안, 데이터 활용 통제 및 윤리 기준 수립' },
+        { category: '성과 요구사항', code: 'KMR-001', name: 'KPI 및 성과관리체계 수립', definition: '서비스 고도화 성과 측정을 위한 KPI 및 성과관리체계 수립', detail: '서비스 고도화 성과를 측정하고 지속 개선으로 연계하기 위한 KPI 및 성과관리체계 수립' },
+      ],
     },
     riskFactors: [
       { title: '최저가 낙찰제 적용', desc: '극단적 가격 경쟁 심화 예상 — 수익성 악화 및 덤핑 입찰 위험이 높습니다.', severity: 'high' },
@@ -88,6 +123,24 @@ export const bids: Bid[] = [
       performanceBond: '계약금액의 10%',
       requiredDocs: '사업수행계획서, 유사실적증명서',
       contactPerson: '이담당 (044-201-5678)',
+      analysisModel: 'claude-3-5-sonnet',
+      analysisLogs: [
+        { time: '10시 00분 00초', message: '샘플 분석본 로드', status: 'info' },
+        { time: '10시 00분 01초', message: 'AI 호출 시작 (model=claude-3-5-sonnet)', status: 'info' },
+        { time: '10시 01분 30초', message: 'AI 응답 수신 (90.8초)', status: 'success' },
+        { time: '10시 01분 30초', message: '응답 JSON 파싱', status: 'info' },
+        { time: '10시 01분 31초', message: 'DB 저장 완료', status: 'success' },
+      ],
+      requirements: [
+        { category: '현황분석 요구사항', code: 'ASR-001', name: '현행 서비스 구조 분석', definition: '기 구축된 시스템의 서비스 구조 및 기능 분석', detail: '기 구축된 시스템의 서비스 구조, 기능 구성, 사용자 이용 흐름, 서비스 연계 방식을 분석' },
+        { category: '현황분석 요구사항', code: 'ASR-002', name: '현행 데이터 흐름 분석', definition: '서비스 운영에 활용되는 데이터 흐름 분석', detail: '서비스 운영에 활용되는 데이터의 수집, 연계, 저장, 가공, 활용 흐름을 분석하여 데이터 고도화 방향 도출' },
+        { category: '전략 요구사항', code: 'STR-001', name: '목표모델 정의', definition: '클라우드 전환을 위한 목표 서비스 모델 정의', detail: '클라우드 전환을 위한 목표 서비스 모델, 목표 기능 체계 및 정보화 방향을 정의' },
+        { category: '전략 요구사항', code: 'STR-002', name: '전환 전략 수립', definition: '클라우드 전환 중장기 전략 수립', detail: '최신 클라우드 기술환경과 서비스 운영 방향을 반영하여 중장기 전환 전략과 추진 로드맵 수립' },
+        { category: '서비스 요구사항', code: 'SER-001', name: '사용자 유형별 서비스 모델 정의', definition: '주요 사용자 유형별 요구를 반영한 서비스 모델 정의', detail: '공무원, 민간 등 주요 사용자 유형별 요구와 활용 시나리오를 반영한 서비스 모델과 기능 구성 정의' },
+        { category: '기술 요구사항', code: 'TAR-001', name: 'AI 기술 적용 아키텍처 정의', definition: 'AI 기술 적용 방향 및 서비스 연계 아키텍처 정의', detail: 'LLM, RAG, 멀티모달 처리, 외부 서비스 연계 등 AI 기술의 적용 방향과 서비스 연계 아키텍처 정의' },
+        { category: '거버넌스 요구사항', code: 'GSR-001', name: '보안·개인정보 기준 수립', definition: '개인정보 보호 및 데이터 활용 통제 기준 수립', detail: '클라우드 전환 과정에서 적용할 개인정보 보호, 정보보안, 데이터 활용 통제 및 윤리 기준 수립' },
+        { category: '성과 요구사항', code: 'KMR-001', name: 'KPI 및 성과관리체계 수립', definition: '서비스 고도화 성과 측정을 위한 KPI 및 성과관리체계 수립', detail: '서비스 고도화 성과를 측정하고 지속 개선으로 연계하기 위한 KPI 및 성과관리체계 수립' },
+      ],
     },
     riskFactors: [
       { title: '과업 범위 불명확', desc: '제안요청서 내 과업 범위가 포괄적으로 기술되어 추가 업무 발생 가능성이 있습니다.', severity: 'medium' },
