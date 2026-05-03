@@ -13,13 +13,13 @@ interface AnalysisDetailPageProps {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  '현황분석 요구사항': 'rgba(37,99,235,0.05)',
-  '전략 요구사항': 'rgba(124,58,237,0.05)',
-  '서비스 요구사항': 'rgba(34,197,94,0.05)',
-  '기술 요구사항': 'rgba(245,158,11,0.05)',
-  '거버넌스 요구사항': 'rgba(239,68,68,0.05)',
+  '현황분석 요구사항': 'rgba(37,99,235,0.04)',
+  '전략 요구사항': 'rgba(124,58,237,0.04)',
+  '서비스 요구사항': 'rgba(34,197,94,0.04)',
+  '기술 요구사항': 'rgba(245,158,11,0.04)',
+  '거버넌스 요구사항': 'rgba(239,68,68,0.04)',
 };
-const DEFAULT_CATEGORY_COLOR = 'rgba(100,116,139,0.05)';
+const DEFAULT_CATEGORY_COLOR = 'rgba(100,116,139,0.04)';
 
 function getCategoryColor(category: string): string {
   for (const key of Object.keys(CATEGORY_COLORS)) {
@@ -206,52 +206,50 @@ export function AnalysisDetailPage({ bid, onBack }: AnalysisDetailPageProps) {
             AI 분석 완료 후 요구사항이 표시됩니다
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-              <colgroup>
-                <col style={{ width: '140px' }} />
-                <col style={{ width: '100px' }} />
-                <col style={{ width: '160px' }} />
-                <col style={{ width: '200px' }} />
-                <col />
-              </colgroup>
-              <thead>
-                <tr style={{ position: 'sticky', top: 0, backgroundColor: 'var(--dash-card)', zIndex: 1 }}>
-                  {['분류', 'CODE', '명칭', '정의', '상세설명'].map((col) => (
-                    <th
-                      key={col}
-                      style={{
-                        padding: '10px 14px', textAlign: 'left',
-                        fontSize: '12px', fontWeight: 600, color: 'var(--dash-text-4)',
-                        borderBottom: '1px solid var(--dash-border)',
-                        whiteSpace: 'nowrap',
-                      }}
+          <div style={{ overflowX: 'auto', overflowY: 'visible' }}>
+            <div style={{ minWidth: '800px' }}>
+              {/* 헤더 */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.5fr 2fr 3fr', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--dash-card-deep)', borderBottom: '1px solid var(--dash-border)' }}>
+                {['분류', 'CODE', '명칭', '정의', '상세설명'].map((col) => (
+                  <div key={col} style={{ padding: '10px 16px', fontSize: '11px', fontWeight: 600, color: 'var(--dash-text-4)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                    {col}
+                  </div>
+                ))}
+              </div>
+              {/* 데이터 행 */}
+              {requirements.map((req, i) => {
+                const bg = getCategoryColor(req.category);
+                const isFirstInGroup = i === 0 || requirements[i - 1].category !== req.category;
+                return (
+                  <div key={i}>
+                    {isFirstInGroup && i > 0 && (
+                      <div style={{ borderTop: '2px solid var(--dash-border)' }} />
+                    )}
+                    <div
+                      style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.5fr 2fr 3fr', backgroundColor: bg, borderBottom: '1px solid var(--dash-border-faint)', alignItems: 'flex-start' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.filter = 'brightness(0.96)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.filter = 'none'; }}
                     >
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {requirements.map((req, i) => {
-                  const bg = getCategoryColor(req.category);
-                  return (
-                    <tr
-                      key={i}
-                      style={{ backgroundColor: bg }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLTableRowElement).style.filter = 'brightness(0.97)'; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLTableRowElement).style.filter = 'none'; }}
-                    >
-                      <td style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--dash-text-3)', borderBottom: '1px solid var(--dash-border)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{req.category}</td>
-                      <td style={{ padding: '10px 14px', fontSize: '12px', fontWeight: 600, color: 'var(--dash-text)', borderBottom: '1px solid var(--dash-border)', fontFamily: 'monospace' }}>{req.code}</td>
-                      <td style={{ padding: '10px 14px', fontSize: '13px', color: 'var(--dash-text)', borderBottom: '1px solid var(--dash-border)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{req.name}</td>
-                      <td style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--dash-text-3)', borderBottom: '1px solid var(--dash-border)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } as React.CSSProperties}>{req.definition}</td>
-                      <td style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--dash-text-3)', borderBottom: '1px solid var(--dash-border)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' } as React.CSSProperties}>{req.detail}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      <div style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--dash-text-3)' }}>
+                        {isFirstInGroup ? req.category : ''}
+                      </div>
+                      <div style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 600, color: 'var(--dash-text)', fontFamily: 'monospace' }}>
+                        {req.code}
+                      </div>
+                      <div style={{ padding: '14px 16px', fontSize: '13px', fontWeight: 500, color: 'var(--dash-text)' }}>
+                        {req.name}
+                      </div>
+                      <div style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--dash-text-2)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflow: 'visible' }}>
+                        {req.definition}
+                      </div>
+                      <div style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--dash-text-3)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflow: 'visible' }}>
+                        {req.detail}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
