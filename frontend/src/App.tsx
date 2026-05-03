@@ -16,6 +16,7 @@ import { useToast } from './components/ToastProvider';
 import { AnalysisDetailPage } from './components/AnalysisDetailPage';
 import { AnalysisListPage } from './components/AnalysisListPage';
 import { StrategyReportPage } from './components/StrategyReportPage';
+import { ProposalPage } from './components/ProposalPage';
 import { fetchBids, fetchBidById } from './services/api';
 
 const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정', '도움말'];
@@ -244,6 +245,8 @@ export default function App() {
               onSelectBid={handleSelectBid}
               selectedBid={selectedBid}
             />
+          ) : activePage === '제안목차' ? (
+            <ProposalPage bids={bids} bidFlags={bidFlags} />
           ) : activePage === '전략 리포트' ? (
             <StrategyReportPage bids={bids} bidFlags={bidFlags} aiStatuses={aiStatuses} />
           ) : activePage === '진행 프로젝트' ? (
