@@ -1,53 +1,46 @@
 import { useState } from 'react';
-import type React from 'react';
-import { Eye, ExternalLink, Loader2, CheckCircle2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Flag, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Flag } from 'lucide-react';
 import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from './mockData';
 import type { AgencySettings } from '../App';
 
+const BADGE_FONT = 'Inter, Noto Sans KR, sans-serif';
+
+const DOT = (color: string, animate = false) => (
+  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: color, flexShrink: 0, display: 'inline-block', ...(animate ? { animation: 'pulse 1.2s ease-in-out infinite' } : {}) }} />
+);
+
+const badge = (bg: string, color: string, size: 'md' | 'sm' = 'md') => ({
+  display: 'inline-flex' as const, alignItems: 'center' as const, gap: '5px',
+  padding: size === 'md' ? '4px 12px' : '3px 8px',
+  borderRadius: '40px',
+  fontSize: size === 'md' ? '13px' : '11px',
+  fontWeight: 400,
+  fontFamily: BADGE_FONT,
+  backgroundColor: bg,
+  color,
+  whiteSpace: 'nowrap' as const,
+  flexShrink: 0 as const,
+});
+
 export function RiskBadge({ risk }: { risk: RiskLevel }) {
-  const config: Record<RiskLevel, { label: string; bg: string; text: string; border: string; icon: React.ReactNode }> = {
-    danger: { label: '위험', bg: 'rgba(239,68,68,0.12)', text: '#EF4444', border: 'rgba(239,68,68,0.3)', icon: <AlertCircle style={{ width: '11px', height: '11px', flexShrink: 0 }} /> },
-    caution: { label: '주의', bg: 'rgba(249,115,22,0.12)', text: '#F97316', border: 'rgba(249,115,22,0.3)', icon: <AlertTriangle style={{ width: '11px', height: '11px', flexShrink: 0 }} /> },
-    good: { label: '양호', bg: 'rgba(34,197,94,0.12)', text: '#22C55E', border: 'rgba(34,197,94,0.3)', icon: <CheckCircle2 style={{ width: '11px', height: '11px', flexShrink: 0 }} /> },
+  const config: Record<RiskLevel, { label: string; dot: string; bg: string; text: string }> = {
+    danger: { label: '위험', dot: '#F27A75', bg: 'var(--badge-red-bg)',    text: '#F27A75' },
+    caution: { label: '주의', dot: '#FFC379', bg: 'var(--badge-orange-bg)', text: '#FFC379' },
+    good:   { label: '양호', dot: '#5BC37E', bg: 'var(--badge-green-bg)',  text: '#5BC37E' },
   };
   const c = config[risk];
   return (
-    <span className="inline-flex items-center gap-1 rounded-md" style={{ padding: '3px 10px', fontSize: '12px', fontWeight: 500, backgroundColor: c.bg, color: c.text, border: `1px solid ${c.border}` }}>
-      {c.icon}{c.label}
+    <span style={badge(c.bg, c.text)}>
+      {DOT(c.dot)}{c.label}
     </span>
   );
 }
 
 export function AiStatusIndicator({ status }: { status: AiStatusType }) {
-  if (status === 'none') {
-    return <span style={{ fontSize: '12px', color: 'var(--dash-text-5)' }}>-</span>;
-  }
-  if (status === 'pending') {
-    return (
-      <span className="flex items-center gap-1.5" style={{ color: 'var(--dash-text-4)' }}>
-        <span className="flex gap-0.5 items-center">
-          {[0, 0.15, 0.3].map((delay, i) => (
-            <span key={i} className="rounded-full" style={{ width: '4px', height: '4px', backgroundColor: 'currentColor', animation: `pulse 1.2s ${delay}s ease-in-out infinite` }} />
-          ))}
-        </span>
-        <span style={{ fontSize: '12px' }}>대기중</span>
-      </span>
-    );
-  }
-  if (status === 'analyzing') {
-    return (
-      <span className="flex items-center gap-1.5" style={{ color: '#F59E0B' }}>
-        <Loader2 className="animate-spin" style={{ width: '13px', height: '13px' }} />
-        <span style={{ fontSize: '12px' }}>분석중</span>
-      </span>
-    );
-  }
-  return (
-    <span className="flex items-center gap-1.5" style={{ color: '#22C55E' }}>
-      <CheckCircle2 style={{ width: '13px', height: '13px' }} />
-      <span style={{ fontSize: '12px' }}>완료</span>
-    </span>
-  );
+  if (status === 'none')     return <span style={badge('var(--badge-gray-bg)',   '#81878F')}>{DOT('#81878F')}분석 전</span>;
+  if (status === 'pending')  return <span style={badge('var(--badge-gray-bg)',   '#81878F')}>{DOT('#81878F', true)}대기중</span>;
+  if (status === 'analyzing')return <span style={badge('var(--badge-orange-bg)', '#FFC379')}>{DOT('#FFC379', true)}분석중</span>;
+  return                            <span style={badge('var(--badge-green-bg)',  '#5BC37E')}>{DOT('#5BC37E')}완료</span>;
 }
 
 type SortKey = 'budget' | 'deadline' | 'risk' | null;
@@ -268,14 +261,10 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
             </span>
           )}
           {flags.bookmarked && (
-            <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '1px 5px', backgroundColor: 'rgba(37,99,235,0.15)', color: '#2563EB', flexShrink: 0, fontWeight: 500, border: '1px solid rgba(37,99,235,0.3)' }}>
-              <Bookmark style={{ width: '9px', height: '9px', fill: 'currentColor', flexShrink: 0 }} />찜
-            </span>
+            <span style={badge('var(--badge-blue-bg)', '#4A7FD4', 'sm')}>{DOT('#4A7FD4')}찜</span>
           )}
           {flags.inProgress && (
-            <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '1px 5px', backgroundColor: 'rgba(34,197,94,0.15)', color: '#22C55E', flexShrink: 0, fontWeight: 500, border: '1px solid rgba(34,197,94,0.3)' }}>
-              <Play style={{ width: '9px', height: '9px', fill: 'currentColor', flexShrink: 0 }} />진행중
-            </span>
+            <span style={badge('var(--badge-green-bg)', '#5BC37E', 'sm')}>{DOT('#5BC37E')}진행중</span>
           )}
           <button
             onClick={(e) => { e.stopPropagation(); onTogglePursued?.(bid.id); }}
@@ -301,7 +290,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
           <span style={{ fontSize: '12px', fontWeight: urgent ? 600 : 400, color: urgent ? '#EF4444' : 'var(--dash-text-2)', whiteSpace: 'nowrap' }}>{bid.deadline.substring(5)}</span>
           {urgent && (
             <div className="flex items-center gap-1 mt-0.5">
-              <span className="rounded-full" style={{ fontSize: '10px', padding: '0 5px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#EF4444' }}>D-{daysLeft}</span>
+              <span style={badge('var(--badge-red-bg)', '#F27A75', 'sm')}>{DOT('#F27A75')}D-{daysLeft}</span>
             </div>
           )}
         </div>

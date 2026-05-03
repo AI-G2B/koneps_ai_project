@@ -4,7 +4,7 @@ import {
   Target, Clock, Wallet, Truck, Code2, Gavel,
   BarChart2, Shield, GitBranch, Percent, AlertTriangle,
   FileText, ArrowRight, BrainCircuit, ScrollText, Phone,
-  ExternalLink, Download, Zap, Loader2, ChevronRight,
+  ExternalLink, Download, Loader2, ChevronRight,
 } from 'lucide-react';
 import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline } from './mockData';
 import { RiskBadge } from './BidTable';
@@ -116,21 +116,8 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
               </button>
 
               {/* AI 분석 상태 배지 */}
-              <span
-                className="flex items-center gap-1.5 rounded-full"
-                style={{
-                  fontSize: '11px',
-                  padding: '2px 8px',
-                  backgroundColor: isAnalyzing ? 'rgba(245,158,11,0.15)' : isNoneOrPending ? 'rgba(100,116,139,0.12)' : 'rgba(37,99,235,0.15)',
-                  color: isAnalyzing ? '#F59E0B' : isNoneOrPending ? 'var(--dash-text-4)' : '#60A5FA',
-                  border: `1px solid ${isAnalyzing ? 'rgba(245,158,11,0.2)' : isNoneOrPending ? 'rgba(100,116,139,0.2)' : 'rgba(37,99,235,0.2)'}`,
-                }}
-              >
-                {isAnalyzing
-                  ? <Loader2 className="animate-spin" style={{ width: '10px', height: '10px' }} />
-                  : isNoneOrPending ? null
-                  : <Zap style={{ width: '10px', height: '10px' }} />
-                }
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: isAnalyzing ? 'var(--badge-orange-bg)' : isNoneOrPending ? 'var(--badge-gray-bg)' : 'var(--badge-green-bg)', color: isAnalyzing ? '#FFC379' : isNoneOrPending ? '#81878F' : '#5BC37E', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: isAnalyzing ? '#FFC379' : isNoneOrPending ? '#81878F' : '#5BC37E', flexShrink: 0, display: 'inline-block', ...(isAnalyzing || aiStatus === 'pending' ? { animation: 'pulse 1.2s ease-in-out infinite' } : {}) }} />
                 {isAnalyzing ? 'AI 분석 중' : isNoneOrPending ? '분석 전' : 'AI 분석 완료'}
               </span>
 
@@ -139,10 +126,8 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
 
               {/* D-day 배지 */}
               {isUrgent && (
-                <span
-                  className="rounded-full"
-                  style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)', fontWeight: 600 }}
-                >
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />
                   D-{daysLeft}
                 </span>
               )}

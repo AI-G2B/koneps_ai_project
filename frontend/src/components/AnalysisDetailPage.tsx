@@ -101,7 +101,8 @@ export function AnalysisDetailPage({ bid, onBack }: AnalysisDetailPageProps) {
       {/* 3. 분석 액션 버튼 영역 */}
       <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         {analysisModel && (
-          <span style={{ padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 500, backgroundColor: 'rgba(37,99,235,0.08)', color: '#60A5FA', border: '1px solid rgba(37,99,235,0.2)', marginRight: '4px' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-blue-bg)', color: '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0, marginRight: '4px' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />
             {analysisModel}
           </span>
         )}
@@ -193,7 +194,8 @@ export function AnalysisDetailPage({ bid, onBack }: AnalysisDetailPageProps) {
         <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--dash-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', margin: 0 }}>AI 추출 요구사항</h2>
           {requirements.length > 0 && (
-            <span style={{ padding: '2px 8px', borderRadius: '10px', fontSize: '12px', fontWeight: 500, backgroundColor: 'rgba(37,99,235,0.1)', color: '#60A5FA' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-blue-bg)', color: '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />
               {requirements.length}건
             </span>
           )}
