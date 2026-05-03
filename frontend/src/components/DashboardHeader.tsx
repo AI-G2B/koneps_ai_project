@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, Bell, ChevronDown, RefreshCw, Filter, Sun, Moon, LogOut, BrainCircuit, Info, AlertTriangle, Trash2, CheckCheck } from 'lucide-react';
+import { Search, Bell, ChevronDown, RefreshCw, Sun, Moon, LogOut, BrainCircuit, Info, AlertTriangle, Trash2, CheckCheck } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type { User } from './LoginPage';
 import type { NotificationItem } from '../App';
@@ -93,16 +93,6 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
 
       {/* Actions */}
       <div className="flex items-center gap-2 ml-auto">
-        <button
-          className="flex items-center gap-1.5 rounded-lg transition-colors"
-          style={{ padding: '6px 12px', fontSize: '12px', color: 'var(--dash-text-2)', backgroundColor: 'var(--dash-input-bg)', border: '1px solid var(--dash-border-btn)' }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)')}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)')}
-        >
-          <Filter style={{ width: '13px', height: '13px' }} />
-          <span>필터</span>
-        </button>
-
         <button
           className="flex items-center gap-1.5 rounded-lg transition-colors"
           style={{ padding: '6px 12px', fontSize: '12px', color: 'var(--dash-text-2)', backgroundColor: 'var(--dash-input-bg)', border: '1px solid var(--dash-border-btn)' }}
