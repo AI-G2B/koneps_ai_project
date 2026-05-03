@@ -40,12 +40,12 @@ export function ProjectPage({ bids, bidFlags, onSelectBid, selectedBid, onToggle
   return (
     <>
       <div style={{ display: 'flex', gap: '16px', flex: 1, minHeight: 0 }}>
-        {/* 왼쪽: 카드 목록 + 캘린더 (가로 배열) */}
+        {/* 왼쪽: 카드 목록 + 캘린더 */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '16px', minHeight: 0 }}>
           <div style={{ flex: 2, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             <CardList inProgressBids={inProgressBids} onSelectBid={onSelectBid} selectedBid={selectedBid} />
           </div>
-          <div style={{ flex: 1, maxWidth: '320px', flexShrink: 0 }}>
+          <div style={{ flexShrink: 0, minWidth: '260px', maxWidth: '300px' }}>
             <ProjectCalendar inProgressBids={inProgressBids} onOpenSlideOver={openSlideOver} />
           </div>
         </div>
@@ -225,27 +225,27 @@ function ProjectCalendar({ inProgressBids, onOpenSlideOver }: { inProgressBids: 
   const popupBids = selectedDay ? (deadlineMap.get(selectedDay) ?? []) : [];
 
   return (
-    <div style={{ flexShrink: 0, borderRadius: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '16px 20px' }}>
+    <div style={{ borderRadius: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '14px 8px', overflow: 'hidden' }}>
       {/* 헤더 */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ width: '20px', height: '20px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245,158,11,0.15)' }}>
-            <Calendar style={{ width: '12px', height: '12px', color: '#F59E0B' }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', padding: '0 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+          <div style={{ width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245,158,11,0.15)' }}>
+            <Calendar style={{ width: '11px', height: '11px', color: '#F59E0B' }} />
           </div>
-          <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)' }}>마감일 캘린더</h3>
-          <span style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>· 진행 프로젝트 기준</span>
+          <h3 style={{ fontSize: '11px', fontWeight: 600, color: 'var(--dash-text)', whiteSpace: 'nowrap' }}>마감일 캘린더</h3>
+          <span style={{ fontSize: '10px', color: 'var(--dash-text-5)', whiteSpace: 'nowrap' }}>· 진행 프로젝트</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ fontSize: '12px', color: 'var(--dash-text-2)' }}>{calYear}년 {calMonth}월</span>
-          <button onClick={prevMonth} style={{ width: '22px', height: '22px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--dash-text-4)', background: 'none', border: 'none', cursor: 'pointer' }}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+          <span style={{ fontSize: '11px', color: 'var(--dash-text-2)', whiteSpace: 'nowrap' }}>{calYear}년 {calMonth}월</span>
+          <button onClick={prevMonth} style={{ width: '20px', height: '20px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--dash-text-4)', background: 'none', border: 'none', cursor: 'pointer' }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)')}
             onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-4)')}>
-            <ChevronLeft style={{ width: '14px', height: '14px' }} />
+            <ChevronLeft style={{ width: '13px', height: '13px' }} />
           </button>
-          <button onClick={nextMonth} style={{ width: '22px', height: '22px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--dash-text-4)', background: 'none', border: 'none', cursor: 'pointer' }}
+          <button onClick={nextMonth} style={{ width: '20px', height: '20px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--dash-text-4)', background: 'none', border: 'none', cursor: 'pointer' }}
             onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)')}
             onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-4)')}>
-            <ChevronRight style={{ width: '14px', height: '14px' }} />
+            <ChevronRight style={{ width: '13px', height: '13px' }} />
           </button>
         </div>
       </div>
@@ -310,24 +310,24 @@ function ProjectCalendar({ inProgressBids, onOpenSlideOver }: { inProgressBids: 
       </div>
 
       {/* 범례 */}
-      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--dash-border)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginTop: '10px', paddingTop: '10px', paddingLeft: '4px', paddingRight: '4px', borderTop: '1px solid var(--dash-border)' }}>
         {[
           { color: '#2563EB', label: '오늘', dot: false },
           { color: '#EF4444', label: '마감 임박', dot: true },
           { color: '#F59E0B', label: '마감일', dot: true },
         ].map((item) => (
-          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
             {item.dot ? (
-              <span style={{ width: '6px', height: '6px', borderRadius: '9999px', backgroundColor: item.color, flexShrink: 0 }} />
+              <span style={{ width: '5px', height: '5px', borderRadius: '9999px', backgroundColor: item.color, flexShrink: 0 }} />
             ) : (
-              <span style={{ width: '14px', height: '14px', borderRadius: '9999px', backgroundColor: item.color, fontSize: '7px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <span style={{ width: '12px', height: '12px', borderRadius: '9999px', backgroundColor: item.color, fontSize: '6px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 {TODAY_DAY}
               </span>
             )}
-            <span style={{ fontSize: '11px', color: 'var(--dash-text-3)' }}>{item.label}</span>
+            <span style={{ fontSize: '10px', color: 'var(--dash-text-3)' }}>{item.label}</span>
           </div>
         ))}
-        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)', marginLeft: 'auto' }}>
+        <span style={{ fontSize: '10px', color: 'var(--dash-text-5)', marginLeft: 'auto', whiteSpace: 'nowrap', flexShrink: 0 }}>
           {calYear}년 {calMonth}월 {totalDeadlines}건 마감
         </span>
       </div>

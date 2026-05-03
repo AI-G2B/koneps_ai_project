@@ -21,6 +21,19 @@ const getTimeAgo = (date: Date): string => {
   return `${Math.floor(diff / 86400)}일 전`;
 };
 
+const formatDate = (date: Date): string => {
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const dayName = days[date.getDay()];
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const ampm = hours < 12 ? '오전' : '오후';
+  const displayHours = hours % 12 === 0 ? 12 : hours % 12;
+  return `${year}년 ${month}월 ${day}일 ${dayName}요일 · ${ampm} ${displayHours}:${minutes}`;
+};
+
 const NOTIF_ICON: Record<NotificationItem['type'], { icon: React.ElementType; color: string; bg: string }> = {
   analysis_complete: { icon: Sparkles, color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
   info:              { icon: Info,          color: '#2563EB', bg: 'rgba(37,99,235,0.12)' },
@@ -31,6 +44,12 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
   const [isOpen, setIsOpen] = useState(false);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(timer);
+  }, []);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const unread = notifications.filter(n => !n.isRead).length;
@@ -63,7 +82,7 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
           <span style={{ color: 'var(--dash-text-2)' }}>대시보드</span>
         </div>
         <div style={{ fontSize: '12px', color: 'var(--dash-text-5)', marginTop: '1px' }}>
-          2026년 4월 4일 토요일 · 오전 09:24
+          {formatDate(now)}
         </div>
       </div>
 
