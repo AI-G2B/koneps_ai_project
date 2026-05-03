@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Flag } from 'lucide-react';
+import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play } from 'lucide-react';
 import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from './mockData';
 import type { AgencySettings } from '../App';
 
@@ -206,7 +206,6 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
                   onToggleBookmark={onToggleBookmark}
                   onToggleInProgress={onToggleInProgress}
                   isPursued={pursuedBids?.has(bid.id) ?? false}
-                  onTogglePursued={onTogglePursued}
                 />
               ))
             )}
@@ -226,7 +225,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
   );
 }
 
-function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, flags, aiStatus, onToggleBookmark, onToggleInProgress, isPursued, onTogglePursued }: {
+function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, flags, aiStatus, onToggleBookmark, onToggleInProgress, isPursued }: {
   bid: Bid; isSelected: boolean; urgent: boolean; daysLeft: number; onSelect: () => void;
   isPreferred: boolean; isAvoided: boolean;
   flags: BidFlags;
@@ -234,7 +233,6 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
   onToggleBookmark?: (bidId: string) => void;
   onToggleInProgress?: (bidId: string) => void;
   isPursued: boolean;
-  onTogglePursued?: (bidId: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const rowBg = isSelected ? 'rgba(37,99,235,0.1)' : hovered ? 'var(--dash-row-hover)' : 'transparent';
@@ -266,15 +264,6 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
           {flags.inProgress && (
             <span style={badge('var(--badge-green-bg)', '#5BC37E', 'sm')}>{DOT('#5BC37E')}진행중</span>
           )}
-          <button
-            onClick={(e) => { e.stopPropagation(); onTogglePursued?.(bid.id); }}
-            className="flex items-center gap-0.5 rounded"
-            style={{ fontSize: '10px', padding: '0 4px', flexShrink: 0, fontWeight: 500, cursor: 'pointer', border: `1px solid ${isPursued ? 'rgba(139,92,246,0.3)' : 'rgba(100,116,139,0.2)'}`, backgroundColor: isPursued ? 'rgba(139,92,246,0.15)' : 'rgba(100,116,139,0.1)', color: isPursued ? '#8B5CF6' : '#94A3B8' }}
-            title="추진사업 토글"
-          >
-            <Flag style={{ width: '9px', height: '9px', fill: isPursued ? 'currentColor' : 'none' }} />
-            {isPursued ? '추진' : '미정'}
-          </button>
           <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA', flexShrink: 0 }}>{bid.type}</span>
           <span style={{ fontSize: '10px', color: 'var(--dash-text-5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bid.number}</span>
         </div>
