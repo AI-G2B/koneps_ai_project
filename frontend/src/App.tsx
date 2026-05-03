@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Info } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { DashboardHeader } from './components/DashboardHeader';
 import { KpiCards } from './components/KpiCards';
@@ -158,7 +159,6 @@ export default function App() {
       .then((data) => {
         setBids(data);
         setBidFlags(Object.fromEntries(data.map(b => [b.id, { bookmarked: false, inProgress: false }])));
-        if (data.length > 0) setSelectedBid(data[0]);
       })
       .finally(() => setBidsLoading(false));
   }, []);
@@ -259,6 +259,12 @@ export default function App() {
           ) : isCeo ? (
             <>
               <KpiCards bids={inProgressBids} bidsLoading={bidsLoading} ceoMode={true} />
+              {inProgressBids.length === 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', borderRadius: '10px', backgroundColor: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
+                  <Info style={{ width: '16px', height: '16px', color: '#7C3AED', flexShrink: 0 }} />
+                  <span style={{ fontSize: '13px', color: '#7C3AED' }}>담당자 모드에서 공고에 진행하기를 설정하면 이곳에 표시됩니다</span>
+                </div>
+              )}
               <div className="flex gap-4" style={{ minHeight: '440px' }}>
                 <BidTable
                   bids={inProgressBids}

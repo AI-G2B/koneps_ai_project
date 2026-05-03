@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play } from 'lucide-react';
+import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Inbox } from 'lucide-react';
 import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from './mockData';
 import type { AgencySettings } from '../App';
 
@@ -190,7 +190,17 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
                 </span>
               </td></tr>
             ) : sortedBids.length === 0 ? (
-              <tr><td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>해당 기간에 수집된 공고가 없습니다</td></tr>
+              <tr><td colSpan={8} style={{ padding: '48px', textAlign: 'center' }}>
+                {ceoMode ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <Inbox style={{ width: '28px', height: '28px', color: 'var(--dash-text-4)' }} />
+                    <div style={{ fontSize: '13px', color: 'var(--dash-text-4)' }}>진행 중인 공고가 없습니다</div>
+                    <div style={{ fontSize: '12px', color: 'var(--dash-text-5)' }}>담당자가 공고에 진행하기를 설정하면 여기에 표시됩니다</div>
+                  </div>
+                ) : (
+                  <span style={{ color: 'var(--dash-text-4)', fontSize: '13px' }}>해당 기간에 수집된 공고가 없습니다</span>
+                )}
+              </td></tr>
             ) : (
               sortedBids.map((bid) => (
                 <BidRow
