@@ -13,6 +13,7 @@ import { BottomWidgets } from './components/BottomWidgets';
 import { type Bid, type BidFlags, type AiStatusType } from './components/mockData';
 import { useToast } from './components/ToastProvider';
 import { AnalysisDetailPage } from './components/AnalysisDetailPage';
+import { AnalysisListPage } from './components/AnalysisListPage';
 import { fetchBids, fetchBidById } from './services/api';
 
 export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '현황 요약' | '전략 리포트' | '설정' | '도움말';
@@ -174,6 +175,7 @@ export default function App() {
 
   const isCeo = user.role === 'ceo';
   const displayBids = isCeo ? bids.filter((b) => pursuedBids.has(b.id)) : bids;
+  const analysisCompleteCount = Object.values(aiStatuses).filter(s => s === 'complete').length;
 
   return (
     <div
@@ -184,7 +186,7 @@ export default function App() {
         minWidth: '1200px',
       }}
     >
-      <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} />
+      <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} analysisCompleteCount={analysisCompleteCount} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <DashboardHeader
           user={user}
@@ -215,6 +217,15 @@ export default function App() {
               onToggleBookmark={toggleBookmark}
               onToggleInProgress={toggleInProgress}
               onOpenAnalysisDetail={openAnalysisDetail}
+            />
+          ) : activePage === 'AI 분석' ? (
+            <AnalysisListPage
+              bids={bids}
+              aiStatuses={aiStatuses}
+              bidFlags={bidFlags}
+              onOpenAnalysisDetail={openAnalysisDetail}
+              onToggleBookmark={toggleBookmark}
+              onToggleInProgress={toggleInProgress}
             />
           ) : activePage === '관심 공고' ? (
             <BookmarkPage
