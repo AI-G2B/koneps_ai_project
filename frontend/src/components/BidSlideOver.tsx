@@ -3,7 +3,7 @@ import {
   X, Bookmark, BookmarkX, Play,
   Target, Clock, Wallet, Truck, Code2, Gavel,
   BarChart2, Shield, GitBranch, Percent, AlertTriangle,
-  FileText, ArrowRight, BrainCircuit, ScrollText, Phone,
+  FileText, ArrowRight, Sparkles, ScrollText, Phone,
   ExternalLink, Download, Loader2, ChevronRight,
 } from 'lucide-react';
 import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline } from './mockData';
@@ -275,7 +275,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                 style={{ padding: '40px 20px', borderBottom: '1px solid var(--dash-border)' }}
               >
                 <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
-                  <BrainCircuit style={{ width: '20px', height: '20px', color: '#2563EB' }} />
+                  <Sparkles style={{ width: '20px', height: '20px', color: '#2563EB' }} />
                 </div>
                 <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '4px' }}>
                   AI 분석 대기 중
@@ -306,7 +306,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
             {!isAnalyzing && !isNoneOrPending && (
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--dash-border)' }}>
                 <SlideOverSectionTitle
-                  icon={BrainCircuit}
+                  icon={Sparkles}
                   title="AI 추출 핵심항목"
                   badge={detail ? `${AI_HIGHLIGHT_ITEMS.length + AI_DETAIL_ITEMS.length}건` : undefined}
                   accentColor="#2563EB"

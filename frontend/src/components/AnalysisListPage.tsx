@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrainCircuit, FileText, Bookmark, BookmarkX, Play } from 'lucide-react';
+import { Sparkles, FileText, Bookmark, BookmarkX, Play } from 'lucide-react';
 import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent } from './mockData';
 import { RiskBadge, AiStatusIndicator } from './BidTable';
 
@@ -189,7 +189,7 @@ function EmptyState({ tab }: { tab: TabType }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px', gap: '12px' }}>
       <div style={{ width: '48px', height: '48px', borderRadius: '14px', backgroundColor: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <BrainCircuit style={{ width: '24px', height: '24px', color: '#2563EB' }} />
+        <Sparkles style={{ width: '24px', height: '24px', color: '#2563EB' }} />
       </div>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '4px' }}>{title}</div>

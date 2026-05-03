@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Target, Clock, Wallet, Truck, Code2, Gavel, BarChart2, Shield,
   GitBranch, Percent, AlertTriangle, FileText, ArrowRight,
-  BrainCircuit, ChevronRight, Phone, ScrollText, Loader2,
+  Sparkles, ChevronRight, Phone, ScrollText, Loader2,
   ExternalLink, Download,
 } from 'lucide-react';
 import { type Bid, type AiStatusType, formatBudget, getDaysUntilDeadline } from './mockData';
@@ -127,7 +127,7 @@ export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposa
         {!showLoadingOverlay && isNoneOrPending && (
           <div className="px-5 py-6 flex flex-col items-center justify-center" style={{ borderBottom: '1px solid var(--dash-border)' }}>
             <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
-              <BrainCircuit style={{ width: '20px', height: '20px', color: '#2563EB' }} />
+              <Sparkles style={{ width: '20px', height: '20px', color: '#2563EB' }} />
             </div>
             <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '4px' }}>AI 분석 대기 중</div>
             <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
@@ -150,7 +150,7 @@ export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposa
         {/* AI 핵심 항목 */}
         {!isAnalyzing && !isNoneOrPending && detail && (
           <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--dash-border)' }}>
-            <SectionTitle icon={BrainCircuit} title="AI 추출 핵심항목" badge="12" accentColor="#2563EB" />
+            <SectionTitle icon={Sparkles} title="AI 추출 핵심항목" badge="12" accentColor="#2563EB" />
             <div className="grid grid-cols-2 gap-2 mt-3">
               {AI_ITEMS.map((item) => (
                 <div key={item.label} className="flex items-start gap-2 rounded-lg" style={{ padding: '8px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)' }}>

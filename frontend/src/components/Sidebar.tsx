@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, FileText, BrainCircuit, BookOpen,
+  LayoutDashboard, FileText, Sparkles, BookOpen,
   Settings, Building2, ChevronRight, HelpCircle, TrendingUp,
   Bookmark, Briefcase,
 } from 'lucide-react';
@@ -24,7 +24,7 @@ const MANAGER_SECTIONS: NavSection[] = [
   {
     label: '분석',
     items: [
-      { icon: BrainCircuit, label: 'AI 분석', badge: '3' },
+      { icon: Sparkles, label: 'AI 분석', badge: '3' },
       { icon: BookOpen, label: '제안목차' },
     ],
   },
@@ -49,7 +49,7 @@ const PROPOSAL_SECTIONS: NavSection[] = [
     label: '분석',
     items: [
       { icon: BookOpen, label: '제안목차' },
-      { icon: BrainCircuit, label: 'AI 분석' },
+      { icon: Sparkles, label: 'AI 분석' },
     ],
   },
 ];

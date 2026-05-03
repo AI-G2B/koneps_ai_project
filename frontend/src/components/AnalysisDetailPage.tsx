@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  ArrowLeft, BrainCircuit, Trash2, RefreshCw, Download,
+  ArrowLeft, Sparkles, Trash2, RefreshCw, Download,
   Circle, CheckCircle2, XCircle,
 } from 'lucide-react';
 import { type Bid, formatBudget, getDaysUntilDeadline } from './mockData';
@@ -111,7 +111,7 @@ export function AnalysisDetailPage({ bid, onBack }: AnalysisDetailPageProps) {
             onClick={() => showToast('info', '준비 중입니다')}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#2563EB', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
           >
-            <BrainCircuit style={{ width: '14px', height: '14px' }} />
+            <Sparkles style={{ width: '14px', height: '14px' }} />
             AI 재분석
           </button>
           <button

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, Bell, ChevronDown, RefreshCw, Sun, Moon, LogOut, BrainCircuit, Info, AlertTriangle, Trash2, CheckCheck } from 'lucide-react';
+import { Search, Bell, ChevronDown, RefreshCw, Sun, Moon, LogOut, Sparkles, Info, AlertTriangle, Trash2, CheckCheck } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type { User } from './LoginPage';
 import type { NotificationItem } from '../App';
@@ -22,7 +22,7 @@ const getTimeAgo = (date: Date): string => {
 };
 
 const NOTIF_ICON: Record<NotificationItem['type'], { icon: React.ElementType; color: string; bg: string }> = {
-  analysis_complete: { icon: BrainCircuit, color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
+  analysis_complete: { icon: Sparkles, color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
   info:              { icon: Info,          color: '#2563EB', bg: 'rgba(37,99,235,0.12)' },
   warning:           { icon: AlertTriangle, color: '#F97316', bg: 'rgba(249,115,22,0.12)' },
 };
