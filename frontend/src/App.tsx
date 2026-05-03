@@ -14,7 +14,10 @@ import { type Bid, type BidFlags, type AiStatusType } from './components/mockDat
 import { useToast } from './components/ToastProvider';
 import { AnalysisDetailPage } from './components/AnalysisDetailPage';
 import { AnalysisListPage } from './components/AnalysisListPage';
+import { StrategyReportPage } from './components/StrategyReportPage';
 import { fetchBids, fetchBidById } from './services/api';
+
+const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정', '도움말'];
 
 export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '현황 요약' | '전략 리포트' | '설정' | '도움말';
 
@@ -145,6 +148,11 @@ export default function App() {
   });
 
   useEffect(() => {
+    if (!user || user.role !== 'ceo') return;
+    if (!CEO_ALLOWED_PAGES.includes(activePage)) setActivePage('대시보드');
+  }, [user, activePage]);
+
+  useEffect(() => {
     setBidsLoading(true);
     fetchBids()
       .then((data) => {
@@ -174,7 +182,7 @@ export default function App() {
   }
 
   const isCeo = user.role === 'ceo';
-  const displayBids = isCeo ? bids.filter((b) => pursuedBids.has(b.id)) : bids;
+  const inProgressBids = bids.filter(b => bidFlags[b.id]?.inProgress ?? false);
   const analysisCompleteCount = Object.values(aiStatuses).filter(s => s === 'complete').length;
 
   return (
@@ -236,6 +244,8 @@ export default function App() {
               onSelectBid={handleSelectBid}
               selectedBid={selectedBid}
             />
+          ) : activePage === '전략 리포트' ? (
+            <StrategyReportPage bids={bids} bidFlags={bidFlags} aiStatuses={aiStatuses} />
           ) : activePage === '진행 프로젝트' ? (
             <ProjectPage
               bids={bids}
@@ -246,12 +256,36 @@ export default function App() {
               onToggleInProgress={toggleInProgress}
               onOpenAnalysisDetail={openAnalysisDetail}
             />
-          ) : (
+          ) : isCeo ? (
             <>
-              <KpiCards bids={displayBids} bidsLoading={bidsLoading} ceoMode={isCeo} />
+              <KpiCards bids={inProgressBids} bidsLoading={bidsLoading} ceoMode={true} />
               <div className="flex gap-4" style={{ minHeight: '440px' }}>
                 <BidTable
-                  bids={displayBids}
+                  bids={inProgressBids}
+                  bidsLoading={bidsLoading}
+                  selectedBid={selectedBid}
+                  onSelectBid={handleSelectBid}
+                  agencySettings={agencySettings}
+                  bidFlags={bidFlags}
+                  aiStatuses={aiStatuses}
+                  ceoMode={true}
+                />
+                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} />
+              </div>
+              <BottomWidgets
+                bids={inProgressBids}
+                bidFlags={bidFlags}
+                onToggleBookmark={toggleBookmark}
+                onToggleInProgress={toggleInProgress}
+                onOpenAnalysisDetail={openAnalysisDetail}
+              />
+            </>
+          ) : (
+            <>
+              <KpiCards bids={bids} bidsLoading={bidsLoading} ceoMode={false} />
+              <div className="flex gap-4" style={{ minHeight: '440px' }}>
+                <BidTable
+                  bids={bids}
                   bidsLoading={bidsLoading}
                   selectedBid={selectedBid}
                   onSelectBid={handleSelectBid}
@@ -262,12 +296,11 @@ export default function App() {
                   onToggleInProgress={toggleInProgress}
                   pursuedBids={pursuedBids}
                   onTogglePursued={togglePursued}
-                  hideFilters={isCeo}
                 />
                 <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} />
               </div>
               <BottomWidgets
-                bids={displayBids}
+                bids={bids}
                 bidFlags={bidFlags}
                 onToggleBookmark={toggleBookmark}
                 onToggleInProgress={toggleInProgress}

@@ -77,9 +77,10 @@ interface BidTableProps {
   pursuedBids?: Set<string>;
   onTogglePursued?: (bidId: string) => void;
   hideFilters?: boolean;
+  ceoMode?: boolean;
 }
 
-export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, pursuedBids, onTogglePursued, hideFilters = false }: BidTableProps) {
+export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, pursuedBids, onTogglePursued, hideFilters = false, ceoMode = false }: BidTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -99,7 +100,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
     return null;
   };
 
-  const filteredBids = hideFilters ? bids : bids.filter((bid) => {
+  const filteredBids = (hideFilters || ceoMode) ? bids : bids.filter((bid) => {
     const fromDate = getDateRange(dateFilter);
     if (fromDate && new Date(bid.collectedAt) < fromDate) return false;
     if (statusFilter === 'urgent') return isDeadlineUrgent(bid.deadline);
@@ -125,14 +126,14 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
   return (
     <div className="flex-1 min-w-0 rounded-xl flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)' }}>
       <div className="flex-shrink-0" style={{ padding: '12px 16px', borderBottom: '1px solid var(--dash-border)' }}>
-        <div className="flex items-center justify-between" style={{ marginBottom: hideFilters ? 0 : '8px' }}>
+        <div className="flex items-center justify-between" style={{ marginBottom: (hideFilters || ceoMode) ? 0 : '8px' }}>
           <div className="flex items-center gap-3">
             <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)' }}>
-              {hideFilters ? '추진 공고 목록' : '공고 목록'}
+              {ceoMode ? '진행 중인 공고' : hideFilters ? '추진 공고 목록' : '공고 목록'}
             </h2>
-            <span className="rounded-full" style={{ fontSize: '11px', padding: '1px 8px', backgroundColor: hideFilters ? 'rgba(139,92,246,0.15)' : 'rgba(37,99,235,0.15)', color: hideFilters ? '#8B5CF6' : '#2563EB' }}>{sortedBids.length}건</span>
+            <span className="rounded-full" style={{ fontSize: '11px', padding: '1px 8px', backgroundColor: ceoMode ? 'rgba(124,58,237,0.15)' : hideFilters ? 'rgba(139,92,246,0.15)' : 'rgba(37,99,235,0.15)', color: ceoMode ? '#7C3AED' : hideFilters ? '#8B5CF6' : '#2563EB' }}>{sortedBids.length}건</span>
           </div>
-          {!hideFilters && (
+          {!hideFilters && !ceoMode && (
             <div className="flex items-center gap-2">
               {STATUS_FILTERS.map((f) => (
                 <button key={f.key} onClick={() => setStatusFilter(f.key)} className="rounded-lg transition-colors"
@@ -143,7 +144,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
             </div>
           )}
         </div>
-        {!hideFilters && (
+        {!hideFilters && !ceoMode && (
           <div className="flex items-center gap-2">
             <Calendar style={{ width: '13px', height: '13px', color: 'var(--dash-text-4)' }} />
             <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>수집일:</span>
@@ -206,6 +207,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
                   onToggleBookmark={onToggleBookmark}
                   onToggleInProgress={onToggleInProgress}
                   isPursued={pursuedBids?.has(bid.id) ?? false}
+                  ceoMode={ceoMode}
                 />
               ))
             )}
@@ -225,7 +227,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
   );
 }
 
-function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, flags, aiStatus, onToggleBookmark, onToggleInProgress, isPursued }: {
+function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, flags, aiStatus, onToggleBookmark, onToggleInProgress, isPursued, ceoMode = false }: {
   bid: Bid; isSelected: boolean; urgent: boolean; daysLeft: number; onSelect: () => void;
   isPreferred: boolean; isAvoided: boolean;
   flags: BidFlags;
@@ -233,6 +235,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
   onToggleBookmark?: (bidId: string) => void;
   onToggleInProgress?: (bidId: string) => void;
   isPursued: boolean;
+  ceoMode?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const rowBg = isSelected ? 'rgba(37,99,235,0.1)' : hovered ? 'var(--dash-row-hover)' : 'transparent';
@@ -294,19 +297,23 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
             title="상세 보기">
             <Eye style={{ width: '14px', height: '14px' }} />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); onToggleBookmark?.(bid.id); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: flags.bookmarked ? '#2563EB' : 'var(--dash-text-3)', backgroundColor: flags.bookmarked ? 'rgba(37,99,235,0.12)' : 'transparent' }}
-            onMouseEnter={(e) => { if (!flags.bookmarked) { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; } }}
-            onMouseLeave={(e) => { if (!flags.bookmarked) { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; } }}
-            title="찜하기">
-            <Bookmark style={{ width: '14px', height: '14px', fill: flags.bookmarked ? 'currentColor' : 'none' }} />
-          </button>
-          <button onClick={(e) => { e.stopPropagation(); onToggleInProgress?.(bid.id); }} className="rounded-md flex items-center gap-1" style={{ padding: '0 6px', height: '28px', color: flags.inProgress ? '#22C55E' : 'var(--dash-text-3)', backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.12)' : 'transparent' }}
-            onMouseEnter={(e) => { if (!flags.inProgress) { (e.currentTarget as HTMLButtonElement).style.color = '#22C55E'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,197,94,0.1)'; } }}
-            onMouseLeave={(e) => { if (!flags.inProgress) { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; } }}
-            title="진행하기">
-            <Play style={{ width: '12px', height: '12px', fill: flags.inProgress ? 'currentColor' : 'none', flexShrink: 0 }} />
-            {flags.inProgress && <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>진행중</span>}
-          </button>
+          {!ceoMode && (
+            <>
+              <button onClick={(e) => { e.stopPropagation(); onToggleBookmark?.(bid.id); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: flags.bookmarked ? '#2563EB' : 'var(--dash-text-3)', backgroundColor: flags.bookmarked ? 'rgba(37,99,235,0.12)' : 'transparent' }}
+                onMouseEnter={(e) => { if (!flags.bookmarked) { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; } }}
+                onMouseLeave={(e) => { if (!flags.bookmarked) { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; } }}
+                title="찜하기">
+                <Bookmark style={{ width: '14px', height: '14px', fill: flags.bookmarked ? 'currentColor' : 'none' }} />
+              </button>
+              <button onClick={(e) => { e.stopPropagation(); onToggleInProgress?.(bid.id); }} className="rounded-md flex items-center gap-1" style={{ padding: '0 6px', height: '28px', color: flags.inProgress ? '#22C55E' : 'var(--dash-text-3)', backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.12)' : 'transparent' }}
+                onMouseEnter={(e) => { if (!flags.inProgress) { (e.currentTarget as HTMLButtonElement).style.color = '#22C55E'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,197,94,0.1)'; } }}
+                onMouseLeave={(e) => { if (!flags.inProgress) { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; } }}
+                title="진행하기">
+                <Play style={{ width: '12px', height: '12px', fill: flags.inProgress ? 'currentColor' : 'none', flexShrink: 0 }} />
+                {flags.inProgress && <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>진행중</span>}
+              </button>
+            </>
+          )}
           <button onClick={(e) => e.stopPropagation()} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: 'var(--dash-text-3)', backgroundColor: 'transparent' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-item-bg-alt)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
