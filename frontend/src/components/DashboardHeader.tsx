@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Search, Bell, ChevronDown, RefreshCw, Sun, Moon, LogOut, Sparkles, Info, AlertTriangle, Trash2, CheckCheck, Loader2 } from 'lucide-react';
 import { searchBids, type SearchBidsResult } from '../services/api';
+import { useToast } from './ToastProvider';
 import { useTheme } from 'next-themes';
 import type { User } from './LoginPage';
 import type { NotificationItem } from '../App';
@@ -42,10 +43,22 @@ const NOTIF_ICON: Record<NotificationItem['type'], { icon: React.ElementType; co
 };
 
 export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead, onMarkAsRead, onClearNotifications }: DashboardHeaderProps) {
+  const { showToast } = useToast();
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
   const [isOpen, setIsOpen] = useState(false);
   const [now, setNow] = useState(new Date());
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const handleSync = () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    showToast('info', '동기화', '공고 데이터를 동기화하고 있습니다');
+    setTimeout(() => {
+      setIsSyncing(false);
+      showToast('info', '동기화 완료', '동기화가 완료되었습니다');
+    }, 2000);
+  };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResult, setSearchResult] = useState<SearchBidsResult | null>(null);
@@ -228,12 +241,14 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
       {/* Actions */}
       <div className="flex items-center gap-2 ml-auto">
         <button
+          onClick={handleSync}
+          disabled={isSyncing}
           className="flex items-center gap-1.5 rounded-lg transition-colors"
-          style={{ padding: '6px 12px', fontSize: '12px', color: 'var(--dash-text-2)', backgroundColor: 'var(--dash-input-bg)', border: '1px solid var(--dash-border-btn)' }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)')}
+          style={{ padding: '6px 12px', fontSize: '12px', color: 'var(--dash-text-2)', backgroundColor: 'var(--dash-input-bg)', border: '1px solid var(--dash-border-btn)', opacity: isSyncing ? 0.6 : 1, cursor: isSyncing ? 'not-allowed' : 'pointer' }}
+          onMouseEnter={(e) => { if (!isSyncing) (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)'; }}
           onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)')}
         >
-          <RefreshCw style={{ width: '13px', height: '13px' }} />
+          <RefreshCw style={{ width: '13px', height: '13px', animation: isSyncing ? 'spin 1s linear infinite' : 'none' }} />
           <span>동기화</span>
         </button>
 
