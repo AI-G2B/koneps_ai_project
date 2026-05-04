@@ -254,6 +254,7 @@ export default function App() {
             <ProjectPage
               bids={bids}
               bidFlags={bidFlags}
+              aiStatuses={aiStatuses}
               onSelectBid={handleSelectBid}
               selectedBid={selectedBid}
               onToggleBookmark={toggleBookmark}

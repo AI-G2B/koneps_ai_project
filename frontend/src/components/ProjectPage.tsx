@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Briefcase, Building2, Banknote, Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { type Bid, type BidFlags, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
+import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
 import { RiskBadge, AiStatusIndicator } from './BidTable';
 import { BidDetailPanel } from './BidDetailPanel';
 import { BidSlideOver } from './BidSlideOver';
@@ -8,6 +8,7 @@ import { BidSlideOver } from './BidSlideOver';
 interface ProjectPageProps {
   bids: Bid[];
   bidFlags: Record<string, BidFlags>;
+  aiStatuses?: Record<string, AiStatusType>;
   onSelectBid: (bid: Bid) => void;
   selectedBid: Bid | null;
   onToggleBookmark: (bidId: string) => void;
@@ -28,7 +29,7 @@ function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
-export function ProjectPage({ bids, bidFlags, onSelectBid, selectedBid, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis }: ProjectPageProps) {
+export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedBid, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis }: ProjectPageProps) {
   const inProgressBids = bids.filter((b) => bidFlags[b.id]?.inProgress ?? false);
   const [slideOverBid, setSlideOverBid] = useState<Bid | null>(null);
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
@@ -52,13 +53,14 @@ export function ProjectPage({ bids, bidFlags, onSelectBid, selectedBid, onToggle
         </div>
 
         {/* 오른쪽: 상세 패널 */}
-        <BidDetailPanel bid={selectedBid} />
+        <BidDetailPanel bid={selectedBid} aiStatuses={aiStatuses} onOpenAnalysisDetail={onOpenAnalysisDetail} onRequestAnalysis={onRequestAnalysis} />
       </div>
       <BidSlideOver
         bid={slideOverBid}
         isOpen={isSlideOverOpen}
         onClose={() => setIsSlideOverOpen(false)}
         bidFlags={bidFlags}
+        aiStatuses={aiStatuses}
         onToggleBookmark={onToggleBookmark}
         onToggleInProgress={onToggleInProgress}
         onOpenAnalysisDetail={onOpenAnalysisDetail}
