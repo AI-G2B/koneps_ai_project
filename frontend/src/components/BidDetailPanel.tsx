@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Target, Clock, Wallet, Truck, Code2, Gavel, BarChart2, Shield,
-  GitBranch, Percent, AlertTriangle, FileText, ArrowRight,
+  GitBranch, Percent, AlertTriangle, FileText,
   Sparkles, ChevronRight, Phone, ScrollText, Loader2,
   ExternalLink, Download,
 } from 'lucide-react';
@@ -18,7 +18,7 @@ interface BidDetailPanelProps {
   onRequestAnalysis?: (bidId: string) => void;
 }
 
-export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposal, aiStatuses, onOpenAnalysisDetail, onRequestAnalysis }: BidDetailPanelProps) {
+export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenAnalysisDetail, onRequestAnalysis }: BidDetailPanelProps) {
   const { showToast } = useToast();
 
   if (!bid) {
@@ -41,7 +41,6 @@ export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposa
   const aiStatus: AiStatusType = aiStatuses?.[bid.id] ?? 'none';
   const isNoneOrPending = aiStatus === 'none' || aiStatus === 'pending';
   const isAnalyzing = aiStatus === 'analyzing';
-  const isProposalSupported = bid.type === 'ISP' || bid.type === 'ISMP';
   const showLoadingOverlay = detailLoading;
 
   const AI_ITEMS = detail ? [
@@ -207,21 +206,12 @@ export function BidDetailPanel({ bid, detailLoading = false, onNavigateToProposa
       {/* CTA */}
       <div className="flex-shrink-0 px-5 py-4" style={{ borderTop: '1px solid var(--dash-border)' }}>
         <button
-          disabled={isProposalSupported && aiStatus !== 'complete'}
-          onClick={() => {
-            if (!isProposalSupported) { showToast('warning', '해당 사업 유형(SI/기타)은 아직 학습된 제안목차 템플릿이 없습니다.'); return; }
-            if (aiStatus === 'complete') onNavigateToProposal?.();
-          }}
-          className="w-full flex items-center justify-center gap-2 rounded-xl transition-all"
-          style={{ padding: '11px 16px', fontSize: '14px', fontWeight: 600, color: 'white', background: isProposalSupported ? (aiStatus === 'complete' ? 'linear-gradient(135deg, #2563EB, #1D4ED8)' : '#94A3B8') : '#94A3B8', boxShadow: isProposalSupported && aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none', cursor: (!isProposalSupported || aiStatus === 'complete') ? 'pointer' : 'not-allowed' }}
-          onMouseEnter={(e) => { if (isProposalSupported && aiStatus === 'complete') { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(37,99,235,0.4)'; }}}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = isProposalSupported && aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none'; }}
+          onClick={() => showToast('info', '제안목차 자동 생성 기능은 현재 개발 중입니다.')}
+          className="w-full flex items-center justify-center gap-2 rounded-xl"
+          style={{ padding: '11px 16px', fontSize: '14px', fontWeight: 600, color: 'var(--dash-text-3)', backgroundColor: 'var(--dash-card-deep)', border: '1px solid var(--dash-border-med)', cursor: 'default' }}
         >
-          <FileText style={{ width: '16px', height: '16px' }} />
-          {isProposalSupported
-            ? (aiStatus === 'complete' ? '제안목차 생성' : '분석 완료 후 생성 가능')
-            : '제안목차 생성 (미지원)'}
-          {isProposalSupported && aiStatus === 'complete' && <ArrowRight style={{ width: '14px', height: '14px' }} />}
+          <Clock style={{ width: '16px', height: '16px' }} />
+          제안목차 생성 (개발 중)
         </button>
         <button
           className="w-full flex items-center justify-center gap-1.5 rounded-xl transition-colors mt-2"
