@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Inbox } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Inbox } from 'lucide-react';
 import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from './mockData';
 import type { AgencySettings } from '../App';
 
@@ -48,6 +48,8 @@ type SortDir = 'asc' | 'desc';
 type DateFilter = 'today' | 'yesterday' | '3days' | '1week' | 'all';
 type StatusFilter = 'all' | 'urgent' | 'danger';
 
+const PAGE_SIZE = 10;
+
 const riskOrder: Record<RiskLevel, number> = { danger: 0, caution: 1, good: 2 };
 
 const DATE_FILTERS: { key: DateFilter; label: string }[] = [
@@ -85,6 +87,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
+  const [currentPage, setCurrentPage] = useState(1);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -116,6 +119,23 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
     else if (sortKey === 'risk') cmp = riskOrder[a.risk] - riskOrder[b.risk];
     return sortDir === 'asc' ? cmp : -cmp;
   });
+
+  const totalPages = Math.ceil(sortedBids.length / PAGE_SIZE);
+  const pagedBids = sortedBids.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  useEffect(() => { setCurrentPage(1); }, [statusFilter, dateFilter, sortKey]);
+
+  const getPageNumbers = (): (number | '...')[] => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages = new Set([1, totalPages, currentPage, Math.max(1, currentPage - 1), Math.min(totalPages, currentPage + 1)]);
+    const sorted = [...pages].sort((a, b) => a - b);
+    const result: (number | '...')[] = [];
+    for (let i = 0; i < sorted.length; i++) {
+      if (i > 0 && sorted[i] - sorted[i - 1] > 1) result.push('...');
+      result.push(sorted[i]);
+    }
+    return result;
+  };
 
   const SortIcon = ({ col }: { col: SortKey }) => {
     if (sortKey !== col) return <ChevronsUpDown style={{ width: '12px', height: '12px', color: 'var(--dash-text-5)' }} />;
@@ -202,7 +222,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
                 )}
               </td></tr>
             ) : (
-              sortedBids.map((bid) => (
+              pagedBids.map((bid) => (
                 <BidRow
                   key={bid.id}
                   bid={bid}
@@ -226,12 +246,39 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
       </div>
 
       <div className="flex items-center justify-between flex-shrink-0" style={{ padding: '8px 16px', borderTop: '1px solid var(--dash-border)' }}>
-        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>{sortedBids.length}건 표시 중 (전체 {bids.length}건)</span>
-        <div className="flex items-center gap-1">
-          {[1, 2, 3, '...', 6].map((page, i) => (
-            <button key={i} className="rounded-md flex items-center justify-center" style={{ width: '26px', height: '26px', fontSize: '12px', backgroundColor: page === 1 ? '#2563EB' : 'transparent', color: page === 1 ? 'white' : 'var(--dash-text-3)', border: page === 1 ? 'none' : '1px solid var(--dash-border-btn)' }}>{page}</button>
-          ))}
-        </div>
+        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>{pagedBids.length}건 표시 중 (전체 {sortedBids.length}건)</span>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="rounded-md flex items-center justify-center"
+              style={{ width: '26px', height: '26px', color: currentPage === 1 ? 'var(--dash-text-6)' : 'var(--dash-text-3)', backgroundColor: 'transparent', border: '1px solid var(--dash-border-btn)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+            >
+              <ChevronLeft style={{ width: '13px', height: '13px' }} />
+            </button>
+            {getPageNumbers().map((page, i) => (
+              page === '...'
+                ? <span key={`ellipsis-${i}`} style={{ width: '26px', textAlign: 'center', fontSize: '12px', color: 'var(--dash-text-4)' }}>…</span>
+                : <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className="rounded-md flex items-center justify-center"
+                    style={{ width: '26px', height: '26px', fontSize: '12px', backgroundColor: page === currentPage ? '#2563EB' : 'transparent', color: page === currentPage ? 'white' : 'var(--dash-text-3)', border: page === currentPage ? 'none' : '1px solid var(--dash-border-btn)', fontWeight: page === currentPage ? 600 : 400 }}
+                  >
+                    {page}
+                  </button>
+            ))}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="rounded-md flex items-center justify-center"
+              style={{ width: '26px', height: '26px', color: currentPage === totalPages ? 'var(--dash-text-6)' : 'var(--dash-text-3)', backgroundColor: 'transparent', border: '1px solid var(--dash-border-btn)', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+            >
+              <ChevronRight style={{ width: '13px', height: '13px' }} />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

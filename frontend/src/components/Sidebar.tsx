@@ -64,9 +64,10 @@ interface SidebarProps {
   activePage: PageType;
   onNavigate: (page: PageType) => void;
   analysisCompleteCount?: number;
+  totalBidCount?: number;
 }
 
-export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 0 }: SidebarProps) {
+export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 0, totalBidCount = 0 }: SidebarProps) {
   const sections = role === 'ceo' ? CEO_SECTIONS : role === 'proposal' ? PROPOSAL_SECTIONS : MANAGER_SECTIONS;
   const accentColor = role === 'ceo' ? '#7C3AED' : role === 'proposal' ? '#0891B2' : '#2563EB';
   const accentBg = role === 'ceo' ? 'rgba(124,58,237,0.15)' : role === 'proposal' ? 'rgba(8,145,178,0.15)' : 'rgba(37,99,235,0.15)';
@@ -92,9 +93,9 @@ export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 
       >
         <item.icon style={{ width: '16px', height: '16px', flexShrink: 0, color: isActive ? accentColor : 'var(--dash-icon-off)' }} />
         <span style={{ flex: 1, fontSize: '13px' }}>{item.label}</span>
-        {(item.badge || item.label === 'AI 분석') && (
+        {(item.badge || item.label === 'AI 분석' || item.label === '공고 목록') && (
           <span className="flex-shrink-0 flex items-center justify-center rounded-full" style={{ fontSize: '10px', padding: '1px 6px', backgroundColor: isActive ? accentColor : badgeBg, color: isActive ? 'white' : accentColor, minWidth: '20px' }}>
-            {item.label === 'AI 분석' ? analysisCompleteCount : item.badge}
+            {item.label === 'AI 분석' ? analysisCompleteCount : item.label === '공고 목록' ? totalBidCount : item.badge}
           </span>
         )}
         {isActive && <ChevronRight style={{ width: '12px', height: '12px', color: accentColor, flexShrink: 0 }} />}
