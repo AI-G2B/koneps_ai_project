@@ -90,6 +90,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
   const [currentPage, setCurrentPage] = useState(1);
 
   const handleSort = (key: SortKey) => {
+    if (ceoMode) return;
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortKey(key); setSortDir('asc'); }
   };
@@ -111,14 +112,16 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
     return true;
   });
 
-  const sortedBids = [...filteredBids].sort((a, b) => {
-    if (!sortKey) return 0;
-    let cmp = 0;
-    if (sortKey === 'budget') cmp = a.budget - b.budget;
-    else if (sortKey === 'deadline') cmp = a.deadline.localeCompare(b.deadline);
-    else if (sortKey === 'risk') cmp = riskOrder[a.risk] - riskOrder[b.risk];
-    return sortDir === 'asc' ? cmp : -cmp;
-  });
+  const sortedBids = ceoMode
+    ? [...filteredBids].sort((a, b) => riskOrder[a.risk] - riskOrder[b.risk])
+    : [...filteredBids].sort((a, b) => {
+        if (!sortKey) return 0;
+        let cmp = 0;
+        if (sortKey === 'budget') cmp = a.budget - b.budget;
+        else if (sortKey === 'deadline') cmp = a.deadline.localeCompare(b.deadline);
+        else if (sortKey === 'risk') cmp = riskOrder[a.risk] - riskOrder[b.risk];
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
 
   const totalPages = Math.ceil(sortedBids.length / PAGE_SIZE);
   const pagedBids = sortedBids.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
@@ -196,7 +199,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
               ].map((col) => (
                 <th key={col.label} onClick={() => col.key && handleSort(col.key)}
                   style={{ padding: '8px 12px', textAlign: 'left', fontSize: '11px', color: 'var(--dash-text-4)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500, whiteSpace: 'nowrap', width: col.width, cursor: col.key ? 'pointer' : 'default', borderBottom: '1px solid var(--dash-border)', userSelect: 'none' }}>
-                  <div className="flex items-center gap-1">{col.label}{col.key && <SortIcon col={col.key} />}</div>
+                  <div className="flex items-center gap-1">{col.label}{col.key && !ceoMode && <SortIcon col={col.key} />}</div>
                 </th>
               ))}
             </tr>

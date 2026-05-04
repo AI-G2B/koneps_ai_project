@@ -19,9 +19,10 @@ interface BidSlideOverProps {
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
   onOpenAnalysisDetail?: (bid: Bid) => void;
+  ceoMode?: boolean;
 }
 
-export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail }: BidSlideOverProps) {
+export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, ceoMode = false }: BidSlideOverProps) {
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -57,6 +58,13 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
     { icon: ScrollText, label: '필수서류',   value: detail.requiredDocs },
     { icon: Phone,      label: '담당자',     value: detail.contactPerson },
     { icon: Target,     label: '사업목적',   value: detail.purpose },
+  ] : [];
+
+  const CEO_ITEMS = (ceoMode && bid && detail) ? [
+    { icon: Wallet,    label: '예산 규모',               value: detail.budget },
+    { icon: Clock,     label: '마감일',                  value: `${bid.deadline.substring(5)} (${daysLeft}일 후)` },
+    { icon: BarChart2, label: '평가방식 (기술/가격 배점)', value: detail.evalMethod },
+    { icon: Phone,     label: '담당자 연락처',             value: detail.contactPerson },
   ] : [];
 
   return (
@@ -144,16 +152,18 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                 >
                   <ExternalLink style={{ width: '12px', height: '12px' }} />
                 </button>
-                <button
-                  title="RFP 다운로드"
-                  onClick={() => showToast('info', '준비 중입니다')}
-                  className="flex items-center justify-center rounded-md transition-colors"
-                  style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
-                >
-                  <Download style={{ width: '12px', height: '12px' }} />
-                </button>
+                {!ceoMode && (
+                  <button
+                    title="RFP 다운로드"
+                    onClick={() => showToast('info', '준비 중입니다')}
+                    className="flex items-center justify-center rounded-md transition-colors"
+                    style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
+                  >
+                    <Download style={{ width: '12px', height: '12px' }} />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -181,87 +191,93 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
               <InfoCell
                 label="예산"
                 value={formatBudget(bid.budget)}
-                valueStyle={{ fontSize: '13px', fontWeight: 700, color: '#F59E0B' }}
+                valueStyle={ceoMode
+                  ? { fontSize: '16px', fontWeight: 700, color: '#F59E0B' }
+                  : { fontSize: '13px', fontWeight: 700, color: '#F59E0B' }}
               />
               <InfoCell
                 label="마감일"
                 value={`${bid.deadline.substring(5)} (${daysLeft}일 후)`}
-                valueStyle={{ color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }}
+                valueStyle={ceoMode
+                  ? { fontSize: '16px', fontWeight: 700, color: isUrgent ? '#EF4444' : 'var(--dash-text-2)' }
+                  : { color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }}
               />
             </div>
           </div>
 
           {/* ── 상태 버튼 영역 ── */}
-          <div
-            className="flex-shrink-0 flex items-center gap-2"
-            style={{ padding: '10px 20px', borderBottom: '1px solid var(--dash-border)' }}
-          >
-            {/* 찜하기 */}
-            <button
-              onClick={() => onToggleBookmark(bid.id)}
-              className="flex items-center gap-1.5 rounded-lg transition-colors"
-              style={{
-                padding: '6px 14px',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: flags.bookmarked ? '#2563EB' : 'var(--dash-text-3)',
-                backgroundColor: flags.bookmarked ? 'rgba(37,99,235,0.1)' : 'transparent',
-                border: `1px solid ${flags.bookmarked ? 'rgba(37,99,235,0.3)' : 'var(--dash-border-btn)'}`,
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => {
-                if (!flags.bookmarked) {
-                  (e.currentTarget as HTMLButtonElement).style.color = '#2563EB';
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.3)';
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.06)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!flags.bookmarked) {
-                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)';
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-btn)';
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-                }
-              }}
+          {!ceoMode && (
+            <div
+              className="flex-shrink-0 flex items-center gap-2"
+              style={{ padding: '10px 20px', borderBottom: '1px solid var(--dash-border)' }}
             >
-              {flags.bookmarked
-                ? <><BookmarkX style={{ width: '14px', height: '14px' }} />찜 해제</>
-                : <><Bookmark style={{ width: '14px', height: '14px' }} />찜하기</>
-              }
-            </button>
+              {/* 찜하기 */}
+              <button
+                onClick={() => onToggleBookmark(bid.id)}
+                className="flex items-center gap-1.5 rounded-lg transition-colors"
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: flags.bookmarked ? '#2563EB' : 'var(--dash-text-3)',
+                  backgroundColor: flags.bookmarked ? 'rgba(37,99,235,0.1)' : 'transparent',
+                  border: `1px solid ${flags.bookmarked ? 'rgba(37,99,235,0.3)' : 'var(--dash-border-btn)'}`,
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  if (!flags.bookmarked) {
+                    (e.currentTarget as HTMLButtonElement).style.color = '#2563EB';
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.3)';
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.06)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!flags.bookmarked) {
+                    (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)';
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-btn)';
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
+                {flags.bookmarked
+                  ? <><BookmarkX style={{ width: '14px', height: '14px' }} />찜 해제</>
+                  : <><Bookmark style={{ width: '14px', height: '14px' }} />찜하기</>
+                }
+              </button>
 
-            {/* 진행하기 */}
-            <button
-              onClick={() => onToggleInProgress(bid.id)}
-              className="flex items-center gap-1.5 rounded-lg transition-colors"
-              style={{
-                padding: '6px 14px',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: flags.inProgress ? '#22C55E' : 'var(--dash-text-3)',
-                backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.1)' : 'transparent',
-                border: `1px solid ${flags.inProgress ? 'rgba(34,197,94,0.3)' : 'var(--dash-border-btn)'}`,
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => {
-                if (!flags.inProgress) {
-                  (e.currentTarget as HTMLButtonElement).style.color = '#22C55E';
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(34,197,94,0.3)';
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,197,94,0.06)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!flags.inProgress) {
-                  (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)';
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-btn)';
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-                }
-              }}
-            >
-              <Play style={{ width: '13px', height: '13px', fill: flags.inProgress ? 'currentColor' : 'none' }} />
-              {flags.inProgress ? '진행중' : '진행하기'}
-            </button>
-          </div>
+              {/* 진행하기 */}
+              <button
+                onClick={() => onToggleInProgress(bid.id)}
+                className="flex items-center gap-1.5 rounded-lg transition-colors"
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  color: flags.inProgress ? '#22C55E' : 'var(--dash-text-3)',
+                  backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.1)' : 'transparent',
+                  border: `1px solid ${flags.inProgress ? 'rgba(34,197,94,0.3)' : 'var(--dash-border-btn)'}`,
+                  cursor: 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  if (!flags.inProgress) {
+                    (e.currentTarget as HTMLButtonElement).style.color = '#22C55E';
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(34,197,94,0.3)';
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,197,94,0.06)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!flags.inProgress) {
+                    (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)';
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-btn)';
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
+                  }
+                }}
+              >
+                <Play style={{ width: '13px', height: '13px', fill: flags.inProgress ? 'currentColor' : 'none' }} />
+                {flags.inProgress ? '진행중' : '진행하기'}
+              </button>
+            </div>
+          )}
 
           {/* ── 스크롤 영역 ── */}
           <div
@@ -302,18 +318,38 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
               </div>
             )}
 
-            {/* AI 추출 핵심항목 */}
+            {/* AI 추출 핵심항목 / 핵심 요약 */}
             {!isAnalyzing && !isNoneOrPending && (
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--dash-border)' }}>
                 <SlideOverSectionTitle
                   icon={Sparkles}
-                  title="AI 추출 핵심항목"
-                  badge={detail ? `${AI_HIGHLIGHT_ITEMS.length + AI_DETAIL_ITEMS.length}건` : undefined}
+                  title={ceoMode ? '핵심 요약' : 'AI 추출 핵심항목'}
+                  badge={ceoMode
+                    ? (detail ? '4건' : undefined)
+                    : (detail ? `${AI_HIGHLIGHT_ITEMS.length + AI_DETAIL_ITEMS.length}건` : undefined)}
                   accentColor="#2563EB"
                 />
                 {!detail ? (
                   <div style={{ marginTop: '12px', textAlign: 'center', padding: '20px', color: 'var(--dash-text-4)', fontSize: '12px' }}>
                     공고를 선택하면 AI 분석 결과가 표시됩니다
+                  </div>
+                ) : ceoMode ? (
+                  <div className="grid grid-cols-2 gap-2" style={{ marginTop: '12px' }}>
+                    {CEO_ITEMS.map((item) => (
+                      <div
+                        key={item.label}
+                        className="flex flex-col rounded-lg"
+                        style={{ padding: '16px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)' }}
+                      >
+                        <div className="flex items-center gap-1" style={{ marginBottom: '8px' }}>
+                          <item.icon style={{ width: '12px', height: '12px', color: '#2563EB', flexShrink: 0 }} />
+                          <div style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>{item.label}</div>
+                        </div>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', lineHeight: 1.3 }} title={item.value}>
+                          {item.value}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <>
@@ -383,7 +419,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
                     {riskFactors.map((w) => (
-                      <RiskCard key={w.title} title={w.title} desc={w.desc} severity={w.severity} />
+                      <RiskCard key={w.title} title={w.title} desc={w.desc} severity={w.severity} ceoMode={ceoMode} />
                     ))}
                   </div>
                 )}
@@ -396,39 +432,41 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
             className="flex-shrink-0"
             style={{ padding: '12px 20px', borderTop: '1px solid var(--dash-border)' }}
           >
-            <button
-              disabled={isProposalSupported && aiStatus !== 'complete'}
-              onClick={() => { if (!isProposalSupported) showToast('warning', '해당 사업 유형(SI/기타)은 아직 학습된 제안목차 템플릿이 없습니다.'); }}
-              className="w-full flex items-center justify-center gap-2 rounded-xl transition-all"
-              style={{
-                padding: '11px 16px',
-                fontSize: '14px',
-                fontWeight: 600,
-                color: 'white',
-                background: isProposalSupported
-                  ? (aiStatus === 'complete' ? 'linear-gradient(135deg, #2563EB, #1D4ED8)' : '#94A3B8')
-                  : '#94A3B8',
-                boxShadow: isProposalSupported && aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none',
-                cursor: (!isProposalSupported || aiStatus === 'complete') ? 'pointer' : 'not-allowed',
-                border: 'none',
-              }}
-              onMouseEnter={(e) => { if (isProposalSupported && aiStatus === 'complete') { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(37,99,235,0.4)'; } }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = isProposalSupported && aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none'; }}
-            >
-              <FileText style={{ width: '15px', height: '15px' }} />
-              {isProposalSupported
-                ? (aiStatus === 'complete' ? '제안목차 생성' : '분석 완료 후 생성 가능')
-                : '제안목차 생성 (미지원)'}
-              {!isAnalyzing && <ArrowRight style={{ width: '14px', height: '14px' }} />}
-            </button>
+            {!ceoMode && (
+              <button
+                disabled={isProposalSupported && aiStatus !== 'complete'}
+                onClick={() => { if (!isProposalSupported) showToast('warning', '해당 사업 유형(SI/기타)은 아직 학습된 제안목차 템플릿이 없습니다.'); }}
+                className="w-full flex items-center justify-center gap-2 rounded-xl transition-all"
+                style={{
+                  padding: '11px 16px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  color: 'white',
+                  background: isProposalSupported
+                    ? (aiStatus === 'complete' ? 'linear-gradient(135deg, #2563EB, #1D4ED8)' : '#94A3B8')
+                    : '#94A3B8',
+                  boxShadow: isProposalSupported && aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none',
+                  cursor: (!isProposalSupported || aiStatus === 'complete') ? 'pointer' : 'not-allowed',
+                  border: 'none',
+                }}
+                onMouseEnter={(e) => { if (isProposalSupported && aiStatus === 'complete') { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(37,99,235,0.4)'; } }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = isProposalSupported && aiStatus === 'complete' ? '0 4px 16px rgba(37,99,235,0.3)' : 'none'; }}
+              >
+                <FileText style={{ width: '15px', height: '15px' }} />
+                {isProposalSupported
+                  ? (aiStatus === 'complete' ? '제안목차 생성' : '분석 완료 후 생성 가능')
+                  : '제안목차 생성 (미지원)'}
+                {!isAnalyzing && <ArrowRight style={{ width: '14px', height: '14px' }} />}
+              </button>
+            )}
             <button
               className="w-full flex items-center justify-center gap-1.5 rounded-xl transition-colors"
               onClick={() => { if (bid) onOpenAnalysisDetail?.(bid); }}
-              style={{ marginTop: '8px', padding: '9px 16px', fontSize: '13px', color: 'var(--dash-text-2)', backgroundColor: 'transparent', border: '1px solid var(--dash-border-med)', cursor: 'pointer' }}
+              style={{ marginTop: ceoMode ? 0 : '8px', padding: '9px 16px', fontSize: '13px', color: 'var(--dash-text-2)', backgroundColor: 'transparent', border: '1px solid var(--dash-border-med)', cursor: 'pointer' }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-item-bg-alt)'; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
             >
-              상세 분석 리포트 보기
+              {ceoMode ? '담당자 상세 보고서 보기' : '상세 분석 리포트 보기'}
               <ChevronRight style={{ width: '13px', height: '13px' }} />
             </button>
           </div>
@@ -477,7 +515,7 @@ function SlideOverSectionTitle({ icon: Icon, title, badge, accentColor, badgeBg,
   );
 }
 
-function RiskCard({ title, desc, severity }: { title: string; desc: string; severity: 'high' | 'medium' }) {
+function RiskCard({ title, desc, severity, ceoMode = false }: { title: string; desc: string; severity: 'high' | 'medium'; ceoMode?: boolean }) {
   const isHigh = severity === 'high';
   const color = isHigh ? '#EF4444' : '#F97316';
   const bg = isHigh ? 'rgba(239,68,68,0.07)' : 'rgba(249,115,22,0.07)';
@@ -493,14 +531,21 @@ function RiskCard({ title, desc, severity }: { title: string; desc: string; seve
         borderLeft: `3px solid ${color}`,
       }}
     >
-      <div className="flex items-center gap-1.5" style={{ marginBottom: '6px' }}>
+      <div className="flex items-center gap-1.5" style={{ marginBottom: ceoMode ? 0 : '6px' }}>
         <AlertTriangle style={{ width: '12px', height: '12px', color, flexShrink: 0 }} />
         <span style={{ fontSize: '11px', fontWeight: 600, color }}>
           {isHigh ? '고위험' : '중위험'}
         </span>
         <span style={{ fontSize: '11px', color: 'var(--dash-text)', fontWeight: 500 }}>— {title}</span>
       </div>
-      <p style={{ fontSize: '11px', color: 'var(--dash-text-2)', lineHeight: 1.6, marginBottom: '0' }}>{desc}</p>
+      {!ceoMode && (
+        <p style={{ fontSize: '11px', color: 'var(--dash-text-2)', lineHeight: 1.6, marginBottom: '0' }}>{desc}</p>
+      )}
+      {ceoMode && (
+        <div style={{ fontSize: '11px', color: 'var(--dash-text-4)', marginTop: '6px' }}>
+          담당자에게 상세 내용 문의
+        </div>
+      )}
     </div>
   );
 }

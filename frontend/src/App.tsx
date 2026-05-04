@@ -261,7 +261,7 @@ export default function App() {
             />
           ) : isCeo ? (
             <>
-              <KpiCards bids={inProgressBids} bidsLoading={bidsLoading} ceoMode={true} />
+              <KpiCards bids={inProgressBids} bidsLoading={bidsLoading} ceoMode={true} aiStatuses={aiStatuses} />
               {inProgressBids.length === 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', borderRadius: '10px', backgroundColor: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
                   <Info style={{ width: '16px', height: '16px', color: '#7C3AED', flexShrink: 0 }} />
@@ -287,6 +287,7 @@ export default function App() {
                 onToggleBookmark={toggleBookmark}
                 onToggleInProgress={toggleInProgress}
                 onOpenAnalysisDetail={openAnalysisDetail}
+                ceoMode={true}
               />
             </>
           ) : (

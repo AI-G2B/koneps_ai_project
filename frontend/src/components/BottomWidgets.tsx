@@ -12,6 +12,13 @@ const BID_TYPE_DATA = [
   { name: '기타', value: 20, color: '#8B5CF6', count: 7 },
 ];
 
+const TYPE_COLORS: Record<string, string> = {
+  ISP: '#2563EB',
+  ISMP: '#F59E0B',
+  SI: '#22C55E',
+  기타: '#8B5CF6',
+};
+
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
@@ -34,8 +41,20 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: any[] 
   return null;
 }
 
-function BidTypeChart() {
+function BidTypeChart({ bids, ceoMode }: { bids: Bid[]; ceoMode: boolean }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
+  const total = bids.length;
+  const typeCount: Record<string, number> = {};
+  bids.forEach((b) => { typeCount[b.type] = (typeCount[b.type] || 0) + 1; });
+  const chartData = total > 0
+    ? Object.entries(typeCount).map(([name, count]) => ({
+        name,
+        value: Math.round((count / total) * 100),
+        count,
+        color: TYPE_COLORS[name] ?? '#8B5CF6',
+      }))
+    : BID_TYPE_DATA;
 
   return (
     <div
@@ -56,8 +75,12 @@ function BidTypeChart() {
             style={{ width: '10px', height: '10px', backgroundColor: '#2563EB' }}
           />
         </div>
-        <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)' }}>공고 유형 분석</h3>
-        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)', marginLeft: 'auto' }}>총 47건 기준</span>
+        <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)' }}>
+          {ceoMode ? '진행중 사업 유형 분포' : '공고 유형 분석'}
+        </h3>
+        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)', marginLeft: 'auto' }}>
+          {ceoMode ? `진행중 ${total}건 기준` : `총 ${total > 0 ? total : 47}건 기준`}
+        </span>
       </div>
 
       <div className="flex items-center gap-6">
@@ -65,7 +88,7 @@ function BidTypeChart() {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={BID_TYPE_DATA}
+                data={chartData}
                 cx="50%"
                 cy="50%"
                 innerRadius={46}
@@ -75,7 +98,7 @@ function BidTypeChart() {
                 onMouseEnter={(_, index) => setActiveIndex(index)}
                 onMouseLeave={() => setActiveIndex(null)}
               >
-                {BID_TYPE_DATA.map((entry, index) => (
+                {chartData.map((entry, index) => (
                   <Cell
                     key={entry.name}
                     fill={entry.color}
@@ -91,7 +114,7 @@ function BidTypeChart() {
         </div>
 
         <div className="flex-1 space-y-3">
-          {BID_TYPE_DATA.map((item, i) => (
+          {chartData.map((item, i) => (
             <div
               key={item.name}
               onMouseEnter={() => setActiveIndex(i)}
@@ -131,7 +154,7 @@ function BidTypeChart() {
         className="grid grid-cols-4 gap-3 mt-4 pt-4"
         style={{ borderTop: '1px solid var(--dash-border)' }}
       >
-        {BID_TYPE_DATA.map((item) => (
+        {chartData.map((item) => (
           <div
             key={item.name}
             className="rounded-lg text-center"
@@ -415,12 +438,13 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
   );
 }
 
-export function BottomWidgets({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail }: {
+export function BottomWidgets({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, ceoMode = false }: {
   bids: Bid[];
   bidFlags: Record<string, BidFlags>;
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
   onOpenAnalysisDetail?: (bid: Bid) => void;
+  ceoMode?: boolean;
 }) {
   const [slideOverBid, setSlideOverBid] = useState<Bid | null>(null);
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
@@ -434,7 +458,7 @@ export function BottomWidgets({ bids, bidFlags, onToggleBookmark, onToggleInProg
     <>
       <div className="flex gap-4">
         <DeadlineCalendar bids={bids} onOpenSlideOver={openSlideOver} />
-        <BidTypeChart />
+        <BidTypeChart bids={bids} ceoMode={ceoMode} />
       </div>
       <BidSlideOver
         bid={slideOverBid}
@@ -444,6 +468,7 @@ export function BottomWidgets({ bids, bidFlags, onToggleBookmark, onToggleInProg
         onToggleBookmark={onToggleBookmark}
         onToggleInProgress={onToggleInProgress}
         onOpenAnalysisDetail={onOpenAnalysisDetail}
+        ceoMode={ceoMode}
       />
     </>
   );
