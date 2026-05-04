@@ -106,7 +106,7 @@ function BidCard({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
               style={{
                 fontSize: '13px',
                 fontWeight: 600,
-                color: isSelected ? '#93C5FD' : 'var(--dash-text)',
+                color: isSelected ? '#1E40AF' : 'var(--dash-text)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
