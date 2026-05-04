@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, Bell, ChevronDown, RefreshCw, Sun, Moon, LogOut, Sparkles, Info, AlertTriangle, Trash2, CheckCheck } from 'lucide-react';
+import { Search, Bell, ChevronDown, RefreshCw, Sun, Moon, LogOut, Sparkles, Info, AlertTriangle, Trash2, CheckCheck, Loader2 } from 'lucide-react';
+import { searchBids, type SearchBidsResult } from '../services/api';
 import { useTheme } from 'next-themes';
 import type { User } from './LoginPage';
 import type { NotificationItem } from '../App';
@@ -46,9 +47,46 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
   const [isOpen, setIsOpen] = useState(false);
   const [now, setNow] = useState(new Date());
 
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResult, setSearchResult] = useState<SearchBidsResult | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchDrop, setShowSearchDrop] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(timer);
+  }, []);
+
+  // 검색어 디바운스 처리
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    const q = searchQuery.trim();
+    if (!q) {
+      setSearchResult(null);
+      setShowSearchDrop(false);
+      return;
+    }
+    debounceRef.current = setTimeout(async () => {
+      setIsSearching(true);
+      setShowSearchDrop(true);
+      const result = await searchBids(q);
+      setSearchResult(result);
+      setIsSearching(false);
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [searchQuery]);
+
+  // 검색 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowSearchDrop(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -87,10 +125,16 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
       </div>
 
       {/* Search */}
-      <div className="flex-1 max-w-md relative mx-4">
-        <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '14px', height: '14px', color: 'var(--dash-text-4)' }} />
+      <div ref={searchContainerRef} className="flex-1 max-w-md relative mx-4">
+        {isSearching
+          ? <Loader2 className="animate-spin" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '14px', height: '14px', color: '#2563EB' }} />
+          : <Search style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', width: '14px', height: '14px', color: 'var(--dash-text-4)' }} />
+        }
         <input
           type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onFocus={() => { if (searchQuery.trim()) setShowSearchDrop(true); }}
           placeholder="공고명, 기관명, 공고번호로 검색..."
           style={{
             width: '100%',
@@ -101,13 +145,84 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
             fontSize: '13px',
             color: 'var(--dash-text-2)',
             backgroundColor: 'var(--dash-input-bg)',
-            border: '1px solid var(--dash-border-btn)',
-            borderRadius: '8px',
+            border: `1px solid ${showSearchDrop ? 'rgba(37,99,235,0.5)' : 'var(--dash-border-btn)'}`,
+            borderRadius: showSearchDrop ? '8px 8px 0 0' : '8px',
             outline: 'none',
           }}
-          onFocus={(e) => (e.target.style.borderColor = 'rgba(37,99,235,0.5)')}
-          onBlur={(e) => (e.target.style.borderColor = 'var(--dash-border-btn)')}
         />
+
+        {/* 검색 결과 드롭다운 */}
+        {showSearchDrop && (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            backgroundColor: 'var(--dash-card)',
+            border: '1px solid rgba(37,99,235,0.35)',
+            borderTop: 'none',
+            borderRadius: '0 0 8px 8px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+            zIndex: 200,
+            maxHeight: '360px',
+            overflowY: 'auto',
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'var(--dash-scrollbar) transparent',
+          }}>
+            {isSearching ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '14px 16px', color: 'var(--dash-text-4)', fontSize: '13px' }}>
+                <Loader2 className="animate-spin" style={{ width: '14px', height: '14px' }} />
+                검색 중...
+              </div>
+            ) : !searchResult || searchResult.results.length === 0 ? (
+              <div style={{ padding: '14px 16px', fontSize: '13px', color: 'var(--dash-text-5)' }}>
+                나라장터에서도 검색 결과가 없습니다
+              </div>
+            ) : (
+              <>
+                {/* 출처 레이블 */}
+                <div style={{ padding: '8px 12px 4px', fontSize: '11px', color: 'var(--dash-text-5)', borderBottom: '1px solid var(--dash-border-faint)' }}>
+                  {searchResult.source === 'naramarket' && '나라장터에서 가져온 결과'}
+                  {searchResult.source === 'db' && '수집된 공고에서 찾은 결과'}
+                  {searchResult.source === 'local' && '로컬 데이터에서 찾은 결과'}
+                  {' '}· {searchResult.results.length}건
+                </div>
+                {searchResult.results.map((bid) => (
+                  <div
+                    key={bid.id}
+                    onClick={() => setShowSearchDrop(false)}
+                    style={{
+                      padding: '10px 12px',
+                      borderBottom: '1px solid var(--dash-border-faint)',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.12s',
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-row-hover)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent'; }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' }}>
+                      {searchResult.source === 'naramarket' && (
+                        <span style={{ fontSize: '10px', padding: '1px 5px', borderRadius: '4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#2563EB', fontWeight: 600, flexShrink: 0 }}>
+                          나라장터
+                        </span>
+                      )}
+                      <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {bid.title}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'var(--dash-text-4)' }}>
+                      <span>{bid.agency}</span>
+                      <span>·</span>
+                      <span>{bid.deadline.substring(0, 7)}</span>
+                      <span>·</span>
+                      <span>{bid.type}</span>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Actions */}

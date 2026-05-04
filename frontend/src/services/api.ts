@@ -250,3 +250,38 @@ export async function fetchBidById(id: string): Promise<Bid> {
     throw new Error(`공고 ID ${id}를 찾을 수 없습니다`);
   }
 }
+
+export interface SearchBidsResult {
+  source: 'db' | 'naramarket' | 'local' | 'empty';
+  results: Bid[];
+  total: number;
+}
+
+/**
+ * 공고 검색. 백엔드 실패 시 mockData에서 로컬 검색으로 fallback.
+ */
+export async function searchBids(query: string): Promise<SearchBidsResult> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/bids/search?query=${encodeURIComponent(query)}`,
+      { signal: AbortSignal.timeout(10_000) },
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return {
+      source: data.source as SearchBidsResult['source'],
+      results: (data.results as ApiBidListItem[]).map(mapApiBidListItemToBid),
+      total: data.total,
+    };
+  } catch (err) {
+    console.warn('[api] searchBids 실패 → local fallback:', err);
+    const q = query.toLowerCase();
+    const matched = mockBids.filter(
+      (b) =>
+        b.title.toLowerCase().includes(q) ||
+        b.agency.toLowerCase().includes(q) ||
+        b.number.includes(q),
+    );
+    return { source: 'local', results: matched, total: matched.length };
+  }
+}

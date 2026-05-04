@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from .models import Notice, Attachment, AnalysisResult, RiskFactor, ProposalOutline
 
 
@@ -51,6 +51,22 @@ async def get_notices(
         query = query.where(Notice.bid_ntce_dt <= date_to)
     query = query.order_by(Notice.bid_clse_dt.asc()).limit(limit).offset(offset)
     result = await db.execute(query)
+    return result.scalars().all()
+
+
+async def search_notices(db: AsyncSession, query: str, limit: int = 20) -> list[Notice]:
+    """공고번호 또는 공고명에서 query를 포함하는 공고를 반환한다."""
+    result = await db.execute(
+        select(Notice)
+        .where(
+            or_(
+                Notice.bid_ntce_no.ilike(f"%{query}%"),
+                Notice.bid_ntce_nm.ilike(f"%{query}%"),
+            )
+        )
+        .order_by(Notice.bid_clse_dt.asc())
+        .limit(limit)
+    )
     return result.scalars().all()
 
 

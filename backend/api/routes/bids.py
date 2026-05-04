@@ -14,9 +14,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.collector.naramarket import fetch_bids
+from backend.collector.naramarket import fetch_bids, fetch_bids_by_query
+from backend.collector.naramarket import _classify_notice_type
 from backend.collector.service import collect_and_save
-from backend.db.crud import get_attachments_by_notice, get_dashboard_stats, get_notice_detail, get_notices, get_type_stats
+from backend.db.crud import get_attachments_by_notice, get_dashboard_stats, get_notice_detail, get_notices, get_notice_by_bid_no, get_type_stats, search_notices
+from backend.db.models import Notice
 from backend.db.database import get_db
 
 router = APIRouter()
@@ -255,6 +257,90 @@ async def collect_bids(
         raise HTTPException(status_code=502, detail=str(e))
 
     return CollectResponse(**result)
+
+
+class SearchResponse(BaseModel):
+    """공고 검색 응답 스키마"""
+    source: str   # "db" | "naramarket" | "empty"
+    results: list[BidListItem]
+    total: int
+
+
+@router.get("/search", summary="공고 검색 (DB → 나라장터 순차 조회)")
+async def search_bids(
+    query: str,
+    db: AsyncSession = Depends(get_db),
+) -> SearchResponse:
+    """
+    공고번호 또는 공고명으로 검색한다.
+    DB에 결과가 있으면 즉시 반환하고,
+    없으면 나라장터 API에서 실시간 조회 후 DB에 저장하고 반환한다.
+    """
+    q = query.strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="검색어를 입력해 주세요.")
+
+    # 1단계: DB 검색
+    notices = await search_notices(db, q)
+    if notices:
+        return SearchResponse(
+            source="db",
+            results=[BidListItem.model_validate(n) for n in notices],
+            total=len(notices),
+        )
+
+    # 2단계: 나라장터 API 실시간 검색
+    try:
+        raw = fetch_bids_by_query(q)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    if not raw:
+        return SearchResponse(source="empty", results=[], total=0)
+
+    # 3단계: 검색 결과 DB 저장 (중복 제외)
+    from datetime import datetime, timezone
+    for r in raw:
+        bid = r["bid"]
+        existing = await get_notice_by_bid_no(db, bid["bid_ntce_no"], bid["bid_ntce_ord"])
+        if existing:
+            continue
+        notice_type, is_isp_ismp, isp_ismp_type = _classify_notice_type(bid["bid_ntce_nm"])
+        from backend.collector.service import _parse_dt
+        try:
+            notice = Notice(
+                bid_ntce_no=bid["bid_ntce_no"],
+                bid_ntce_ord=bid["bid_ntce_ord"],
+                notice_type=notice_type,
+                bid_ntce_nm=bid["bid_ntce_nm"],
+                ntce_instt_nm=bid["ntce_instt_nm"],
+                dminstt_nm=bid["dminstt_nm"],
+                bid_mtd_nm=bid["bid_mtd_nm"],
+                cntrct_cncls_mthd_nm=bid["cntrct_cncls_mthd_nm"],
+                is_isp_ismp=is_isp_ismp,
+                isp_ismp_type=isp_ismp_type,
+                presmpt_prce=bid["presmpt_prce"],
+                asign_bdgt_amt=bid["asign_bdgt_amt"],
+                bid_clse_dt=_parse_dt(bid["bid_clse_dt"]),
+                bid_ntce_dt=_parse_dt(bid["bid_ntce_dt"]),
+                openg_dt=_parse_dt(bid["openg_dt"]),
+                ntce_kind_nm=bid.get("ntce_kind_nm"),
+                bid_ntce_dtl_url=bid["bid_ntce_dtl_url"],
+                pipeline_status="collected",
+                collected_at=datetime.now(timezone.utc),
+            )
+            from backend.db.crud import create_notice
+            await create_notice(db, notice)
+        except Exception:
+            pass
+
+    # 저장 후 DB에서 재조회하여 반환
+    notices = await search_notices(db, q)
+    return SearchResponse(
+        source="naramarket",
+        results=[BidListItem.model_validate(n) for n in notices],
+        total=len(notices),
+    )
 
 
 @router.get("/{bid_ntce_no}", summary="공고 상세 조회", response_model=BidDetailResponse)
