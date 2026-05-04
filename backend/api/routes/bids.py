@@ -24,9 +24,22 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.collector.naramarket import fetch_bids
+from backend.collector.naramarket import fetch_bids, fetch_bids_by_query
+from backend.collector.naramarket import _classify_notice_type
 from backend.collector.service import collect_and_save
-from backend.db.crud import count_notices, get_attachments_by_notice, get_dashboard_stats, get_notice_detail, get_notices, get_type_stats, set_bookmark, set_in_progress
+from backend.db.crud import (
+    count_notices,
+    get_attachments_by_notice,
+    get_dashboard_stats,
+    get_notice_detail,
+    get_notice_by_bid_no,
+    get_notices,
+    get_type_stats,
+    search_notices,
+    set_bookmark,
+    set_in_progress,
+)
+from backend.db.models import Notice
 from backend.db.database import get_db
 
 router = APIRouter()
@@ -39,6 +52,7 @@ router = APIRouter()
 
 class AttachmentSchema(BaseModel):
     """첨부파일 단건 스키마. preview 응답에서는 id=None."""
+
     id: int | None = None
     file_name: str
     file_url: str
@@ -52,6 +66,7 @@ class AttachmentSchema(BaseModel):
 
 class BidPreviewItem(BaseModel):
     """공고 미리보기 단건 스키마"""
+
     bid_ntce_no: str
     bid_ntce_nm: str
     ntce_instt_nm: str
@@ -65,19 +80,22 @@ class BidPreviewItem(BaseModel):
 
 class BidPreviewResponse(BaseModel):
     """공고 미리보기 응답 스키마"""
+
     count: int
     bids: list[BidPreviewItem]
 
 
 class CollectResponse(BaseModel):
     """공고 수집 결과 응답 스키마"""
-    saved: int    # DB에 새로 저장된 공고 수
+
+    saved: int  # DB에 새로 저장된 공고 수
     skipped: int  # 중복으로 건너뛴 공고 수
-    errors: int   # 저장 실패한 공고 수
+    errors: int  # 저장 실패한 공고 수
 
 
 class TypeStatItem(BaseModel):
     """유형별 통계 단건 스키마"""
+
     type: str
     count: int
     ratio: float
@@ -85,29 +103,31 @@ class TypeStatItem(BaseModel):
 
 class DashboardStatsResponse(BaseModel):
     """대시보드 상단 통계 카드 응답 스키마"""
-    today_new: int       # 오늘 신규 공고 (bid_ntce_dt 기준)
-    deadline_soon: int   # 마감 임박 (3일 이내)
-    analysis_done: int   # AI 분석 완료 (이번 달)
+
+    today_new: int  # 오늘 신규 공고 (bid_ntce_dt 기준)
+    deadline_soon: int  # 마감 임박 (3일 이내)
+    analysis_done: int  # AI 분석 완료 (이번 달)
     proposal_count: int  # 생성된 제안목차 수
 
 
 class BidListItem(BaseModel):
     """공고 목록 단건 스키마"""
+
     id: int
     bid_ntce_no: str
     bid_ntce_nm: str
     ntce_instt_nm: str | None
     ntce_kind_nm: str | None
     is_isp_ismp: bool
-    isp_ismp_type: str | None         # ISP / ISMP / SI / None
-    is_bookmarked: bool               # 관심 공고 여부
-    is_in_progress: bool              # 진행 프로젝트 여부
-    presmpt_prce: float | None        # 추정가격
-    asign_bdgt_amt: float | None      # 배정예산 (추정가격 없을 때 대체)
-    bid_clse_dt: datetime | None      # 입찰마감일시
-    bid_ntce_dt: datetime | None      # 나라장터 공고 등록일
-    collected_at: datetime | None     # 우리 DB 수집 시각
-    pipeline_status: str              # collected / parsing / analyzed / failed
+    isp_ismp_type: str | None  # ISP / ISMP / SI / None
+    is_bookmarked: bool  # 관심 공고 여부
+    is_in_progress: bool  # 진행 프로젝트 여부
+    presmpt_prce: float | None  # 추정가격
+    asign_bdgt_amt: float | None  # 배정예산 (추정가격 없을 때 대체)
+    bid_clse_dt: datetime | None  # 입찰마감일시
+    bid_ntce_dt: datetime | None  # 나라장터 공고 등록일
+    collected_at: datetime | None  # 우리 DB 수집 시각
+    pipeline_status: str  # collected / parsing / analyzed / failed
 
     class Config:
         from_attributes = True
@@ -115,32 +135,34 @@ class BidListItem(BaseModel):
 
 class BidListResponse(BaseModel):
     """공고 목록 응답 스키마"""
-    total: int            # 필터 조건 기준 전체 건수 (페이지네이션용)
+
+    total: int  # 필터 조건 기준 전체 건수 (페이지네이션용)
     bids: list[BidListItem]
 
 
 class BidDetailResponse(BaseModel):
     """공고 상세 응답 스키마 (AI 분석 결과는 /analysis/{bid_ntce_no} 에서 제공)"""
+
     id: int
     bid_ntce_no: str
     bid_ntce_ord: str
     notice_type: str
     bid_ntce_nm: str
     ntce_instt_nm: str | None
-    dminstt_nm: str | None            # 수요기관
-    bid_mtd_nm: str | None            # 입찰방법
+    dminstt_nm: str | None  # 수요기관
+    bid_mtd_nm: str | None  # 입찰방법
     cntrct_cncls_mthd_nm: str | None  # 계약방법
     ntce_kind_nm: str | None
     is_isp_ismp: bool
     isp_ismp_type: str | None
-    is_bookmarked: bool               # 관심 공고 여부
-    is_in_progress: bool              # 진행 프로젝트 여부
+    is_bookmarked: bool  # 관심 공고 여부
+    is_in_progress: bool  # 진행 프로젝트 여부
     asign_bdgt_amt: float | None
     presmpt_prce: float | None
     bid_clse_dt: datetime | None
     bid_ntce_dt: datetime | None
-    openg_dt: datetime | None         # 개찰일시
-    bid_ntce_dtl_url: str | None      # 나라장터 공고 원문 URL
+    openg_dt: datetime | None  # 개찰일시
+    bid_ntce_dtl_url: str | None  # 나라장터 공고 원문 URL
     pipeline_status: str
     collected_at: datetime | None
     attachments: list[AttachmentSchema] = []
@@ -216,7 +238,9 @@ def _resolve_date_range(
 # ──────────────────────────────────────
 
 
-@router.get("/stats", summary="대시보드 KPI 통계 카드", response_model=DashboardStatsResponse)
+@router.get(
+    "/stats", summary="대시보드 KPI 통계 카드", response_model=DashboardStatsResponse
+)
 async def dashboard_stats(
     db: AsyncSession = Depends(get_db),
 ) -> DashboardStatsResponse:
@@ -225,7 +249,11 @@ async def dashboard_stats(
     return DashboardStatsResponse(**stats)
 
 
-@router.get("/type-stats", summary="공고 유형별 통계 (도넛 차트)", response_model=list[TypeStatItem])
+@router.get(
+    "/type-stats",
+    summary="공고 유형별 통계 (도넛 차트)",
+    response_model=list[TypeStatItem],
+)
 async def type_stats(
     db: AsyncSession = Depends(get_db),
 ) -> list[TypeStatItem]:
@@ -242,9 +270,15 @@ async def list_bids(
     bookmarked_only: bool = Query(False, description="관심 표시한 공고만 조회"),
     in_progress_only: bool = Query(False, description="진행 프로젝트 공고만 조회"),
     ntce_kind: str | None = Query(None, description="공고 종류 필터 (예: 용역)"),
-    date_range: str | None = Query(None, description="날짜 범위: today / yesterday / 3days / 1week / all"),
-    date_from: str | None = Query(None, description="공고 등록일 시작 YYYY-MM-DD (date_range보다 우선)"),
-    date_to: str | None = Query(None, description="공고 등록일 종료 YYYY-MM-DD (date_range보다 우선)"),
+    date_range: str | None = Query(
+        None, description="날짜 범위: today / yesterday / 3days / 1week / all"
+    ),
+    date_from: str | None = Query(
+        None, description="공고 등록일 시작 YYYY-MM-DD (date_range보다 우선)"
+    ),
+    date_to: str | None = Query(
+        None, description="공고 등록일 종료 YYYY-MM-DD (date_range보다 우선)"
+    ),
     search: str | None = Query(None, description="공고명·기관명·공고번호 검색"),
     db: AsyncSession = Depends(get_db),
 ) -> BidListResponse:
@@ -259,15 +293,37 @@ async def list_bids(
     """
     dt_from, dt_to = _resolve_date_range(date_range, date_from, date_to)
 
-    total = await count_notices(db, isp_ismp_only=isp_ismp_only, bookmarked_only=bookmarked_only, in_progress_only=in_progress_only, ntce_kind=ntce_kind, date_from=dt_from, date_to=dt_to, search=search)
-    notices = await get_notices(db, limit=limit, offset=offset, isp_ismp_only=isp_ismp_only, bookmarked_only=bookmarked_only, in_progress_only=in_progress_only, ntce_kind=ntce_kind, date_from=dt_from, date_to=dt_to, search=search)
+    total = await count_notices(
+        db,
+        isp_ismp_only=isp_ismp_only,
+        bookmarked_only=bookmarked_only,
+        in_progress_only=in_progress_only,
+        ntce_kind=ntce_kind,
+        date_from=dt_from,
+        date_to=dt_to,
+        search=search,
+    )
+    notices = await get_notices(
+        db,
+        limit=limit,
+        offset=offset,
+        isp_ismp_only=isp_ismp_only,
+        bookmarked_only=bookmarked_only,
+        in_progress_only=in_progress_only,
+        ntce_kind=ntce_kind,
+        date_from=dt_from,
+        date_to=dt_to,
+        search=search,
+    )
     return BidListResponse(
         total=total,
         bids=[BidListItem.model_validate(n) for n in notices],
     )
 
 
-@router.patch("/{bid_ntce_no}/bookmark", summary="관심 공고 설정/해제", response_model=BidListItem)
+@router.patch(
+    "/{bid_ntce_no}/bookmark", summary="관심 공고 설정/해제", response_model=BidListItem
+)
 async def toggle_bookmark(
     bid_ntce_no: str,
     is_bookmarked: bool = Query(..., description="true=관심 추가, false=관심 해제"),
@@ -280,7 +336,11 @@ async def toggle_bookmark(
     return BidListItem.model_validate(notice)
 
 
-@router.patch("/{bid_ntce_no}/in_progress", summary="진행 프로젝트 설정/해제", response_model=BidListItem)
+@router.patch(
+    "/{bid_ntce_no}/in_progress",
+    summary="진행 프로젝트 설정/해제",
+    response_model=BidListItem,
+)
 async def toggle_in_progress(
     bid_ntce_no: str,
     is_in_progress: bool = Query(..., description="true=진행 시작, false=진행 해제"),
@@ -293,7 +353,11 @@ async def toggle_in_progress(
     return BidListItem.model_validate(notice)
 
 
-@router.get("/collect/preview", summary="수집 미리보기 (DB 저장 안 함)", response_model=BidPreviewResponse)
+@router.get(
+    "/collect/preview",
+    summary="수집 미리보기 (DB 저장 안 함)",
+    response_model=BidPreviewResponse,
+)
 def preview_collect(
     start_date: str | None = None,
     end_date: str | None = None,
@@ -348,14 +412,110 @@ async def collect_bids(
     end = end_date or today
 
     try:
-        result = await collect_and_save(db, start, end, it_only=it_only, download=download)
+        result = await collect_and_save(
+            db, start, end, it_only=it_only, download=download
+        )
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=502, detail=str(e))
 
     return CollectResponse(**result)
 
 
-@router.get("/{bid_ntce_no}", summary="공고 상세 조회", response_model=BidDetailResponse)
+class SearchResponse(BaseModel):
+    """공고 검색 응답 스키마"""
+
+    source: str  # "db" | "naramarket" | "empty"
+    results: list[BidListItem]
+    total: int
+
+
+@router.get("/search", summary="공고 검색 (DB → 나라장터 순차 조회)")
+async def search_bids(
+    query: str,
+    db: AsyncSession = Depends(get_db),
+) -> SearchResponse:
+    """
+    공고번호 또는 공고명으로 검색한다.
+    DB에 결과가 있으면 즉시 반환하고,
+    없으면 나라장터 API에서 실시간 조회 후 DB에 저장하고 반환한다.
+    """
+    q = query.strip()
+    if not q:
+        raise HTTPException(status_code=400, detail="검색어를 입력해 주세요.")
+
+    # 1단계: DB 검색
+    notices = await search_notices(db, q)
+    if notices:
+        return SearchResponse(
+            source="db",
+            results=[BidListItem.model_validate(n) for n in notices],
+            total=len(notices),
+        )
+
+    # 2단계: 나라장터 API 실시간 검색
+    try:
+        raw = fetch_bids_by_query(q)
+    except (ValueError, RuntimeError) as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+    if not raw:
+        return SearchResponse(source="empty", results=[], total=0)
+
+    # 3단계: 검색 결과 DB 저장 (중복 제외)
+    from datetime import datetime, timezone
+
+    for r in raw:
+        bid = r["bid"]
+        existing = await get_notice_by_bid_no(
+            db, bid["bid_ntce_no"], bid["bid_ntce_ord"]
+        )
+        if existing:
+            continue
+        notice_type, is_isp_ismp, isp_ismp_type = _classify_notice_type(
+            bid["bid_ntce_nm"]
+        )
+        from backend.collector.service import _parse_dt
+
+        try:
+            notice = Notice(
+                bid_ntce_no=bid["bid_ntce_no"],
+                bid_ntce_ord=bid["bid_ntce_ord"],
+                notice_type=notice_type,
+                bid_ntce_nm=bid["bid_ntce_nm"],
+                ntce_instt_nm=bid["ntce_instt_nm"],
+                dminstt_nm=bid["dminstt_nm"],
+                bid_mtd_nm=bid["bid_mtd_nm"],
+                cntrct_cncls_mthd_nm=bid["cntrct_cncls_mthd_nm"],
+                is_isp_ismp=is_isp_ismp,
+                isp_ismp_type=isp_ismp_type,
+                presmpt_prce=bid["presmpt_prce"],
+                asign_bdgt_amt=bid["asign_bdgt_amt"],
+                bid_clse_dt=_parse_dt(bid["bid_clse_dt"]),
+                bid_ntce_dt=_parse_dt(bid["bid_ntce_dt"]),
+                openg_dt=_parse_dt(bid["openg_dt"]),
+                ntce_kind_nm=bid.get("ntce_kind_nm"),
+                bid_ntce_dtl_url=bid["bid_ntce_dtl_url"],
+                pipeline_status="collected",
+                collected_at=datetime.now(timezone.utc),
+            )
+            from backend.db.crud import create_notice
+
+            await create_notice(db, notice)
+        except Exception:
+            pass
+
+    # 저장 후 DB에서 재조회하여 반환
+    notices = await search_notices(db, q)
+    return SearchResponse(
+        source="naramarket",
+        results=[BidListItem.model_validate(n) for n in notices],
+        total=len(notices),
+    )
+
+
+@router.get(
+    "/{bid_ntce_no}", summary="공고 상세 조회", response_model=BidDetailResponse
+)
 async def get_bid_detail(
     bid_ntce_no: str,
     db: AsyncSession = Depends(get_db),

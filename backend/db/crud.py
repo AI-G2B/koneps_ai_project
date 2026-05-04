@@ -86,7 +86,14 @@ async def get_notices(
     """공고 목록을 입찰마감일 오름차순으로 반환한다."""
     query = select(Notice)
     query = _apply_notice_filters(
-        query, isp_ismp_only, bookmarked_only, in_progress_only, ntce_kind, date_from, date_to, search
+        query,
+        isp_ismp_only,
+        bookmarked_only,
+        in_progress_only,
+        ntce_kind,
+        date_from,
+        date_to,
+        search,
     )
     query = query.order_by(Notice.bid_clse_dt.asc()).limit(limit).offset(offset)
     result = await db.execute(query)
@@ -129,10 +136,26 @@ async def set_in_progress(db: AsyncSession, bid_ntce_no: str, is_in_progress: bo
         return None
     notice.is_in_progress = is_in_progress
     if is_in_progress:
-        notice.is_bookmarked = True  # 진행 중이면 관심공고에도 유지
+        notice.is_bookmarked = True
     await db.commit()
     await db.refresh(notice)
     return notice
+
+
+async def search_notices(db: AsyncSession, query: str, limit: int = 20) -> list[Notice]:
+    """공고번호 또는 공고명에서 query를 포함하는 공고를 반환한다."""
+    result = await db.execute(
+        select(Notice)
+        .where(
+            or_(
+                Notice.bid_ntce_no.ilike(f"%{query}%"),
+                Notice.bid_ntce_nm.ilike(f"%{query}%"),
+            )
+        )
+        .order_by(Notice.bid_clse_dt.asc())
+        .limit(limit)
+    )
+    return result.scalars().all()
 
 
 async def get_notices_isp_ismp(db: AsyncSession, limit: int = 20):

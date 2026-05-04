@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Building2, Eye, EyeOff, ShieldCheck, BarChart3 } from 'lucide-react';
 
-export type UserRole = 'manager' | 'ceo';
+export type UserRole = 'manager' | 'ceo' | 'proposal';
 
 export interface User {
   role: UserRole;
@@ -9,8 +9,8 @@ export interface User {
 }
 
 const MOCK_USERS = [
-  { id: 'manager01', password: '1234', role: 'manager' as UserRole, name: '김영철 PM' },
-  { id: 'ceo01', password: '1234', role: 'ceo' as UserRole, name: '이대표 대표' },
+  { id: 'manager01', password: '1234', role: 'manager' as UserRole, name: '홍길동 PM' },
+  { id: 'ceo01', password: '1234', role: 'ceo' as UserRole, name: '홍길동2 대표' },
 ];
 
 interface LoginPageProps {

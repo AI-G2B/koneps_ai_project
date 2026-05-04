@@ -178,6 +178,62 @@ def parse_attachments(item: dict) -> list[dict]:
 # ──────────────────────────────────────
 
 
+def fetch_bids_by_query(query: str, limit: int = 20) -> list[dict]:
+    """
+    공고명 키워드로 나라장터 API를 검색한다.
+
+    Args:
+        query : 검색할 공고명 키워드
+        limit : 최대 반환 건수
+
+    Returns:
+        [{"bid": {...}, "attachments": [...]}, ...]
+    """
+    if not API_KEY:
+        raise ValueError(".env에 NARA_API_KEY가 없습니다.")
+
+    params = {
+        "serviceKey": API_KEY,
+        "numOfRows": limit,
+        "pageNo": 1,
+        "inqryDiv": 1,
+        "bidNtceNm": query,
+        "type": "json",
+    }
+
+    try:
+        resp = requests.get(BID_LIST_URL, params=params, timeout=15)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        raise RuntimeError(f"API 호출 실패: {e}")
+
+    body = resp.json().get("response", {}).get("body", {})
+    items = body.get("items", [])
+
+    if isinstance(items, dict):
+        items = [items]
+    if not items:
+        return []
+
+    results = []
+    seen: set[str] = set()
+    for item in items:
+        ntce_no = item.get("bidNtceNo", "")
+        if ntce_no in seen:
+            continue
+        if not _is_service_bid(item):
+            continue
+        if "취소" in item.get("ntceKindNm", ""):
+            continue
+        seen.add(ntce_no)
+        results.append({
+            "bid": parse_bid(item),
+            "attachments": parse_attachments(item),
+        })
+
+    return results
+
+
 def fetch_bids(start_date: str, end_date: str, it_only: bool = True) -> list[dict]:
     """
     나라장터 OpenAPI를 호출하여 공고 목록을 반환한다.
