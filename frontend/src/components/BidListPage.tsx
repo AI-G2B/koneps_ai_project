@@ -545,7 +545,7 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
 
       {/* 공고명 */}
       <div
-        style={{ fontSize: '12px', fontWeight: 600, color: 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '6px' }}
+        style={{ fontSize: '12px', fontWeight: 600, color: tab === 'inProgress' ? '#5BC37E' : 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '6px' }}
         title={bid.title}
       >
         {bid.title}

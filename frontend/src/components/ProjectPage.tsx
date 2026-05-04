@@ -143,7 +143,7 @@ function ProjectCard({ bid, isSelected, onSelect }: {
       {/* 제목 행 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
         <RiskBadge risk={bid.risk} />
-        <span style={{ fontSize: '13px', fontWeight: 600, color: isSelected ? '#86EFAC' : 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+        <span style={{ fontSize: '13px', fontWeight: 600, color: isSelected ? '#5BC37E' : 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
           {bid.title}
         </span>
         <span style={{ flexShrink: 0, fontSize: '10px', padding: '1px 6px', borderRadius: '9999px', backgroundColor: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.25)' }}>
