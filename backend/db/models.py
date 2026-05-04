@@ -32,6 +32,8 @@ class Notice(Base):
     bid_ntce_dtl_url:     Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     ntce_kind_nm:         Mapped[Optional[str]]  = mapped_column(String(20), nullable=True)
     pipeline_status:      Mapped[str]            = mapped_column(String(20), default="collected")
+    is_bookmarked:        Mapped[bool]           = mapped_column(Boolean, default=False)
+    is_in_progress:       Mapped[bool]           = mapped_column(Boolean, default=False)
     parse_error_msg:      Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     content_embedding:    Mapped[Optional[list]] = mapped_column(Vector(1536), nullable=True)
     collected_at:         Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
