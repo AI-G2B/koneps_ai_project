@@ -13,6 +13,7 @@ interface ProjectPageProps {
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
   onOpenAnalysisDetail?: (bid: Bid) => void;
+  onRequestAnalysis?: (bidId: string) => void;
 }
 
 const TODAY_YEAR = TODAY.getFullYear();
@@ -27,7 +28,7 @@ function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
-export function ProjectPage({ bids, bidFlags, onSelectBid, selectedBid, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail }: ProjectPageProps) {
+export function ProjectPage({ bids, bidFlags, onSelectBid, selectedBid, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis }: ProjectPageProps) {
   const inProgressBids = bids.filter((b) => bidFlags[b.id]?.inProgress ?? false);
   const [slideOverBid, setSlideOverBid] = useState<Bid | null>(null);
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
@@ -61,6 +62,7 @@ export function ProjectPage({ bids, bidFlags, onSelectBid, selectedBid, onToggle
         onToggleBookmark={onToggleBookmark}
         onToggleInProgress={onToggleInProgress}
         onOpenAnalysisDetail={onOpenAnalysisDetail}
+        onRequestAnalysis={onRequestAnalysis}
       />
     </>
   );

@@ -32,9 +32,10 @@ interface BidListPageProps {
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
   onOpenAnalysisDetail?: (bid: Bid) => void;
+  onRequestAnalysis?: (bidId: string) => void;
 }
 
-export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail }: BidListPageProps) {
+export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis }: BidListPageProps) {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('bookmarked');
@@ -122,6 +123,7 @@ export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onTo
         onToggleBookmark={handleToggleBookmark}
         onToggleInProgress={handleToggleInProgress}
         onOpenAnalysisDetail={onOpenAnalysisDetail}
+        onRequestAnalysis={onRequestAnalysis}
       />
     </>
   );

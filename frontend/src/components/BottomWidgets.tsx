@@ -438,12 +438,13 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
   );
 }
 
-export function BottomWidgets({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, ceoMode = false }: {
+export function BottomWidgets({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false }: {
   bids: Bid[];
   bidFlags: Record<string, BidFlags>;
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
   onOpenAnalysisDetail?: (bid: Bid) => void;
+  onRequestAnalysis?: (bidId: string) => void;
   ceoMode?: boolean;
 }) {
   const [slideOverBid, setSlideOverBid] = useState<Bid | null>(null);
@@ -468,6 +469,7 @@ export function BottomWidgets({ bids, bidFlags, onToggleBookmark, onToggleInProg
         onToggleBookmark={onToggleBookmark}
         onToggleInProgress={onToggleInProgress}
         onOpenAnalysisDetail={onOpenAnalysisDetail}
+        onRequestAnalysis={onRequestAnalysis}
         ceoMode={ceoMode}
       />
     </>

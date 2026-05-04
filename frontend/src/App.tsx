@@ -226,6 +226,7 @@ export default function App() {
               onToggleBookmark={toggleBookmark}
               onToggleInProgress={toggleInProgress}
               onOpenAnalysisDetail={openAnalysisDetail}
+              onRequestAnalysis={requestAnalysis}
             />
           ) : activePage === 'AI 분석' ? (
             <AnalysisListPage
@@ -258,6 +259,7 @@ export default function App() {
               onToggleBookmark={toggleBookmark}
               onToggleInProgress={toggleInProgress}
               onOpenAnalysisDetail={openAnalysisDetail}
+              onRequestAnalysis={requestAnalysis}
             />
           ) : isCeo ? (
             <>
@@ -278,8 +280,9 @@ export default function App() {
                   bidFlags={bidFlags}
                   aiStatuses={aiStatuses}
                   ceoMode={true}
+                  onRequestAnalysis={requestAnalysis}
                 />
-                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} />
+                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} />
               </div>
               <BottomWidgets
                 bids={inProgressBids}
@@ -287,6 +290,7 @@ export default function App() {
                 onToggleBookmark={toggleBookmark}
                 onToggleInProgress={toggleInProgress}
                 onOpenAnalysisDetail={openAnalysisDetail}
+                onRequestAnalysis={requestAnalysis}
                 ceoMode={true}
               />
             </>
@@ -306,8 +310,9 @@ export default function App() {
                   onToggleInProgress={toggleInProgress}
                   pursuedBids={pursuedBids}
                   onTogglePursued={togglePursued}
+                  onRequestAnalysis={requestAnalysis}
                 />
-                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} />
+                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} />
               </div>
               <BottomWidgets
                 bids={bids}
@@ -315,6 +320,7 @@ export default function App() {
                 onToggleBookmark={toggleBookmark}
                 onToggleInProgress={toggleInProgress}
                 onOpenAnalysisDetail={openAnalysisDetail}
+                onRequestAnalysis={requestAnalysis}
               />
             </>
           )}

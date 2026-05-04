@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Inbox } from 'lucide-react';
+import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Inbox, Sparkles } from 'lucide-react';
 import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from './mockData';
 import type { AgencySettings } from '../App';
 
@@ -80,9 +80,10 @@ interface BidTableProps {
   onTogglePursued?: (bidId: string) => void;
   hideFilters?: boolean;
   ceoMode?: boolean;
+  onRequestAnalysis?: (bidId: string) => void;
 }
 
-export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, pursuedBids, onTogglePursued, hideFilters = false, ceoMode = false }: BidTableProps) {
+export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, pursuedBids, onTogglePursued, hideFilters = false, ceoMode = false, onRequestAnalysis }: BidTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -241,6 +242,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
                   onToggleInProgress={onToggleInProgress}
                   isPursued={pursuedBids?.has(bid.id) ?? false}
                   ceoMode={ceoMode}
+                  onRequestAnalysis={onRequestAnalysis}
                 />
               ))
             )}
@@ -287,7 +289,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
   );
 }
 
-function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, flags, aiStatus, onToggleBookmark, onToggleInProgress, isPursued, ceoMode = false }: {
+function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, flags, aiStatus, onToggleBookmark, onToggleInProgress, isPursued, ceoMode = false, onRequestAnalysis }: {
   bid: Bid; isSelected: boolean; urgent: boolean; daysLeft: number; onSelect: () => void;
   isPreferred: boolean; isAvoided: boolean;
   flags: BidFlags;
@@ -296,6 +298,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
   onToggleInProgress?: (bidId: string) => void;
   isPursued: boolean;
   ceoMode?: boolean;
+  onRequestAnalysis?: (bidId: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const rowBg = isSelected ? 'rgba(37,99,235,0.1)' : hovered ? 'var(--dash-row-hover)' : 'transparent';
@@ -348,7 +351,24 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
         </div>
       </td>
       <td style={{ padding: '10px 12px' }}><RiskBadge risk={bid.risk} /></td>
-      <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}><AiStatusIndicator status={aiStatus} /></td>
+      <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+        {aiStatus === 'none' ? (
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <AiStatusIndicator status={aiStatus} />
+            <button
+              onClick={(e) => { e.stopPropagation(); onRequestAnalysis?.(bid.id); }}
+              title="AI 분석 요청"
+              style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', borderRadius: '4px', color: 'var(--dash-text-4)', flexShrink: 0 }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-4)'; }}
+            >
+              <Sparkles style={{ width: '12px', height: '12px' }} />
+            </button>
+          </div>
+        ) : (
+          <AiStatusIndicator status={aiStatus} />
+        )}
+      </td>
       <td style={{ padding: '10px 12px' }}>
         <div className="flex items-center gap-1">
           <button onClick={(e) => { e.stopPropagation(); onSelect(); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: 'var(--dash-text-3)', backgroundColor: 'transparent' }}

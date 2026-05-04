@@ -19,10 +19,11 @@ interface BidSlideOverProps {
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
   onOpenAnalysisDetail?: (bid: Bid) => void;
+  onRequestAnalysis?: (bidId: string) => void;
   ceoMode?: boolean;
 }
 
-export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, ceoMode = false }: BidSlideOverProps) {
+export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false }: BidSlideOverProps) {
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -299,6 +300,15 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                 <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
                   찜하기 또는 진행하기를 누르면<br />AI 분석이 자동으로 시작됩니다.
                 </div>
+                {aiStatus === 'none' && (
+                  <button
+                    onClick={() => onRequestAnalysis?.(bid.id)}
+                    style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(37,99,235,0.08)', color: '#2563EB', border: '1px solid rgba(37,99,235,0.2)', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer' }}
+                  >
+                    <Sparkles style={{ width: '13px', height: '13px' }} />
+                    AI 분석 요청
+                  </button>
+                )}
               </div>
             )}
 
