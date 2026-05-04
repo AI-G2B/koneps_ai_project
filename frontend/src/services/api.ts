@@ -89,7 +89,6 @@ function mapBidType(item: ApiBidListItem): BidType {
     const t = item.isp_ismp_type.toUpperCase();
     if (t === 'ISP') return 'ISP';
     if (t === 'ISMP') return 'ISMP';
-    if (t === 'SI') return 'SI';
   }
   return '기타';
 }
@@ -161,6 +160,7 @@ export function mapApiBidListItemToBid(item: ApiBidListItem): Bid {
     type: mapBidType(item),
     dangerCount: item.danger_count ?? 0,
     collectedAt: normalizeDate(item.bid_ntce_dt),
+    status: 'none',
   };
 }
 
@@ -181,6 +181,7 @@ export function mapApiBidDetailToBid(res: ApiBidDetailResponse): Bid {
     type: mapBidType(res),
     dangerCount: riskFactors.filter((r) => r.severity === 'high').length,
     collectedAt: normalizeDate(res.bid_ntce_dt),
+    status: 'none',
     detail: res.analysis_result
       ? mapAnalysisResultToBidDetail(res.analysis_result, budget)
       : undefined,
@@ -247,5 +248,40 @@ export async function fetchBidById(id: string): Promise<Bid> {
     const found = mockBids.find((b) => b.id === id || b.number === id);
     if (found) return found;
     throw new Error(`공고 ID ${id}를 찾을 수 없습니다`);
+  }
+}
+
+export interface SearchBidsResult {
+  source: 'db' | 'naramarket' | 'local' | 'empty';
+  results: Bid[];
+  total: number;
+}
+
+/**
+ * 공고 검색. 백엔드 실패 시 mockData에서 로컬 검색으로 fallback.
+ */
+export async function searchBids(query: string): Promise<SearchBidsResult> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/bids/search?query=${encodeURIComponent(query)}`,
+      { signal: AbortSignal.timeout(10_000) },
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return {
+      source: data.source as SearchBidsResult['source'],
+      results: (data.results as ApiBidListItem[]).map(mapApiBidListItemToBid),
+      total: data.total,
+    };
+  } catch (err) {
+    console.warn('[api] searchBids 실패 → local fallback:', err);
+    const q = query.toLowerCase();
+    const matched = mockBids.filter(
+      (b) =>
+        b.title.toLowerCase().includes(q) ||
+        b.agency.toLowerCase().includes(q) ||
+        b.number.includes(q),
+    );
+    return { source: 'local', results: matched, total: matched.length };
   }
 }

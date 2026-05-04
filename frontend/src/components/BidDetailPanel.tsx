@@ -1,17 +1,26 @@
+import React from 'react';
 import {
   Target, Clock, Wallet, Truck, Code2, Gavel, BarChart2, Shield,
-  GitBranch, Percent, AlertTriangle, FileText, ArrowRight,
-  BrainCircuit, ChevronRight, Zap, Phone, ScrollText, Loader2,
+  GitBranch, Percent, AlertTriangle, FileText,
+  Sparkles, ChevronRight, Phone, ScrollText, Loader2,
+  ExternalLink, Download,
 } from 'lucide-react';
-import { type Bid, formatBudget, getDaysUntilDeadline } from './mockData';
+import { type Bid, type AiStatusType, formatBudget, getDaysUntilDeadline } from './mockData';
 import { RiskBadge } from './BidTable';
+import { useToast } from './ToastProvider';
 
 interface BidDetailPanelProps {
   bid: Bid | null;
   detailLoading?: boolean;
+  onNavigateToProposal?: () => void;
+  aiStatuses?: Record<string, AiStatusType>;
+  onOpenAnalysisDetail?: (bid: Bid) => void;
+  onRequestAnalysis?: (bidId: string) => void;
 }
 
-export function BidDetailPanel({ bid, detailLoading = false }: BidDetailPanelProps) {
+export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenAnalysisDetail, onRequestAnalysis }: BidDetailPanelProps) {
+  const { showToast } = useToast();
+
   if (!bid) {
     return (
       <div className="w-[390px] flex-shrink-0 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)' }}>
@@ -29,8 +38,9 @@ export function BidDetailPanel({ bid, detailLoading = false }: BidDetailPanelPro
   const isUrgent = daysLeft <= 3;
   const detail = bid.detail;
   const riskFactors = bid.riskFactors ?? [];
-  const isAnalyzing = bid.aiStatus === 'analyzing';
-  // 네트워크로 상세 조회 중이거나 AI 파이프라인이 분석 중인 경우
+  const aiStatus: AiStatusType = aiStatuses?.[bid.id] ?? 'none';
+  const isNoneOrPending = aiStatus === 'none' || aiStatus === 'pending';
+  const isAnalyzing = aiStatus === 'analyzing';
   const showLoadingOverlay = detailLoading;
 
   const AI_ITEMS = detail ? [
@@ -53,16 +63,38 @@ export function BidDetailPanel({ bid, detailLoading = false }: BidDetailPanelPro
       {/* 헤더 */}
       <div className="flex-shrink-0 px-5 py-4" style={{ borderBottom: '1px solid var(--dash-border)', background: 'var(--dash-panel-header)' }}>
         <div className="flex items-center gap-2 mb-2.5">
-          <span className="flex items-center gap-1.5 rounded-full" style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: isAnalyzing ? 'rgba(245,158,11,0.15)' : 'rgba(37,99,235,0.15)', color: isAnalyzing ? '#F59E0B' : '#60A5FA', border: `1px solid ${isAnalyzing ? 'rgba(245,158,11,0.2)' : 'rgba(37,99,235,0.2)'}` }}>
-            {isAnalyzing ? <Loader2 className="animate-spin" style={{ width: '10px', height: '10px' }} /> : <Zap style={{ width: '10px', height: '10px' }} />}
-            {isAnalyzing ? 'AI 분석 중' : 'AI 분석 완료'}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: isAnalyzing ? 'var(--badge-orange-bg)' : isNoneOrPending ? 'var(--badge-gray-bg)' : 'var(--badge-green-bg)', color: isAnalyzing ? '#FFC379' : isNoneOrPending ? '#81878F' : '#5BC37E', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: isAnalyzing ? '#FFC379' : isNoneOrPending ? '#81878F' : '#5BC37E', flexShrink: 0, display: 'inline-block', ...(isAnalyzing || aiStatus === 'pending' ? { animation: 'pulse 1.2s ease-in-out infinite' } : {}) }} />
+            {isAnalyzing ? 'AI 분석 중' : isNoneOrPending ? '분석 전' : 'AI 분석 완료'}
           </span>
           <RiskBadge risk={bid.risk} />
-          {isUrgent && (
-            <span className="ml-auto rounded-full" style={{ fontSize: '11px', padding: '2px 8px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#EF4444', border: '1px solid rgba(239,68,68,0.25)', fontWeight: 600 }}>
-              D-{daysLeft}
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 ml-auto">
+            {isUrgent && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />D-{daysLeft}
+              </span>
+            )}
+            <button
+              title="나라장터 원문 링크"
+              onClick={() => window.open('https://www.g2b.go.kr', '_blank')}
+              className="flex items-center justify-center rounded-md transition-colors"
+              style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
+            >
+              <ExternalLink style={{ width: '12px', height: '12px' }} />
+            </button>
+            <button
+              title="RFP 다운로드"
+              onClick={() => showToast('info', '준비 중입니다')}
+              className="flex items-center justify-center rounded-md transition-colors"
+              style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
+            >
+              <Download style={{ width: '12px', height: '12px' }} />
+            </button>
+          </div>
         </div>
 
         <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', lineHeight: 1.5, marginBottom: '12px' }}>
@@ -91,6 +123,28 @@ export function BidDetailPanel({ bid, detailLoading = false }: BidDetailPanelPro
           </div>
         )}
 
+        {/* 분석 전 안내 */}
+        {!showLoadingOverlay && isNoneOrPending && (
+          <div className="px-5 py-6 flex flex-col items-center justify-center" style={{ borderBottom: '1px solid var(--dash-border)' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '12px', backgroundColor: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '12px' }}>
+              <Sparkles style={{ width: '20px', height: '20px', color: '#2563EB' }} />
+            </div>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '4px' }}>AI 분석 대기 중</div>
+            <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
+              찜하기 또는 진행하기를 누르면<br />AI 분석이 자동으로 시작됩니다.
+            </div>
+            {aiStatus === 'none' && (
+              <button
+                onClick={() => onRequestAnalysis?.(bid.id)}
+                style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(37,99,235,0.08)', color: '#2563EB', border: '1px solid rgba(37,99,235,0.2)', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer' }}
+              >
+                <Sparkles style={{ width: '13px', height: '13px' }} />
+                AI 분석 요청
+              </button>
+            )}
+          </div>
+        )}
+
         {/* 분석 중 안내 */}
         {!showLoadingOverlay && isAnalyzing && (
           <div className="px-5 py-6 flex flex-col items-center justify-center" style={{ borderBottom: '1px solid var(--dash-border)' }}>
@@ -103,9 +157,9 @@ export function BidDetailPanel({ bid, detailLoading = false }: BidDetailPanelPro
         )}
 
         {/* AI 핵심 항목 */}
-        {!isAnalyzing && detail && (
+        {!isAnalyzing && !isNoneOrPending && detail && (
           <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--dash-border)' }}>
-            <SectionTitle icon={BrainCircuit} title="AI 추출 핵심항목" badge="12" accentColor="#2563EB" />
+            <SectionTitle icon={Sparkles} title="AI 추출 핵심항목" badge="12" accentColor="#2563EB" />
             <div className="grid grid-cols-2 gap-2 mt-3">
               {AI_ITEMS.map((item) => (
                 <div key={item.label} className="flex items-start gap-2 rounded-lg" style={{ padding: '8px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)' }}>
@@ -123,7 +177,7 @@ export function BidDetailPanel({ bid, detailLoading = false }: BidDetailPanelPro
         )}
 
         {/* 위험요소 */}
-        {!isAnalyzing && (
+        {!isAnalyzing && !isNoneOrPending && (
           <div className="px-5 py-4">
             <SectionTitle
               icon={AlertTriangle}
@@ -152,19 +206,17 @@ export function BidDetailPanel({ bid, detailLoading = false }: BidDetailPanelPro
       {/* CTA */}
       <div className="flex-shrink-0 px-5 py-4" style={{ borderTop: '1px solid var(--dash-border)' }}>
         <button
-          disabled={isAnalyzing}
-          className="w-full flex items-center justify-center gap-2 rounded-xl transition-all"
-          style={{ padding: '11px 16px', fontSize: '14px', fontWeight: 600, color: 'white', background: isAnalyzing ? '#94A3B8' : 'linear-gradient(135deg, #2563EB, #1D4ED8)', boxShadow: isAnalyzing ? 'none' : '0 4px 16px rgba(37,99,235,0.3)', cursor: isAnalyzing ? 'not-allowed' : 'pointer' }}
-          onMouseEnter={(e) => { if (!isAnalyzing) { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 20px rgba(37,99,235,0.4)'; }}}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLButtonElement).style.boxShadow = isAnalyzing ? 'none' : '0 4px 16px rgba(37,99,235,0.3)'; }}
+          onClick={() => showToast('info', '제안목차 자동 생성 기능은 현재 개발 중입니다.')}
+          className="w-full flex items-center justify-center gap-2 rounded-xl"
+          style={{ padding: '11px 16px', fontSize: '14px', fontWeight: 600, color: 'var(--dash-text-3)', backgroundColor: 'var(--dash-card-deep)', border: '1px solid var(--dash-border-med)', cursor: 'default' }}
         >
-          <FileText style={{ width: '16px', height: '16px' }} />
-          {isAnalyzing ? '분석 완료 후 생성 가능' : '제안목차 생성'}
-          {!isAnalyzing && <ArrowRight style={{ width: '14px', height: '14px' }} />}
+          <Clock style={{ width: '16px', height: '16px' }} />
+          제안목차 생성 (개발 중)
         </button>
         <button
           className="w-full flex items-center justify-center gap-1.5 rounded-xl transition-colors mt-2"
-          style={{ padding: '9px 16px', fontSize: '13px', color: 'var(--dash-text-2)', backgroundColor: 'transparent', border: '1px solid var(--dash-border-med)' }}
+          onClick={() => { if (bid) onOpenAnalysisDetail?.(bid); }}
+          style={{ padding: '9px 16px', fontSize: '13px', color: 'var(--dash-text-2)', backgroundColor: 'transparent', border: '1px solid var(--dash-border-med)', cursor: 'pointer' }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-item-bg-alt)'; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
         >

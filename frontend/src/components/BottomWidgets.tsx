@@ -1,214 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
-
-// April 2026 data
-const TODAY_DATE = 4;
-const DEADLINE_DAYS = [5, 6, 7, 10, 12, 15, 18, 22];
-const URGENT_DAYS = DEADLINE_DAYS.filter((d) => d >= TODAY_DATE && d <= TODAY_DATE + 3);
+import { type Bid, type BidFlags, formatBudget, TODAY } from './mockData';
+import { RiskBadge } from './BidTable';
+import { BidSlideOver } from './BidSlideOver';
 
 const BID_TYPE_DATA = [
-  { name: 'ISP', value: 35, color: '#2563EB', count: 16 },
-  { name: 'ISMP', value: 25, color: '#F59E0B', count: 12 },
-  { name: 'SI', value: 25, color: '#22C55E', count: 12 },
-  { name: '기타', value: 15, color: '#8B5CF6', count: 7 },
+  { name: 'ISP', value: 47, color: '#2563EB', count: 16 },
+  { name: 'ISMP', value: 33, color: '#F59E0B', count: 12 },
+  { name: '기타', value: 20, color: '#8B5CF6', count: 7 },
 ];
 
-// April 2026: April 1 is Wednesday => index 2 in Mon-Sun week
-const FIRST_DAY_OF_WEEK = 2;
-const DAYS_IN_MONTH = 30;
-const DAY_NAMES = ['월', '화', '수', '목', '금', '토', '일'];
-
-function MiniCalendar() {
-  const [month] = useState({ year: 2026, month: 4, label: '2026년 4월' });
-
-  // Build calendar cells
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < FIRST_DAY_OF_WEEK; i++) cells.push(null);
-  for (let d = 1; d <= DAYS_IN_MONTH; d++) cells.push(d);
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  // Split into weeks
-  const weeks: (number | null)[][] = [];
-  for (let i = 0; i < cells.length; i += 7) {
-    weeks.push(cells.slice(i, i + 7));
-  }
-
-  return (
-    <div
-      className="rounded-xl flex flex-col"
-      style={{
-        width: '340px',
-        flexShrink: 0,
-        backgroundColor: 'var(--dash-card)',
-        border: '1px solid var(--dash-border)',
-        padding: '20px',
-      }}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div
-            className="rounded-md flex items-center justify-center flex-shrink-0"
-            style={{ width: '20px', height: '20px', backgroundColor: 'rgba(245,158,11,0.15)' }}
-          >
-            <Calendar style={{ width: '12px', height: '12px', color: '#F59E0B' }} />
-          </div>
-          <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)' }}>마감일 캘린더</h3>
-        </div>
-        <div className="flex items-center gap-1">
-          <span style={{ fontSize: '12px', color: 'var(--dash-text-2)' }}>{month.label}</span>
-          <button
-            className="rounded flex items-center justify-center"
-            style={{ width: '22px', height: '22px', color: 'var(--dash-text-4)' }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)')}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-4)')}
-          >
-            <ChevronLeft style={{ width: '14px', height: '14px' }} />
-          </button>
-          <button
-            className="rounded flex items-center justify-center"
-            style={{ width: '22px', height: '22px', color: 'var(--dash-text-4)' }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)')}
-            onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-4)')}
-          >
-            <ChevronRight style={{ width: '14px', height: '14px' }} />
-          </button>
-        </div>
-      </div>
-
-      {/* Day names */}
-      <div
-        className="grid"
-        style={{ gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: '4px' }}
-      >
-        {DAY_NAMES.map((d, i) => (
-          <div
-            key={d}
-            className="flex items-center justify-center"
-            style={{
-              fontSize: '11px',
-              color: i === 5 ? '#60A5FA' : i === 6 ? '#F87171' : 'var(--dash-text-4)',
-              paddingBottom: '4px',
-            }}
-          >
-            {d}
-          </div>
-        ))}
-      </div>
-
-      {/* Calendar grid */}
-      <div className="space-y-1">
-        {weeks.map((week, wi) => (
-          <div
-            key={wi}
-            className="grid"
-            style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}
-          >
-            {week.map((day, di) => {
-              const isToday = day === TODAY_DATE;
-              const isDeadline = day !== null && DEADLINE_DAYS.includes(day);
-              const isUrgent = day !== null && URGENT_DAYS.includes(day);
-              const isSat = di === 5;
-              const isSun = di === 6;
-
-              return (
-                <div
-                  key={di}
-                  className="flex flex-col items-center justify-center"
-                  style={{ height: '32px' }}
-                >
-                  {day !== null ? (
-                    <div
-                      className="relative flex items-center justify-center rounded-full"
-                      style={{
-                        width: '26px',
-                        height: '26px',
-                        cursor: 'pointer',
-                        backgroundColor: isToday
-                          ? '#2563EB'
-                          : isUrgent
-                          ? 'rgba(239,68,68,0.12)'
-                          : isDeadline
-                          ? 'rgba(245,158,11,0.1)'
-                          : 'transparent',
-                        color: isToday
-                          ? 'white'
-                          : isUrgent
-                          ? '#EF4444'
-                          : isDeadline
-                          ? '#F59E0B'
-                          : isSat
-                          ? '#60A5FA'
-                          : isSun
-                          ? '#F87171'
-                          : day < TODAY_DATE
-                          ? 'var(--dash-text-6)'
-                          : 'var(--dash-text-2)',
-                        fontSize: '12px',
-                        fontWeight: isToday || isDeadline ? 600 : 400,
-                        border: isUrgent && !isToday ? '1px solid rgba(239,68,68,0.3)' : 'none',
-                      }}
-                    >
-                      {day}
-                      {isDeadline && !isToday && (
-                        <span
-                          className="absolute rounded-full"
-                          style={{
-                            bottom: '1px',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            width: '4px',
-                            height: '4px',
-                            backgroundColor: isUrgent ? '#EF4444' : '#F59E0B',
-                          }}
-                        />
-                      )}
-                    </div>
-                  ) : (
-                    <div style={{ width: '26px', height: '26px' }} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
-      {/* Legend */}
-      <div
-        className="flex items-center gap-4 flex-wrap mt-3 pt-3"
-        style={{ borderTop: '1px solid var(--dash-border)' }}
-      >
-        {[
-          { color: '#2563EB', label: '오늘', dot: false },
-          { color: '#EF4444', label: '마감 임박', dot: true },
-          { color: '#F59E0B', label: '마감일', dot: true },
-        ].map((item) => (
-          <div key={item.label} className="flex items-center gap-1.5">
-            {item.dot ? (
-              <span
-                className="rounded-full flex-shrink-0"
-                style={{ width: '6px', height: '6px', backgroundColor: item.color }}
-              />
-            ) : (
-              <span
-                className="rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ width: '14px', height: '14px', backgroundColor: item.color, fontSize: '7px', color: 'white' }}
-              >
-                4
-              </span>
-            )}
-            <span style={{ fontSize: '11px', color: 'var(--dash-text-3)' }}>{item.label}</span>
-          </div>
-        ))}
-        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)', marginLeft: 'auto' }}>
-          이번 달 {DEADLINE_DAYS.length}건 마감
-        </span>
-      </div>
-    </div>
-  );
-}
+const TYPE_COLORS: Record<string, string> = {
+  ISP: '#2563EB',
+  ISMP: '#F59E0B',
+  SI: '#22C55E',
+  기타: '#8B5CF6',
+};
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
   if (active && payload && payload.length) {
@@ -232,8 +41,20 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: any[] 
   return null;
 }
 
-function BidTypeChart() {
+function BidTypeChart({ bids, ceoMode }: { bids: Bid[]; ceoMode: boolean }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+
+  const total = bids.length;
+  const typeCount: Record<string, number> = {};
+  bids.forEach((b) => { typeCount[b.type] = (typeCount[b.type] || 0) + 1; });
+  const chartData = total > 0
+    ? Object.entries(typeCount).map(([name, count]) => ({
+        name,
+        value: Math.round((count / total) * 100),
+        count,
+        color: TYPE_COLORS[name] ?? '#8B5CF6',
+      }))
+    : BID_TYPE_DATA;
 
   return (
     <div
@@ -244,7 +65,6 @@ function BidTypeChart() {
         padding: '20px',
       }}
     >
-      {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <div
           className="rounded-md flex items-center justify-center flex-shrink-0"
@@ -255,17 +75,20 @@ function BidTypeChart() {
             style={{ width: '10px', height: '10px', backgroundColor: '#2563EB' }}
           />
         </div>
-        <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)' }}>공고 유형 분석</h3>
-        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)', marginLeft: 'auto' }}>총 47건 기준</span>
+        <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)' }}>
+          {ceoMode ? '진행중 사업 유형 분포' : '공고 유형 분석'}
+        </h3>
+        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)', marginLeft: 'auto' }}>
+          {ceoMode ? `진행중 ${total}건 기준` : `총 ${total > 0 ? total : 47}건 기준`}
+        </span>
       </div>
 
       <div className="flex items-center gap-6">
-        {/* Donut */}
         <div style={{ width: '160px', height: '160px', flexShrink: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={BID_TYPE_DATA}
+                data={chartData}
                 cx="50%"
                 cy="50%"
                 innerRadius={46}
@@ -275,7 +98,7 @@ function BidTypeChart() {
                 onMouseEnter={(_, index) => setActiveIndex(index)}
                 onMouseLeave={() => setActiveIndex(null)}
               >
-                {BID_TYPE_DATA.map((entry, index) => (
+                {chartData.map((entry, index) => (
                   <Cell
                     key={entry.name}
                     fill={entry.color}
@@ -290,9 +113,8 @@ function BidTypeChart() {
           </ResponsiveContainer>
         </div>
 
-        {/* Legend with bars */}
         <div className="flex-1 space-y-3">
-          {BID_TYPE_DATA.map((item, i) => (
+          {chartData.map((item, i) => (
             <div
               key={item.name}
               onMouseEnter={() => setActiveIndex(i)}
@@ -328,12 +150,11 @@ function BidTypeChart() {
         </div>
       </div>
 
-      {/* Bottom stats row */}
       <div
         className="grid grid-cols-4 gap-3 mt-4 pt-4"
         style={{ borderTop: '1px solid var(--dash-border)' }}
       >
-        {BID_TYPE_DATA.map((item) => (
+        {chartData.map((item) => (
           <div
             key={item.name}
             className="rounded-lg text-center"
@@ -354,11 +175,303 @@ function BidTypeChart() {
   );
 }
 
-export function BottomWidgets() {
+interface PopupState {
+  dateStr: string;
+  top: number;
+  left: number;
+}
+
+function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideOver: (bid: Bid) => void }) {
+  const [currentMonth, setCurrentMonth] = useState(
+    () => new Date(TODAY.getFullYear(), TODAY.getMonth(), 1)
+  );
+  const [popup, setPopup] = useState<PopupState | null>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  const bidsByDate = useMemo(() => {
+    const map = new Map<string, Bid[]>();
+    bids.forEach((bid) => {
+      const arr = map.get(bid.deadline) ?? [];
+      arr.push(bid);
+      map.set(bid.deadline, arr);
+    });
+    return map;
+  }, [bids]);
+
+  const cells = useMemo(() => {
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const result: (string | null)[] = Array(firstDay).fill(null);
+    for (let d = 1; d <= daysInMonth; d++) {
+      result.push(
+        `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      );
+    }
+    return result;
+  }, [currentMonth]);
+
+  useEffect(() => {
+    if (!popup) return;
+    const handler = (e: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
+        setPopup(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [popup]);
+
+  const handleDayClick = (dateStr: string, e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!bidsByDate.has(dateStr)) return;
+    if (popup?.dateStr === dateStr) {
+      setPopup(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const popupWidth = 288;
+    const left = rect.left + rect.width / 2 - popupWidth / 2;
+    const clampedLeft = Math.max(8, Math.min(left, window.innerWidth - popupWidth - 8));
+    setPopup({ dateStr, top: rect.bottom + 8, left: clampedLeft });
+  };
+
+  const todayStr = TODAY.toISOString().slice(0, 10);
+  const popupBids = popup ? (bidsByDate.get(popup.dateStr) ?? []) : [];
+
   return (
-    <div className="flex gap-4">
-      <MiniCalendar />
-      <BidTypeChart />
+    <div
+      className="flex-1 rounded-xl"
+      style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '20px' }}
+    >
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-4">
+        <div
+          className="rounded-md flex items-center justify-center flex-shrink-0"
+          style={{ width: '20px', height: '20px', backgroundColor: 'rgba(239,68,68,0.15)' }}
+        >
+          <div className="rounded-sm" style={{ width: '10px', height: '10px', backgroundColor: '#EF4444' }} />
+        </div>
+        <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)' }}>마감일 캘린더</h3>
+        <div className="flex items-center gap-1 ml-auto">
+          <button
+            onClick={() => setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+            className="flex items-center justify-center rounded-md"
+            style={{ width: '22px', height: '22px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
+          >
+            <ChevronLeft style={{ width: '12px', height: '12px' }} />
+          </button>
+          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--dash-text)', minWidth: '72px', textAlign: 'center' }}>
+            {currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월
+          </span>
+          <button
+            onClick={() => setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+            className="flex items-center justify-center rounded-md"
+            style={{ width: '22px', height: '22px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
+          >
+            <ChevronRight style={{ width: '12px', height: '12px' }} />
+          </button>
+        </div>
+      </div>
+
+      {/* Day of week headers */}
+      <div className="grid grid-cols-7 mb-1">
+        {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
+          <div
+            key={d}
+            className="text-center"
+            style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              color: i === 0 ? '#EF4444' : i === 6 ? '#60A5FA' : 'var(--dash-text-4)',
+              padding: '4px 0',
+            }}
+          >
+            {d}
+          </div>
+        ))}
+      </div>
+
+      {/* Day cells */}
+      <div className="grid grid-cols-7 gap-0.5">
+        {cells.map((dateStr, i) => {
+          if (!dateStr) return <div key={`empty-${i}`} />;
+          const hasBids = bidsByDate.has(dateStr);
+          const count = hasBids ? bidsByDate.get(dateStr)!.length : 0;
+          const isToday = dateStr === todayStr;
+          const isSelected = popup?.dateStr === dateStr;
+          const dayNum = parseInt(dateStr.slice(8), 10);
+          const dayOfWeek = new Date(dateStr).getDay();
+          const isPast = dateStr < todayStr;
+
+          return (
+            <button
+              key={dateStr}
+              onClick={(e) => handleDayClick(dateStr, e)}
+              className="relative flex flex-col items-center rounded-lg transition-colors"
+              style={{
+                padding: '4px 2px',
+                cursor: hasBids ? 'pointer' : 'default',
+                backgroundColor: isSelected
+                  ? 'rgba(37,99,235,0.15)'
+                  : isToday
+                  ? 'rgba(37,99,235,0.08)'
+                  : 'transparent',
+                border: isSelected
+                  ? '1px solid rgba(37,99,235,0.4)'
+                  : isToday
+                  ? '1px solid rgba(37,99,235,0.2)'
+                  : '1px solid transparent',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '12px',
+                  fontWeight: isToday ? 700 : 400,
+                  lineHeight: 1,
+                  color: isToday
+                    ? '#2563EB'
+                    : dayOfWeek === 0
+                    ? '#EF4444'
+                    : dayOfWeek === 6
+                    ? '#60A5FA'
+                    : isPast
+                    ? 'var(--dash-text-4)'
+                    : 'var(--dash-text-2)',
+                }}
+              >
+                {dayNum}
+              </span>
+              {hasBids && (
+                <span
+                  className="mt-0.5 rounded-full flex items-center justify-center"
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    backgroundColor: isSelected ? '#2563EB' : '#EF4444',
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    color: 'white',
+                    flexShrink: 0,
+                  }}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Legend */}
+      <div
+        className="flex items-center gap-3 mt-3 pt-3"
+        style={{ borderTop: '1px solid var(--dash-border)' }}
+      >
+        <div className="flex items-center gap-1.5">
+          <span style={{ width: '8px', height: '8px', borderRadius: '9999px', backgroundColor: '#EF4444', display: 'inline-block' }} />
+          <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>마감일</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span style={{ width: '8px', height: '8px', borderRadius: '4px', backgroundColor: 'rgba(37,99,235,0.3)', display: 'inline-block', border: '1px solid rgba(37,99,235,0.4)' }} />
+          <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>오늘</span>
+        </div>
+        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)', marginLeft: 'auto' }}>
+          이번달 {[...bidsByDate.keys()].filter(d => d.startsWith(`${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`)).length}일 마감
+        </span>
+      </div>
+
+      {/* Popup */}
+      {popup && popupBids.length > 0 && createPortal(
+        <div
+          ref={popupRef}
+          style={{
+            position: 'fixed',
+            top: popup.top,
+            left: popup.left,
+            zIndex: 9000,
+            width: '288px',
+            backgroundColor: 'var(--dash-card)',
+            border: '1px solid var(--dash-border-strong)',
+            borderRadius: '10px',
+            padding: '12px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+          }}
+        >
+          <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--dash-text-3)', marginBottom: '8px' }}>
+            {popup.dateStr.substring(5).replace('-', '/')} 마감 공고 ({popupBids.length}건)
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {popupBids.map((bid) => (
+              <div
+                key={bid.id}
+                className="rounded-lg"
+                onClick={() => { onOpenSlideOver(bid); setPopup(null); }}
+                style={{ padding: '8px 10px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)', cursor: 'pointer', transition: 'background-color 0.15s' }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg-alt)')}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg)')}
+              >
+                <div
+                  style={{
+                    fontSize: '12px', fontWeight: 600, color: 'var(--dash-text)',
+                    lineHeight: 1.4, marginBottom: '5px',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}
+                  title={bid.title}
+                >
+                  {bid.title}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span style={{ fontSize: '11px', color: 'var(--dash-text-3)' }}>{bid.agency}</span>
+                  <div className="flex items-center gap-2">
+                    <span style={{ fontSize: '11px', color: '#F59E0B', fontWeight: 600 }}>{formatBudget(bid.budget)}</span>
+                    <RiskBadge risk={bid.risk} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
+  );
+}
+
+export function BottomWidgets({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false }: {
+  bids: Bid[];
+  bidFlags: Record<string, BidFlags>;
+  onToggleBookmark: (bidId: string) => void;
+  onToggleInProgress: (bidId: string) => void;
+  onOpenAnalysisDetail?: (bid: Bid) => void;
+  onRequestAnalysis?: (bidId: string) => void;
+  ceoMode?: boolean;
+}) {
+  const [slideOverBid, setSlideOverBid] = useState<Bid | null>(null);
+  const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
+
+  const openSlideOver = (bid: Bid) => {
+    setSlideOverBid(bid);
+    setIsSlideOverOpen(true);
+  };
+
+  return (
+    <>
+      <div className="flex gap-4">
+        <DeadlineCalendar bids={bids} onOpenSlideOver={openSlideOver} />
+        <BidTypeChart bids={bids} ceoMode={ceoMode} />
+      </div>
+      <BidSlideOver
+        bid={slideOverBid}
+        isOpen={isSlideOverOpen}
+        onClose={() => setIsSlideOverOpen(false)}
+        bidFlags={bidFlags}
+        onToggleBookmark={onToggleBookmark}
+        onToggleInProgress={onToggleInProgress}
+        onOpenAnalysisDetail={onOpenAnalysisDetail}
+        onRequestAnalysis={onRequestAnalysis}
+        ceoMode={ceoMode}
+      />
+    </>
   );
 }
