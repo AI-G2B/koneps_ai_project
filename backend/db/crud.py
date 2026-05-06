@@ -41,6 +41,7 @@ def _apply_notice_filters(
     isp_ismp_only: bool = False,
     bookmarked_only: bool = False,
     in_progress_only: bool = False,
+    exclude_expired: bool = False,
     ntce_kind: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
@@ -53,6 +54,11 @@ def _apply_notice_filters(
         query = query.where(Notice.is_bookmarked.is_(True))
     if in_progress_only:
         query = query.where(Notice.is_in_progress.is_(True))
+    if exclude_expired:
+        now = datetime.now(KST)
+        query = query.where(
+            or_(Notice.bid_clse_dt.is_(None), Notice.bid_clse_dt >= now)
+        )
     if ntce_kind:
         query = query.where(Notice.ntce_kind_nm == ntce_kind)
     if date_from:
@@ -78,6 +84,7 @@ async def get_notices(
     isp_ismp_only: bool = False,
     bookmarked_only: bool = False,
     in_progress_only: bool = False,
+    exclude_expired: bool = False,
     ntce_kind: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
@@ -90,6 +97,7 @@ async def get_notices(
         isp_ismp_only,
         bookmarked_only,
         in_progress_only,
+        exclude_expired,
         ntce_kind,
         date_from,
         date_to,
@@ -105,6 +113,7 @@ async def count_notices(
     isp_ismp_only: bool = False,
     bookmarked_only: bool = False,
     in_progress_only: bool = False,
+    exclude_expired: bool = False,
     ntce_kind: str | None = None,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
@@ -113,7 +122,7 @@ async def count_notices(
     """페이지네이션용 공고 총 건수를 반환한다."""
     query = select(func.count()).select_from(Notice)
     query = _apply_notice_filters(
-        query, isp_ismp_only, bookmarked_only, in_progress_only, ntce_kind, date_from, date_to, search
+        query, isp_ismp_only, bookmarked_only, in_progress_only, exclude_expired, ntce_kind, date_from, date_to, search
     )
     return await db.scalar(query) or 0
 
