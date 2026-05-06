@@ -15,6 +15,7 @@ interface ProjectPageProps {
   onToggleInProgress: (bidId: string) => void;
   onOpenAnalysisDetail?: (bid: Bid) => void;
   onRequestAnalysis?: (bidId: string) => void;
+  ceoMode?: boolean;
 }
 
 const TODAY_YEAR = TODAY.getFullYear();
@@ -29,7 +30,7 @@ function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
-export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedBid, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis }: ProjectPageProps) {
+export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedBid, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false }: ProjectPageProps) {
   const inProgressBids = bids.filter((b) => bidFlags[b.id]?.inProgress ?? false);
   const [slideOverBid, setSlideOverBid] = useState<Bid | null>(null);
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
@@ -45,7 +46,7 @@ export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedB
         {/* 왼쪽: 카드 목록 + 캘린더 */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '16px', minHeight: 0 }}>
           <div style={{ flex: 2, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <CardList inProgressBids={inProgressBids} onSelectBid={onSelectBid} selectedBid={selectedBid} />
+            <CardList inProgressBids={inProgressBids} onSelectBid={onSelectBid} selectedBid={selectedBid} aiStatuses={aiStatuses} />
           </div>
           <div style={{ flexShrink: 0, minWidth: '260px', maxWidth: '300px' }}>
             <ProjectCalendar inProgressBids={inProgressBids} onOpenSlideOver={openSlideOver} />
@@ -53,7 +54,7 @@ export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedB
         </div>
 
         {/* 오른쪽: 상세 패널 */}
-        <BidDetailPanel bid={selectedBid} aiStatuses={aiStatuses} onOpenAnalysisDetail={onOpenAnalysisDetail} onRequestAnalysis={onRequestAnalysis} />
+        <BidDetailPanel bid={selectedBid} aiStatuses={aiStatuses} onOpenAnalysisDetail={onOpenAnalysisDetail} onRequestAnalysis={onRequestAnalysis} ceoMode={ceoMode} showFullDetail={ceoMode} />
       </div>
       <BidSlideOver
         bid={slideOverBid}
@@ -65,15 +66,18 @@ export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedB
         onToggleInProgress={onToggleInProgress}
         onOpenAnalysisDetail={onOpenAnalysisDetail}
         onRequestAnalysis={onRequestAnalysis}
+        ceoMode={ceoMode}
+        showFullDetail={ceoMode}
       />
     </>
   );
 }
 
-function CardList({ inProgressBids, onSelectBid, selectedBid }: {
+function CardList({ inProgressBids, onSelectBid, selectedBid, aiStatuses }: {
   inProgressBids: Bid[];
   onSelectBid: (bid: Bid) => void;
   selectedBid: Bid | null;
+  aiStatuses?: Record<string, AiStatusType>;
 }) {
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', overflow: 'hidden' }}>
@@ -98,6 +102,7 @@ function CardList({ inProgressBids, onSelectBid, selectedBid }: {
                 bid={bid}
                 isSelected={selectedBid?.id === bid.id}
                 onSelect={() => onSelectBid(bid)}
+                aiStatus={aiStatuses?.[bid.id] ?? bid.aiStatus}
               />
             ))}
           </div>
@@ -121,10 +126,11 @@ function EmptyState() {
   );
 }
 
-function ProjectCard({ bid, isSelected, onSelect }: {
+function ProjectCard({ bid, isSelected, onSelect, aiStatus }: {
   bid: Bid;
   isSelected: boolean;
   onSelect: () => void;
+  aiStatus: AiStatusType;
 }) {
   const daysLeft = getDaysUntilDeadline(bid.deadline);
   const urgent = isDeadlineUrgent(bid.deadline);
@@ -172,7 +178,7 @@ function ProjectCard({ bid, isSelected, onSelect }: {
             {daysLeft >= 0 ? `D-${daysLeft}` : `D+${Math.abs(daysLeft)}`}
           </span>
         </span>
-        <AiStatusIndicator status={bid.aiStatus} />
+        <AiStatusIndicator status={aiStatus} />
       </div>
     </div>
   );

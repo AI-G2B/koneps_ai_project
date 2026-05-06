@@ -261,6 +261,7 @@ export default function App() {
               onToggleInProgress={toggleInProgress}
               onOpenAnalysisDetail={openAnalysisDetail}
               onRequestAnalysis={requestAnalysis}
+              ceoMode={isCeo}
             />
           ) : isCeo ? (
             <>
@@ -283,11 +284,12 @@ export default function App() {
                   ceoMode={true}
                   onRequestAnalysis={requestAnalysis}
                 />
-                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} />
+                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} ceoMode={true} />
               </div>
               <BottomWidgets
                 bids={inProgressBids}
                 bidFlags={bidFlags}
+                aiStatuses={aiStatuses}
                 onToggleBookmark={toggleBookmark}
                 onToggleInProgress={toggleInProgress}
                 onOpenAnalysisDetail={openAnalysisDetail}
@@ -318,6 +320,7 @@ export default function App() {
               <BottomWidgets
                 bids={bids}
                 bidFlags={bidFlags}
+                aiStatuses={aiStatuses}
                 onToggleBookmark={toggleBookmark}
                 onToggleInProgress={toggleInProgress}
                 onOpenAnalysisDetail={openAnalysisDetail}

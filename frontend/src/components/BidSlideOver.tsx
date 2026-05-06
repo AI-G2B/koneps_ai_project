@@ -21,9 +21,10 @@ interface BidSlideOverProps {
   onOpenAnalysisDetail?: (bid: Bid) => void;
   onRequestAnalysis?: (bidId: string) => void;
   ceoMode?: boolean;
+  showFullDetail?: boolean;
 }
 
-export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false }: BidSlideOverProps) {
+export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false }: BidSlideOverProps) {
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -333,8 +334,8 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--dash-border)' }}>
                 <SlideOverSectionTitle
                   icon={Sparkles}
-                  title={ceoMode ? '핵심 요약' : 'AI 추출 핵심항목'}
-                  badge={ceoMode
+                  title={ceoMode && !showFullDetail ? '핵심 요약' : 'AI 추출 핵심항목'}
+                  badge={ceoMode && !showFullDetail
                     ? (detail ? '4건' : undefined)
                     : (detail ? `${AI_HIGHLIGHT_ITEMS.length + AI_DETAIL_ITEMS.length}건` : undefined)}
                   accentColor="#2563EB"
@@ -343,7 +344,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                   <div style={{ marginTop: '12px', textAlign: 'center', padding: '20px', color: 'var(--dash-text-4)', fontSize: '12px' }}>
                     공고를 선택하면 AI 분석 결과가 표시됩니다
                   </div>
-                ) : ceoMode ? (
+                ) : ceoMode && !showFullDetail ? (
                   <div className="grid grid-cols-2 gap-2" style={{ marginTop: '12px' }}>
                     {CEO_ITEMS.map((item) => (
                       <div
@@ -429,7 +430,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
                     {riskFactors.map((w) => (
-                      <RiskCard key={w.title} title={w.title} desc={w.desc} severity={w.severity} ceoMode={ceoMode} />
+                      <RiskCard key={w.title} title={w.title} desc={w.desc} severity={w.severity} ceoMode={ceoMode && !showFullDetail} />
                     ))}
                   </div>
                 )}
@@ -541,11 +542,6 @@ function RiskCard({ title, desc, severity, ceoMode = false }: { title: string; d
       </div>
       {!ceoMode && (
         <p style={{ fontSize: '11px', color: 'var(--dash-text-2)', lineHeight: 1.6, marginBottom: '0' }}>{desc}</p>
-      )}
-      {ceoMode && (
-        <div style={{ fontSize: '11px', color: 'var(--dash-text-4)', marginTop: '6px' }}>
-          담당자에게 상세 내용 문의
-        </div>
       )}
     </div>
   );
