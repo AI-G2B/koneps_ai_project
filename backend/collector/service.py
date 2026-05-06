@@ -8,9 +8,11 @@ naramarket.py에서 공고를 가져와 DB에 저장하는 공통 로직.
 두 곳 모두 이 함수를 호출한다.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
+KST = timezone(timedelta(hours=9))
 
 from backend.collector.file_downloader import download_attachments
 from backend.collector.naramarket import _classify_notice_type, fetch_bids
@@ -19,12 +21,12 @@ from backend.db.models import Notice
 
 
 def _parse_dt(value: str | None) -> datetime | None:
-    """나라장터 API 날짜 문자열을 timezone-aware datetime으로 변환한다."""
+    """나라장터 API 날짜 문자열(KST)을 timezone-aware datetime으로 변환한다."""
     if not value:
         return None
     for fmt in ("%Y-%m-%d %H:%M:%S", "%Y%m%d%H%M"):
         try:
-            return datetime.strptime(value, fmt).replace(tzinfo=timezone.utc)
+            return datetime.strptime(value, fmt).replace(tzinfo=KST)
         except ValueError:
             continue
     return None
