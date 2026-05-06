@@ -29,11 +29,13 @@ from backend.collector.naramarket import _classify_notice_type
 from backend.collector.service import collect_and_save
 from backend.db.crud import (
     count_notices,
+    get_analysis_by_notice_id,
     get_attachments_by_notice,
     get_dashboard_stats,
     get_notice_detail,
     get_notice_by_bid_no,
     get_notices,
+    get_risk_factors_by_notice,
     get_type_stats,
     search_notices,
     set_bookmark,
@@ -142,8 +144,55 @@ class BidListResponse(BaseModel):
     bids: list[BidListItem]
 
 
+class AnalysisResultSchema(BaseModel):
+    """AI 분석 결과 스키마"""
+
+    budget_amt: float | None = None
+    budget_raw: str | None = None
+    bid_qualify: str | None = None
+    exec_period_months: int | None = None
+    exec_period_raw: str | None = None
+    manmonth_total: float | None = None
+    manmonth_detail: dict | None = None
+    past_performance: str | None = None
+    eval_tech_score: float | None = None
+    eval_price_score: float | None = None
+    task_scope: str | None = None
+    joint_supply_yn: bool | None = None
+    joint_supply_detail: str | None = None
+    submit_deadline: datetime | None = None
+    required_docs: dict | None = None
+    exec_location: str | None = None
+    key_tech_spec: str | None = None
+    disqualify_reason: str | None = None
+    contact_person: dict | None = None
+    confidence_score: float | None = None
+    model_used: str | None = None
+    analyzed_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class RiskFactorSchema(BaseModel):
+    """위험 요인 단건 스키마"""
+
+    id: int
+    risk_category: str
+    risk_level: str
+    clause_title: str | None = None
+    clause_original: str | None = None
+    clause_summary: str
+    page_no: int | None = None
+    mitigation_suggest: str | None = None
+    sort_order: int = 0
+
+    class Config:
+        from_attributes = True
+
+
 class BidDetailResponse(BaseModel):
-    """공고 상세 응답 스키마 (AI 분석 결과는 /analysis/{bid_ntce_no} 에서 제공)"""
+    """공고 상세 응답 스키마"""
 
     id: int
     bid_ntce_no: str
@@ -169,6 +218,8 @@ class BidDetailResponse(BaseModel):
     pipeline_status: str
     collected_at: datetime | None
     attachments: list[AttachmentSchema] = []
+    analysis_result: AnalysisResultSchema | None = None
+    risk_factors: list[RiskFactorSchema] = []
 
     class Config:
         from_attributes = True
@@ -536,7 +587,11 @@ async def get_bid_detail(
     if not notice:
         raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
     attachments = await get_attachments_by_notice(db, notice.id)
+    analysis = await get_analysis_by_notice_id(db, notice.id)
+    risk_factors = await get_risk_factors_by_notice(db, notice.id)
     response = BidDetailResponse.model_validate(notice)
     response.is_expired = bool(notice.bid_clse_dt and notice.bid_clse_dt < datetime.now(KST))
     response.attachments = [AttachmentSchema.model_validate(a) for a in attachments]
+    response.analysis_result = AnalysisResultSchema.model_validate(analysis) if analysis else None
+    response.risk_factors = [RiskFactorSchema.model_validate(r) for r in risk_factors]
     return response
