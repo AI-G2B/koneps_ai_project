@@ -122,6 +122,7 @@ class BidListItem(BaseModel):
     isp_ismp_type: str | None  # ISP / ISMP / SI / None
     is_bookmarked: bool  # 관심 공고 여부
     is_in_progress: bool  # 진행 프로젝트 여부
+    is_expired: bool = False  # 입찰마감일 경과 여부 (bid_clse_dt < 현재 KST)
     presmpt_prce: float | None  # 추정가격
     asign_bdgt_amt: float | None  # 배정예산 (추정가격 없을 때 대체)
     bid_clse_dt: datetime | None  # 입찰마감일시
@@ -157,6 +158,7 @@ class BidDetailResponse(BaseModel):
     isp_ismp_type: str | None
     is_bookmarked: bool  # 관심 공고 여부
     is_in_progress: bool  # 진행 프로젝트 여부
+    is_expired: bool = False  # 입찰마감일 경과 여부
     asign_bdgt_amt: float | None
     presmpt_prce: float | None
     bid_clse_dt: datetime | None
@@ -189,14 +191,21 @@ def _format_price(won: int | None) -> str | None:
     return f"{man:,}만원"
 
 
+def _to_list_item(notice: Notice) -> BidListItem:
+    """Notice ORM 객체를 BidListItem으로 변환하며 is_expired를 실시간 계산한다."""
+    item = BidListItem.model_validate(notice)
+    item.is_expired = bool(notice.bid_clse_dt and notice.bid_clse_dt < datetime.now(KST))
+    return item
+
+
 def _parse_date(date_str: str | None, end_of_day: bool = False) -> datetime | None:
-    """YYYY-MM-DD 문자열을 UTC datetime으로 변환한다."""
+    """YYYY-MM-DD 문자열(KST 기준)을 timezone-aware datetime으로 변환한다."""
     if not date_str:
         return None
     dt = datetime.strptime(date_str, "%Y-%m-%d")
     if end_of_day:
         dt = dt.replace(hour=23, minute=59, second=59)
-    return dt.replace(tzinfo=timezone.utc)
+    return dt.replace(tzinfo=KST)
 
 
 def _resolve_date_range(
@@ -269,6 +278,7 @@ async def list_bids(
     isp_ismp_only: bool = Query(False, description="ISP/ISMP 공고만 조회"),
     bookmarked_only: bool = Query(False, description="관심 표시한 공고만 조회"),
     in_progress_only: bool = Query(False, description="진행 프로젝트 공고만 조회"),
+    exclude_expired: bool = Query(False, description="마감일 지난 공고 제외"),
     ntce_kind: str | None = Query(None, description="공고 종류 필터 (예: 용역)"),
     date_range: str | None = Query(
         None, description="날짜 범위: today / yesterday / 3days / 1week / all"
@@ -298,6 +308,7 @@ async def list_bids(
         isp_ismp_only=isp_ismp_only,
         bookmarked_only=bookmarked_only,
         in_progress_only=in_progress_only,
+        exclude_expired=exclude_expired,
         ntce_kind=ntce_kind,
         date_from=dt_from,
         date_to=dt_to,
@@ -310,15 +321,14 @@ async def list_bids(
         isp_ismp_only=isp_ismp_only,
         bookmarked_only=bookmarked_only,
         in_progress_only=in_progress_only,
+        exclude_expired=exclude_expired,
         ntce_kind=ntce_kind,
         date_from=dt_from,
         date_to=dt_to,
         search=search,
     )
-    return BidListResponse(
-        total=total,
-        bids=[BidListItem.model_validate(n) for n in notices],
-    )
+
+    return BidListResponse(total=total, bids=[_to_list_item(n) for n in notices])
 
 
 @router.patch(
@@ -333,7 +343,7 @@ async def toggle_bookmark(
     notice = await set_bookmark(db, bid_ntce_no, is_bookmarked)
     if not notice:
         raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
-    return BidListItem.model_validate(notice)
+    return _to_list_item(notice)
 
 
 @router.patch(
@@ -350,7 +360,7 @@ async def toggle_in_progress(
     notice = await set_in_progress(db, bid_ntce_no, is_in_progress)
     if not notice:
         raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
-    return BidListItem.model_validate(notice)
+    return _to_list_item(notice)
 
 
 @router.get(
@@ -448,7 +458,7 @@ async def search_bids(
     if notices:
         return SearchResponse(
             source="db",
-            results=[BidListItem.model_validate(n) for n in notices],
+            results=[_to_list_item(n) for n in notices],
             total=len(notices),
         )
 
@@ -508,7 +518,7 @@ async def search_bids(
     notices = await search_notices(db, q)
     return SearchResponse(
         source="naramarket",
-        results=[BidListItem.model_validate(n) for n in notices],
+        results=[_to_list_item(n) for n in notices],
         total=len(notices),
     )
 
@@ -526,5 +536,6 @@ async def get_bid_detail(
         raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
     attachments = await get_attachments_by_notice(db, notice.id)
     response = BidDetailResponse.model_validate(notice)
+    response.is_expired = bool(notice.bid_clse_dt and notice.bid_clse_dt < datetime.now(KST))
     response.attachments = [AttachmentSchema.model_validate(a) for a in attachments]
     return response
