@@ -129,6 +129,7 @@ class BidListItem(BaseModel):
     bid_ntce_dt: datetime | None  # 나라장터 공고 등록일
     collected_at: datetime | None  # 우리 DB 수집 시각
     pipeline_status: str  # collected / parsing / analyzed / failed
+    bid_ntce_dtl_url: str | None = None  # 나라장터 공고 원문 URL
 
     class Config:
         from_attributes = True
