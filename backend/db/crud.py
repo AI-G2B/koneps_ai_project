@@ -152,13 +152,14 @@ async def set_in_progress(db: AsyncSession, bid_ntce_no: str, is_in_progress: bo
 
 
 async def search_notices(db: AsyncSession, query: str, limit: int = 20) -> list[Notice]:
-    """공고번호 또는 공고명에서 query를 포함하는 공고를 반환한다."""
+    """공고번호, 공고명, 기관명에서 query를 포함하는 공고를 반환한다."""
     result = await db.execute(
         select(Notice)
         .where(
             or_(
                 Notice.bid_ntce_no.ilike(f"%{query}%"),
                 Notice.bid_ntce_nm.ilike(f"%{query}%"),
+                Notice.ntce_instt_nm.ilike(f"%{query}%"),
             )
         )
         .order_by(Notice.bid_clse_dt.asc())
