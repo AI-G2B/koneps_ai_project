@@ -29,12 +29,9 @@ from backend.collector.naramarket import fetch_bids, fetch_bids_by_query
 from backend.collector.service import collect_and_save, save_bids
 from backend.db.crud import (
     count_notices,
-    get_analysis_by_notice_id,
-    get_attachments_by_notice,
     get_dashboard_stats,
     get_notice_detail,
     get_notices,
-    get_risk_factors_by_notice,
     get_type_stats,
     search_notices,
     set_bookmark,
@@ -543,12 +540,9 @@ async def get_bid_detail(
     notice = await get_notice_detail(db, bid_ntce_no)
     if not notice:
         raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
-    attachments = await get_attachments_by_notice(db, notice.id)
-    analysis = await get_analysis_by_notice_id(db, notice.id)
-    risk_factors = await get_risk_factors_by_notice(db, notice.id)
     response = BidDetailResponse.model_validate(notice)
     response.is_expired = bool(notice.bid_clse_dt and notice.bid_clse_dt < datetime.now(KST))
-    response.attachments = [AttachmentSchema.model_validate(a) for a in attachments]
-    response.analysis_result = AnalysisResultSchema.model_validate(analysis) if analysis else None
-    response.risk_factors = [RiskFactorSchema.model_validate(r) for r in risk_factors]
+    response.attachments = [AttachmentSchema.model_validate(a) for a in notice.attachments]
+    response.analysis_result = AnalysisResultSchema.model_validate(notice.analysis_result) if notice.analysis_result else None
+    response.risk_factors = [RiskFactorSchema.model_validate(r) for r in notice.risk_factors]
     return response
