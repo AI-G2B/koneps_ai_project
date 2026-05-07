@@ -15,19 +15,23 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 // ─────────────────────────────────────────────
 
 export interface ApiBidListItem {
+  id: number;
   bid_ntce_no: string;
   bid_ntce_nm: string;
-  ntce_instt_nm: string;
+  ntce_instt_nm: string | null;
+  ntce_kind_nm: string | null;
+  is_isp_ismp: boolean;
+  isp_ismp_type: string | null;
+  is_bookmarked: boolean;
+  is_in_progress: boolean;
+  is_expired: boolean;
   presmpt_prce: number | null;
   asign_bdgt_amt: number | null;
-  bid_clse_dt: string;        // "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm:ss"
-  bid_ntce_dt: string;
-  is_isp_ismp: boolean | null;
-  isp_ismp_type: string | null;
-  pipeline_status: string | null; // "completed" | "processing" | "pending" | "failed"
-  // 선택적: 백엔드가 사전 집계해서 보내줄 수도 있음
-  danger_count?: number;
-  overall_risk?: string;
+  bid_clse_dt: string | null;
+  bid_ntce_dt: string | null;
+  collected_at: string | null;
+  pipeline_status: string;
+  bid_ntce_dtl_url: string | null;
 }
 
 export interface ApiAnalysisResult {
@@ -59,12 +63,9 @@ export interface ApiBidDetailResponse extends ApiBidListItem {
   risk_factors: ApiRiskFactor[];
 }
 
-// 페이지네이션 응답 (백엔드가 래핑할 경우)
 export interface ApiBidListResponse {
-  items: ApiBidListItem[];
   total: number;
-  page: number;
-  per_page: number;
+  bids: ApiBidListItem[];
 }
 
 // ─────────────────────────────────────────────
@@ -94,12 +95,12 @@ function mapBidType(item: ApiBidListItem): BidType {
 }
 
 function mapPipelineStatus(status: string | null): AiStatusType {
-  if (status === 'completed') return 'complete';
-  return 'analyzing';
+  if (status === 'analyzed') return 'complete';
+  if (status === 'analyzing' || status === 'parsing') return 'analyzing';
+  return 'none';
 }
 
-function normalizeDate(dateStr: string): string {
-  // "YYYY-MM-DDTHH:mm:ss" → "YYYY-MM-DD"
+function normalizeDate(dateStr: string | null | undefined): string {
   return dateStr ? dateStr.slice(0, 10) : '';
 }
 
@@ -147,33 +148,36 @@ function mapAnalysisResultToBidDetail(
 }
 
 export function mapApiBidListItemToBid(item: ApiBidListItem): Bid {
-  const budget = item.presmpt_prce ?? item.asign_bdgt_amt ?? 0;
+  const budget = item.asign_bdgt_amt ?? item.presmpt_prce ?? 0;
   return {
-    id: String(item.bid_ntce_no),
+    id: item.bid_ntce_no,
     number: item.bid_ntce_no,
     title: item.bid_ntce_nm,
-    agency: item.ntce_instt_nm,
+    agency: item.ntce_instt_nm ?? '',
     budget,
     deadline: normalizeDate(item.bid_clse_dt),
-    risk: mapRiskLevel([], item.overall_risk),
+    risk: 'good' as RiskLevel,
     aiStatus: mapPipelineStatus(item.pipeline_status),
     type: mapBidType(item),
-    dangerCount: item.danger_count ?? 0,
+    dangerCount: 0,
     collectedAt: normalizeDate(item.bid_ntce_dt),
-    status: 'none',
+    is_bookmarked: item.is_bookmarked,
+    is_in_progress: item.is_in_progress,
+    is_expired: item.is_expired,
+    ntce_dtl_url: item.bid_ntce_dtl_url ?? undefined,
   };
 }
 
 export function mapApiBidDetailToBid(res: ApiBidDetailResponse): Bid {
-  const budget = res.presmpt_prce ?? res.asign_bdgt_amt ?? 0;
+  const budget = res.asign_bdgt_amt ?? res.presmpt_prce ?? 0;
   const riskFactors = (res.risk_factors ?? []).map(mapApiRiskFactor);
-  const risk = mapRiskLevel(res.risk_factors ?? [], res.overall_risk);
+  const risk = mapRiskLevel(res.risk_factors ?? []);
 
   return {
-    id: String(res.bid_ntce_no),
+    id: res.bid_ntce_no,
     number: res.bid_ntce_no,
     title: res.bid_ntce_nm,
-    agency: res.ntce_instt_nm,
+    agency: res.ntce_instt_nm ?? '',
     budget,
     deadline: normalizeDate(res.bid_clse_dt),
     risk,
@@ -181,7 +185,10 @@ export function mapApiBidDetailToBid(res: ApiBidDetailResponse): Bid {
     type: mapBidType(res),
     dangerCount: riskFactors.filter((r) => r.severity === 'high').length,
     collectedAt: normalizeDate(res.bid_ntce_dt),
-    status: 'none',
+    is_bookmarked: res.is_bookmarked,
+    is_in_progress: res.is_in_progress,
+    is_expired: res.is_expired,
+    ntce_dtl_url: res.bid_ntce_dtl_url ?? undefined,
     detail: res.analysis_result
       ? mapAnalysisResultToBidDetail(res.analysis_result, budget)
       : undefined,
@@ -206,8 +213,9 @@ export interface FetchBidsParams {
 export async function fetchBids(params?: FetchBidsParams): Promise<Bid[]> {
   try {
     const url = new URL(`${BASE_URL}/bids`);
-    if (params?.page != null) url.searchParams.set('page', String(params.page));
-    if (params?.per_page != null) url.searchParams.set('per_page', String(params.per_page));
+    url.searchParams.set('limit', String(params?.per_page ?? 100));
+    if (params?.page != null && params?.per_page != null)
+      url.searchParams.set('offset', String((params.page - 1) * params.per_page));
     if (params?.date_from) url.searchParams.set('date_from', params.date_from);
     if (params?.date_to) url.searchParams.set('date_to', params.date_to);
 
@@ -218,11 +226,8 @@ export async function fetchBids(params?: FetchBidsParams): Promise<Bid[]> {
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-    const data: ApiBidListItem[] | ApiBidListResponse = await res.json();
-
-    // 배열 또는 페이지네이션 래퍼 모두 처리
-    const items: ApiBidListItem[] = Array.isArray(data) ? data : data.items;
-    return items.map(mapApiBidListItemToBid);
+    const data: ApiBidListResponse = await res.json();
+    return data.bids.map(mapApiBidListItemToBid);
   } catch (err) {
     console.warn('[api] fetchBids 실패 → mockData fallback:', err);
     return mockBids;
@@ -249,6 +254,18 @@ export async function fetchBidById(id: string): Promise<Bid> {
     if (found) return found;
     throw new Error(`공고 ID ${id}를 찾을 수 없습니다`);
   }
+}
+
+export async function triggerCollect(): Promise<{ saved: number; skipped: number; errors: number }> {
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const res = await fetch(`${BASE_URL}/bids/collect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ start_date: today, end_date: today }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
 export interface SearchBidsResult {

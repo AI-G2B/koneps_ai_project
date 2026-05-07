@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from .models import AnalysisResult, Attachment, Notice, ProposalOutline, RiskFactor
 
@@ -18,6 +19,11 @@ async def get_notice_detail(db: AsyncSession, bid_ntce_no: str) -> Notice | None
     """공고번호로 가장 최신 차수의 공고 상세를 반환한다."""
     result = await db.execute(
         select(Notice)
+        .options(
+            selectinload(Notice.attachments),
+            selectinload(Notice.analysis_result),
+            selectinload(Notice.risk_factors),
+        )
         .where(Notice.bid_ntce_no == bid_ntce_no)
         .order_by(Notice.bid_ntce_ord.desc())
         .limit(1)
@@ -103,7 +109,7 @@ async def get_notices(
         date_to,
         search,
     )
-    query = query.order_by(Notice.bid_clse_dt.asc()).limit(limit).offset(offset)
+    query = query.order_by(Notice.collected_at.desc()).limit(limit).offset(offset)
     result = await db.execute(query)
     return result.scalars().all()
 

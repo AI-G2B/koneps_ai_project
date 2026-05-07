@@ -25,17 +25,13 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.collector.naramarket import fetch_bids, fetch_bids_by_query
-from backend.collector.naramarket import _classify_notice_type
-from backend.collector.service import collect_and_save
+
+from backend.collector.service import collect_and_save, save_bids
 from backend.db.crud import (
     count_notices,
-    get_analysis_by_notice_id,
-    get_attachments_by_notice,
     get_dashboard_stats,
     get_notice_detail,
-    get_notice_by_bid_no,
     get_notices,
-    get_risk_factors_by_notice,
     get_type_stats,
     search_notices,
     set_bookmark,
@@ -423,7 +419,6 @@ async def toggle_in_progress(
 def preview_collect(
     start_date: str | None = None,
     end_date: str | None = None,
-    it_only: bool = True,
 ) -> BidPreviewResponse:
     """오늘 날짜 기준으로 나라장터 공고를 수집하여 미리보기 결과를 반환한다."""
     today = date.today().strftime("%Y%m%d")
@@ -431,7 +426,7 @@ def preview_collect(
     end = end_date or today
 
     try:
-        results = fetch_bids(start, end, it_only)
+        results = fetch_bids(start, end)
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=502, detail=str(e))
 
@@ -464,7 +459,6 @@ def preview_collect(
 async def collect_bids(
     start_date: str | None = None,
     end_date: str | None = None,
-    it_only: bool = True,
     download: bool = False,
     db: AsyncSession = Depends(get_db),
 ) -> CollectResponse:
@@ -475,7 +469,7 @@ async def collect_bids(
 
     try:
         result = await collect_and_save(
-            db, start, end, it_only=it_only, download=download
+            db, start, end, download=download
         )
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=502, detail=str(e))
@@ -524,47 +518,7 @@ async def search_bids(
         return SearchResponse(source="empty", results=[], total=0)
 
     # 3단계: 검색 결과 DB 저장 (중복 제외)
-    from datetime import datetime, timezone
-
-    for r in raw:
-        bid = r["bid"]
-        existing = await get_notice_by_bid_no(
-            db, bid["bid_ntce_no"], bid["bid_ntce_ord"]
-        )
-        if existing:
-            continue
-        notice_type, is_isp_ismp, isp_ismp_type = _classify_notice_type(
-            bid["bid_ntce_nm"]
-        )
-        from backend.collector.service import _parse_dt
-
-        try:
-            notice = Notice(
-                bid_ntce_no=bid["bid_ntce_no"],
-                bid_ntce_ord=bid["bid_ntce_ord"],
-                notice_type=notice_type,
-                bid_ntce_nm=bid["bid_ntce_nm"],
-                ntce_instt_nm=bid["ntce_instt_nm"],
-                dminstt_nm=bid["dminstt_nm"],
-                bid_mtd_nm=bid["bid_mtd_nm"],
-                cntrct_cncls_mthd_nm=bid["cntrct_cncls_mthd_nm"],
-                is_isp_ismp=is_isp_ismp,
-                isp_ismp_type=isp_ismp_type,
-                presmpt_prce=bid["presmpt_prce"],
-                asign_bdgt_amt=bid["asign_bdgt_amt"],
-                bid_clse_dt=_parse_dt(bid["bid_clse_dt"]),
-                bid_ntce_dt=_parse_dt(bid["bid_ntce_dt"]),
-                openg_dt=_parse_dt(bid["openg_dt"]),
-                ntce_kind_nm=bid.get("ntce_kind_nm"),
-                bid_ntce_dtl_url=bid["bid_ntce_dtl_url"],
-                pipeline_status="collected",
-                collected_at=datetime.now(timezone.utc),
-            )
-            from backend.db.crud import create_notice
-
-            await create_notice(db, notice)
-        except Exception:
-            pass
+    await save_bids(db, raw)
 
     # 저장 후 DB에서 재조회하여 반환
     notices = await search_notices(db, q)
@@ -586,12 +540,9 @@ async def get_bid_detail(
     notice = await get_notice_detail(db, bid_ntce_no)
     if not notice:
         raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
-    attachments = await get_attachments_by_notice(db, notice.id)
-    analysis = await get_analysis_by_notice_id(db, notice.id)
-    risk_factors = await get_risk_factors_by_notice(db, notice.id)
     response = BidDetailResponse.model_validate(notice)
     response.is_expired = bool(notice.bid_clse_dt and notice.bid_clse_dt < datetime.now(KST))
-    response.attachments = [AttachmentSchema.model_validate(a) for a in attachments]
-    response.analysis_result = AnalysisResultSchema.model_validate(analysis) if analysis else None
-    response.risk_factors = [RiskFactorSchema.model_validate(r) for r in risk_factors]
+    response.attachments = [AttachmentSchema.model_validate(a) for a in notice.attachments]
+    response.analysis_result = AnalysisResultSchema.model_validate(notice.analysis_result) if notice.analysis_result else None
+    response.risk_factors = [RiskFactorSchema.model_validate(r) for r in notice.risk_factors]
     return response
