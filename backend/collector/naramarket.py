@@ -22,7 +22,7 @@ BID_LIST_URL = (
 
 # 단독 키워드 — 공고명에 있으면 바로 포함 (업종코드 무관)
 STANDALONE_KEYWORDS = [
-    "ISP", "ISMP", "BPR", "PI",
+    "ISP", "ISMP", "BPR",
     "정보화전략", "정보화계획", "디지털전환", "마스터플랜", "IT 컨설팅",
 ]
 
