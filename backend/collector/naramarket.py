@@ -7,7 +7,6 @@
 """
 
 import os
-from datetime import datetime
 
 import requests
 from dotenv import load_dotenv
@@ -16,98 +15,37 @@ load_dotenv()
 
 API_KEY = os.getenv("NARA_API_KEY", "")
 
-# 나라장터 입찰공고 목록 API
+# 전체 용역 공고 조회 — 업종코드 무관하게 ISP/ISMP 누락 방지
 BID_LIST_URL = (
     "https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc"
 )
 
-# 단독으로 걸리는 키워드 — 공고명에 있으면 컨설팅 여부 무관하게 포함
+# 단독 키워드 — 공고명에 있으면 바로 포함 (업종코드 무관)
 STANDALONE_KEYWORDS = [
-    "ISP",
-    "ISMP",
-    "정보화전략",
-    "정보화계획",
-    "디지털전환",
+    "ISP", "ISMP", "BPR", "PI",
+    "정보화전략", "정보화계획", "디지털전환", "마스터플랜", "IT 컨설팅",
 ]
 
-# "컨설팅"과 함께 있어야 걸리는 IT 관련 키워드
+# 트리거 단어와 함께 있어야 걸리는 IT 키워드
 CONSULTING_KEYWORDS = [
-    "IT",
-    "ICT",
-    "SW",
-    "AI",
-    "인공지능",
-    "정보",
-    "디지털",
-    "클라우드",
-    "보안",
-    "사이버",
-    "시스템",
-    "ERP",
-    "데이터",
-    "DX",
+    "IT", "ICT", "SW", "AI", "인공지능",
+    "정보", "디지털", "클라우드", "보안", "사이버",
+    "시스템", "ERP", "데이터", "DX",
 ]
+
+# 분류용 — ISMP 판별 (ISP보다 먼저 검사 — "ISMP"에 "ISP"가 포함됨)
+ISMP_KEYWORDS = ["ISMP", "마스터플랜", "정보시스템마스터플랜"]
+
+# 분류용 — ISP 판별
+ISP_KEYWORDS = ["ISP", "정보화전략", "정보화계획"]
+
+# 분류용 — BPR/PI 판별
+BPR_PI_KEYWORDS = ["BPR", "PI"]
 
 
 # ──────────────────────────────────────
 # 내부 필터 함수
 # ──────────────────────────────────────
-
-
-# 주의: 이 함수의 키워드를 수정하면 _classify_notice_type()도 함께 확인할 것
-def _is_it_consulting(item: dict) -> bool:
-    """IT 컨설팅 공고인지 2단계 키워드 로직으로 판별한다."""
-    name = item.get("bidNtceNm", "")
-    name_lower = name.lower()
-
-    # 1) 단독 키워드가 공고명에 있으면 바로 포함
-    if any(kw.lower() in name_lower for kw in STANDALONE_KEYWORDS):
-        return True
-
-    # 2) 트리거 단어 + IT 관련 키워드가 동시에 있으면 포함
-    trigger = (
-        "컨설팅" in name_lower
-        or "계획 수립" in name_lower
-        or "기본계획" in name_lower
-        or "마스터플랜" in name_lower
-    )
-    if trigger:
-        if any(kw.lower() in name_lower for kw in CONSULTING_KEYWORDS):
-            return True
-
-    return False
-
-
-def _classify_notice_type(bid_ntce_nm: str) -> tuple[str, bool, str | None]:
-    """
-    공고명을 분석하여 공고 유형을 분류한다.
-
-    Returns:
-        (notice_type, is_isp_ismp, isp_ismp_type)
-        - notice_type  : "ISP" | "ISMP" | "일반"
-        - is_isp_ismp  : ISP 또는 ISMP 여부
-        - isp_ismp_type: "ISP" | "ISMP" | None
-    """
-    name_lower = bid_ntce_nm.lower()
-
-    # ISMP 판별 (ISP보다 먼저 검사 — "ISMP"에 "ISP"가 포함되어 있기 때문)
-    if (
-        "ismp" in name_lower
-        or "정보시스템마스터플랜" in name_lower
-        or "마스터플랜" in name_lower
-    ):
-        return "ISMP", True, "ISMP"
-
-    # ISP 판별
-    if (
-        "isp" in name_lower
-        or "정보화전략" in name_lower
-        or "정보화계획" in name_lower
-    ):
-        return "ISP", True, "ISP"
-
-    # 일반 IT 컨설팅 (필터는 통과했으나 ISP/ISMP 키워드 없음)
-    return "일반", False, None
 
 
 def _is_service_bid(item: dict) -> bool:
@@ -124,6 +62,53 @@ def _safe_int(value: int | str | None) -> int | None:
         return None
 
 
+def _is_it_consulting(item: dict) -> bool:
+    """IT 컨설팅 공고인지 2단계 키워드 로직으로 판별한다."""
+    name_lower = item.get("bidNtceNm", "").lower()
+
+    # 1단계: 단독 키워드가 있으면 바로 포함
+    if any(kw.lower() in name_lower for kw in STANDALONE_KEYWORDS):
+        return True
+
+    # 2단계: 트리거 단어 + IT 키워드 조합
+    trigger = (
+        "컨설팅" in name_lower
+        or "계획 수립" in name_lower
+        or "기본계획" in name_lower
+    )
+    if trigger and any(kw.lower() in name_lower for kw in CONSULTING_KEYWORDS):
+        return True
+
+    return False
+
+
+def _classify_notice_type(bid_ntce_nm: str) -> tuple[str, bool, str | None]:
+    """
+    공고명을 분석하여 공고 유형을 분류한다.
+
+    Returns:
+        (notice_type, is_isp_ismp, isp_ismp_type)
+        - notice_type  : "ISP" | "ISMP" | "BPR/PI" | "일반"
+        - is_isp_ismp  : ISP 또는 ISMP 여부
+        - isp_ismp_type: "ISP" | "ISMP" | None
+    """
+    name_lower = bid_ntce_nm.lower()
+
+    # ISMP 판별 (ISP보다 먼저 검사 — "ISMP"에 "ISP"가 포함됨)
+    if any(kw.lower() in name_lower for kw in ISMP_KEYWORDS):
+        return "ISMP", True, "ISMP"
+
+    # ISP 판별
+    if any(kw.lower() in name_lower for kw in ISP_KEYWORDS):
+        return "ISP", True, "ISP"
+
+    # BPR/PI 판별
+    if any(kw.lower() in name_lower for kw in BPR_PI_KEYWORDS):
+        return "BPR/PI", False, None
+
+    return "일반", False, None
+
+
 # ──────────────────────────────────────
 # 데이터 변환 함수
 # ──────────────────────────────────────
@@ -131,10 +116,13 @@ def _safe_int(value: int | str | None) -> int | None:
 
 def parse_bid(item: dict) -> dict:
     """API 응답 단건을 DB 저장용 딕셔너리로 변환한다."""
+    bid_ntce_nm = item.get("bidNtceNm", "")
+    notice_type, is_isp_ismp, isp_ismp_type = _classify_notice_type(bid_ntce_nm)
+
     return {
         "bid_ntce_no": item.get("bidNtceNo", ""),
         "bid_ntce_ord": item.get("bidNtceOrd", ""),  # 입찰공고차수 (재공고 판별)
-        "bid_ntce_nm": item.get("bidNtceNm", ""),
+        "bid_ntce_nm": bid_ntce_nm,
         "ntce_instt_nm": item.get("ntceInsttNm", ""),  # 공고기관명
         "dminstt_nm": item.get("dminsttNm", ""),  # 수요기관명
         "bid_clse_dt": item.get("bidClseDt", ""),  # 입찰마감일시 ★
@@ -151,6 +139,9 @@ def parse_bid(item: dict) -> dict:
         "is_canceled": "취소" in item.get("ntceKindNm", ""),
         "is_corrected": "정정" in item.get("ntceKindNm", ""),
         "bid_mtd_nm": item.get("bidMethdNm", ""),  # 입찰방식명
+        "notice_type": notice_type,
+        "is_isp_ismp": is_isp_ismp,
+        "isp_ismp_type": isp_ismp_type,
     }
 
 
@@ -166,8 +157,8 @@ def parse_attachments(item: dict) -> list[dict]:
                 {
                     "file_name": name,
                     "file_url": url,
-                    "file_type": ext,  # pdf / hwp / doc 등
-                    "parse_status": "pending",  # 강현묵이 파싱 후 done으로 변경
+                    "file_type": ext,
+                    "parse_status": "pending",
                 }
             )
     return attachments
@@ -226,56 +217,32 @@ def fetch_bids_by_query(query: str, limit: int = 20) -> list[dict]:
         if "취소" in item.get("ntceKindNm", ""):
             continue
         seen.add(ntce_no)
-        results.append({
-            "bid": parse_bid(item),
-            "attachments": parse_attachments(item),
-        })
+        results.append(
+            {
+                "bid": parse_bid(item),
+                "attachments": parse_attachments(item),
+            }
+        )
 
     return results
 
 
-def fetch_bids(start_date: str, end_date: str, it_only: bool = True) -> list[dict]:
+def _fetch_all_pages(base_params: dict, seen: set[str]) -> list[dict]:
     """
-    나라장터 OpenAPI를 호출하여 공고 목록을 반환한다.
+    주어진 파라미터로 전체 페이지를 순회하며 공고를 수집한다.
 
     Args:
-        start_date : 조회 시작일 YYYYMMDD (예: "20260401")
-        end_date   : 조회 종료일 YYYYMMDD (예: "20260409"), 최대 7일 범위
-        it_only    : True면 IT 컨설팅 공고만, False면 용역 전체
-
-    Returns:
-        [{"bid": {...}, "attachments": [...]}, ...]
-
-    Raises:
-        ValueError: API 키 누락 또는 조회 범위 7일 초과 시
-        RuntimeError: API 호출 실패 시
+        base_params : pageNo를 제외한 공통 API 파라미터
+        seen        : 이미 수집된 공고번호 집합 (중복 제거용, 호출자와 공유)
     """
-    if not API_KEY:
-        raise ValueError(".env에 NARA_API_KEY가 없습니다.")
-
-    # 최대 조회 범위 7일 초과 금지
-    start_dt = datetime.strptime(start_date, "%Y%m%d")
-    end_dt = datetime.strptime(end_date, "%Y%m%d")
-    if (end_dt - start_dt).days > 7:
-        raise ValueError("조회 범위는 최대 7일까지만 허용됩니다.")
-
     results = []
-    seen: set[str] = set()  # 중복 공고 제거용
     page = 1
 
     while True:
-        params = {
-            "serviceKey": API_KEY,
-            "numOfRows": 100,
-            "pageNo": page,
-            "inqryDiv": 1,
-            "inqryBgnDt": start_date + "0000",  # API 날짜 형식: YYYYMMDD0000
-            "inqryEndDt": end_date + "2359",
-            "type": "json",
-        }
-
         try:
-            resp = requests.get(BID_LIST_URL, params=params, timeout=15)
+            resp = requests.get(
+                BID_LIST_URL, params={**base_params, "pageNo": page}, timeout=15
+            )
             resp.raise_for_status()
         except requests.RequestException as e:
             raise RuntimeError(f"API 호출 실패 (page {page}): {e}")
@@ -284,7 +251,6 @@ def fetch_bids(start_date: str, end_date: str, it_only: bool = True) -> list[dic
         total_count = int(body.get("totalCount", 0))
         items = body.get("items", [])
 
-        # 단건일 때 dict로 오는 API 특성 대응
         if isinstance(items, dict):
             items = [items]
         if not items:
@@ -292,20 +258,17 @@ def fetch_bids(start_date: str, end_date: str, it_only: bool = True) -> list[dic
 
         for item in items:
             ntce_no = item.get("bidNtceNo", "")
-            if ntce_no in seen:  # 중복 제거
+            if ntce_no in seen:
                 continue
-            if not _is_service_bid(item):  # 물품·공사 제외
+            if not _is_service_bid(item):
                 continue
-            if "취소" in item.get("ntceKindNm", ""):  # 취소공고 제외
+            if "취소" in item.get("ntceKindNm", ""):
                 continue
-            if it_only and not _is_it_consulting(item):  # IT 필터
+            if not _is_it_consulting(item):
                 continue
             seen.add(ntce_no)
             results.append(
-                {
-                    "bid": parse_bid(item),
-                    "attachments": parse_attachments(item),
-                }
+                {"bid": parse_bid(item), "attachments": parse_attachments(item)}
             )
 
         if page * 100 >= total_count:
@@ -313,3 +276,47 @@ def fetch_bids(start_date: str, end_date: str, it_only: bool = True) -> list[dic
         page += 1
 
     return results
+
+
+def fetch_bids(
+    start_date: str,
+    end_date: str,
+    start_time: str = "0000",
+    end_time: str = "2359",
+) -> list[dict]:
+    """
+    나라장터 전체 용역 공고에서 IT 컨설팅 공고를 수집한다.
+
+    수집 전략 (v3 — 전체 용역 검색, 키워드 필터):
+      1. 업종코드 무관하게 전체 용역 공고 조회 — ISP/ISMP 누락 방지
+      2. _is_it_consulting()으로 IT 컨설팅 공고 필터링
+      3. _classify_notice_type()으로 ISP/ISMP/BPR-PI/일반 분류
+      → 모호한 공고는 담당자가 직접 판단
+
+    Args:
+        start_date : 조회 시작일 YYYYMMDD (예: "20260401")
+        end_date   : 조회 종료일 YYYYMMDD (예: "20260409")
+        start_time : 조회 시작 시각 HHMM (기본 "0000")
+        end_time   : 조회 종료 시각 HHMM (기본 "2359")
+
+    Returns:
+        [{"bid": {..., "notice_type": "ISP"|"ISMP"|"BPR/PI"|"일반"}, "attachments": [...]}, ...]
+
+    Raises:
+        ValueError: API 키 누락 시
+        RuntimeError: API 호출 실패 시
+    """
+    if not API_KEY:
+        raise ValueError(".env에 NARA_API_KEY가 없습니다.")
+
+    base_params = {
+        "serviceKey": API_KEY,
+        "numOfRows": 100,
+        "inqryDiv": 1,
+        "inqryBgnDt": start_date + start_time,
+        "inqryEndDt": end_date + end_time,
+        "type": "json",
+    }
+
+    seen: set[str] = set()
+    return _fetch_all_pages(base_params, seen)
