@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -9,36 +9,29 @@ from backend.api.routes import bids, analysis, search
 SCHEDULE_HOURS = [10, 13, 16, 20]
 
 
-def collect_today():
+async def collect_today():
     """스케줄러가 호출하는 자동 수집 함수 — 오늘 날짜 공고를 자동 수집한다."""
-    import asyncio
     from datetime import date
     from backend.collector.service import collect_and_save
     from backend.db.database import AsyncSessionLocal
 
-    async def _run():
-        today = date.today().strftime("%Y%m%d")
-        async with AsyncSessionLocal() as db:
-            result = await collect_and_save(db, today, today)
-            print(f"[스케줄러] 수집 완료 — 저장: {result['saved']}건 / 중복: {result['skipped']}건 / 오류: {result['errors']}건")
-
-    asyncio.run(_run())
+    today = date.today().strftime("%Y%m%d")
+    async with AsyncSessionLocal() as db:
+        result = await collect_and_save(db, today, today)
+        print(f"[스케줄러] 수집 완료 — 저장: {result['saved']}건 / 중복: {result['skipped']}건 / 오류: {result['errors']}건")
 
 
-def collect_gap():
+async def collect_gap():
     """서버 시작 시 마지막 스케줄 수집 이후 현재까지의 빈틈을 수집한다."""
-    import asyncio
     from datetime import datetime, timedelta
     from backend.collector.service import collect_and_save
     from backend.db.database import AsyncSessionLocal
 
     now = datetime.now()
-    # 오늘 스케줄 시각 목록
     today_slots = [
         now.replace(hour=h, minute=0, second=0, microsecond=0)
         for h in SCHEDULE_HOURS
     ]
-    # 현재 시각 이전인 슬롯 중 가장 최근 → 직전 수집 시각
     past_slots = [t for t in today_slots if t <= now]
     if past_slots:
         last_slot = past_slots[-1]
@@ -52,21 +45,18 @@ def collect_gap():
     end_date = now.strftime("%Y%m%d")
     end_time = now.strftime("%H%M")
 
-    async def _run():
-        async with AsyncSessionLocal() as db:
-            result = await collect_and_save(db, start_date, end_date,
-                                            start_time=start_time, end_time=end_time)
-            print(f"[갭 수집] {start_date} {start_time}~{end_date} {end_time} 완료 "
-                  f"— 저장: {result['saved']}건 / 중복: {result['skipped']}건 / 오류: {result['errors']}건")
-
-    asyncio.run(_run())
+    async with AsyncSessionLocal() as db:
+        result = await collect_and_save(db, start_date, end_date,
+                                        start_time=start_time, end_time=end_time)
+        print(f"[갭 수집] {start_date} {start_time}~{end_date} {end_time} 완료 "
+              f"— 저장: {result['saved']}건 / 중복: {result['skipped']}건 / 오류: {result['errors']}건")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from datetime import datetime, timedelta
 
-    scheduler = BackgroundScheduler()
+    scheduler = AsyncIOScheduler()
     # 매일 정해진 시간 자동 수집
     for hour in SCHEDULE_HOURS:
         scheduler.add_job(collect_today, "cron", hour=hour, minute=0, id=f"collect_{hour}")
