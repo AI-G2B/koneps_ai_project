@@ -189,12 +189,12 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
           <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
             <tr style={{ backgroundColor: 'var(--dash-card-deep)' }}>
               {[
-                { label: '공고번호', key: null, width: '130px' },
+                { label: '공고번호', key: null, width: '115px' },
                 { label: '공고명', key: null, width: undefined },
-                { label: '발주기관', key: null, width: '100px' },
-                { label: '예산', key: 'budget' as SortKey, width: '90px' },
-                { label: '마감일', key: 'deadline' as SortKey, width: '90px' },
-                { label: '위험도', key: 'risk' as SortKey, width: '70px' },
+                { label: '발주기관', key: null, width: '85px' },
+                { label: '예산', key: 'budget' as SortKey, width: '80px' },
+                { label: '마감일', key: 'deadline' as SortKey, width: '80px' },
+                { label: '위험도', key: 'risk' as SortKey, width: '64px' },
                 { label: 'AI분석', key: null, width: '80px' },
                 { label: '액션', key: null, width: '70px' },
               ].map((col) => (
@@ -306,11 +306,11 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
   return (
     <tr onClick={onSelect} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       style={{ backgroundColor: rowBg, borderBottom: '1px solid var(--dash-border-faint)', borderLeft: `2px solid ${isSelected ? '#2563EB' : isPursued ? '#8B5CF6' : isAvoided ? '#EF4444' : isPreferred ? '#2563EB' : 'transparent'}`, cursor: 'pointer', transition: 'background-color 0.15s, border-left-color 0.15s' }}>
-      <td style={{ padding: '10px 12px' }}>
-        <span style={{ fontSize: '11px', color: 'var(--dash-text-4)', fontFamily: 'monospace' }}>{bid.number.split('-').slice(-1)[0]}</span>
+      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
+        <span style={{ fontSize: '11px', color: 'var(--dash-text-4)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: '100px' }}>{bid.number.split('-').slice(-1)[0]}</span>
       </td>
-      <td style={{ padding: '10px 12px', maxWidth: '200px' }}>
-        <div style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '3px' }}>
+      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
+        <div title={bid.title} style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'normal', lineHeight: 1.4, wordBreak: 'keep-all', marginBottom: '4px' }}>
           {bid.title}
         </div>
         <div className="flex items-center gap-1" style={{ flexWrap: 'wrap', rowGap: '2px' }}>
@@ -334,13 +334,13 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
           <span style={{ fontSize: '10px', color: 'var(--dash-text-5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bid.number}</span>
         </div>
       </td>
-      <td style={{ padding: '10px 12px' }}>
-        <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', maxWidth: '100px' }}>{bid.agency}</span>
+      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
+        <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', maxWidth: '80px' }}>{bid.agency}</span>
       </td>
-      <td style={{ padding: '10px 12px' }}>
+      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
         <span style={{ fontSize: '13px', color: 'var(--dash-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>{formatBudget(bid.budget)}</span>
       </td>
-      <td style={{ padding: '10px 12px' }}>
+      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
         <div>
           <span style={{ fontSize: '12px', fontWeight: urgent ? 600 : 400, color: urgent ? '#EF4444' : 'var(--dash-text-2)', whiteSpace: 'nowrap' }}>{bid.deadline.substring(5)}</span>
           {urgent && (
@@ -350,8 +350,8 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
           )}
         </div>
       </td>
-      <td style={{ padding: '10px 12px' }}><RiskBadge risk={bid.risk} /></td>
-      <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}><RiskBadge risk={bid.risk} /></td>
+      <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
         {aiStatus === 'none' ? (
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <AiStatusIndicator status={aiStatus} />
@@ -369,7 +369,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
           <AiStatusIndicator status={aiStatus} />
         )}
       </td>
-      <td style={{ padding: '10px 12px' }}>
+      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
         <div className="flex items-center gap-1">
           <button onClick={(e) => { e.stopPropagation(); onSelect(); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: 'var(--dash-text-3)', backgroundColor: 'transparent' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; }}

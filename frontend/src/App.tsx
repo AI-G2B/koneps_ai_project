@@ -416,6 +416,7 @@ const toggleBookmark = (bidId: string) => {
                   onToggleInProgress={toggleInProgress}
                   onOpenAnalysisDetail={openAnalysisDetail}
                   onRequestAnalysis={requestAnalysis}
+                  hideTargetList={true}
                 />
               </div>
               <BottomWidgets

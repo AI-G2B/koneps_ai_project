@@ -33,9 +33,10 @@ interface BidListPageProps {
   onToggleInProgress: (bidId: string) => void;
   onOpenAnalysisDetail?: (bid: Bid) => void;
   onRequestAnalysis?: (bidId: string) => void;
+  hideTargetList?: boolean;
 }
 
-export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis }: BidListPageProps) {
+export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false }: BidListPageProps) {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('bookmarked');
@@ -100,18 +101,22 @@ export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onTo
           selectedBid={selectedBid}
           onOpenSlide={openSlide}
         />
-        <div style={{ width: '1px', backgroundColor: 'var(--dash-border)', flexShrink: 0 }} />
-        <RightPanel
-          bids={bids}
-          bidFlags={bidFlags}
-          onToggleBookmark={handleToggleBookmark}
-          onToggleInProgress={handleToggleInProgress}
-          onOpenSlide={openSlide}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          focusBidId={focusBidId}
-          removingIds={removingIds}
-        />
+        {!hideTargetList && (
+          <>
+            <div style={{ width: '1px', backgroundColor: 'var(--dash-border)', flexShrink: 0 }} />
+            <RightPanel
+              bids={bids}
+              bidFlags={bidFlags}
+              onToggleBookmark={handleToggleBookmark}
+              onToggleInProgress={handleToggleInProgress}
+              onOpenSlide={openSlide}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              focusBidId={focusBidId}
+              removingIds={removingIds}
+            />
+          </>
+        )}
       </div>
 
       <BidSlideOver
