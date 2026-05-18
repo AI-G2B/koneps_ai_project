@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Info, Loader2 } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { DashboardHeader } from './components/DashboardHeader';
 import { KpiCards } from './components/KpiCards';
@@ -27,7 +27,6 @@ import {
   fetchTypeStats,
   collectBidsApi,
   loginApi,
-  type FetchBidsParams,
   type ApiDashboardStats,
   type ApiTypeStatItem,
 } from './services/api';
@@ -88,7 +87,6 @@ export default function App() {
     setLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
   };
   const [bids, setBids] = useState<Bid[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -122,26 +120,6 @@ export default function App() {
   const analysisTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const aiStatusesRef = useRef<Record<string, AiStatusType>>({});
 
-  const loadBids = async (params?: FetchBidsParams) => {
-    setIsFetching(true);
-    try {
-      const { bids: fetchedBids, flags } = await fetchBids(params);
-      setBids(fetchedBids);
-      setBidFlags(prev => {
-        const merged = { ...prev };
-        Object.entries(flags).forEach(([id, flag]) => {
-          merged[id] = { bookmarked: flag.bookmarked, inProgress: flag.inProgress };
-        });
-        return merged;
-      });
-    } catch (err) {
-      console.error('공고 목록 로딩 실패:', err);
-    } finally {
-      setIsFetching(false);
-      setIsLoading(false);
-    }
-  };
-
   const handleSync = async () => {
     setIsFetching(true);
     try {
@@ -168,7 +146,6 @@ export default function App() {
 
   useEffect(() => {
     Promise.all([
-      loadBids(),
       fetchDashboardStats().then(setDashboardStats),
       fetchTypeStats().then(setTypeStats),
     ]);
@@ -276,18 +253,6 @@ const toggleBookmark = (bidId: string) => {
   const isCeo = user.role === 'ceo';
   const inProgressBids = bids.filter(b => bidFlags[b.id]?.inProgress ?? false);
   const analysisCompleteCount = Object.values(aiStatuses).filter(s => s === 'complete').length;
-
-  if (isLoading) {
-    return (
-      <div
-        className="flex h-screen items-center justify-center flex-col gap-3"
-        style={{ backgroundColor: 'var(--dash-bg)' }}
-      >
-        <Loader2 className="animate-spin" style={{ width: '32px', height: '32px', color: '#2563EB' }} />
-        <span style={{ fontSize: '14px', color: 'var(--dash-text-3)' }}>공고 데이터를 불러오는 중입니다...</span>
-      </div>
-    );
-  }
 
   return (
     <div

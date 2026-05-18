@@ -65,7 +65,7 @@ export interface Bid {
   riskFactors?: RiskFactor[];
 }
 
-export const TODAY = new Date('2026-04-04');
+export const TODAY = new Date();
 
 export const bids: Bid[] = [
   {

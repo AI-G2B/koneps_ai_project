@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Inbox, Sparkles } from 'lucide-react';
+import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Inbox, Sparkles, RefreshCw } from 'lucide-react';
 import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from './mockData';
 import type { AgencySettings } from '../App';
 
@@ -69,7 +69,7 @@ const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
 
 interface BidTableProps {
   bids: Bid[];
-  bidsLoading?: boolean;
+  isLoading?: boolean;
   selectedBid: Bid | null;
   onSelectBid: (bid: Bid) => void;
   agencySettings: AgencySettings;
@@ -84,7 +84,7 @@ interface BidTableProps {
   onRequestAnalysis?: (bidId: string) => void;
 }
 
-export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, agencySettings, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, pursuedBids, onTogglePursued, hideFilters = false, ceoMode = false, onRequestAnalysis }: BidTableProps) {
+export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, agencySettings, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, pursuedBids, onTogglePursued, hideFilters = false, ceoMode = false, onRequestAnalysis }: BidTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -214,12 +214,12 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
             </tr>
           </thead>
           <tbody>
-            {bidsLoading ? (
-              <tr><td colSpan={8} style={{ padding: '40px', textAlign: 'center', fontSize: '13px' }}>
-                <span className="flex items-center justify-center gap-2" style={{ color: 'var(--dash-text-4)' }}>
-                  <Loader2 className="animate-spin" style={{ width: '16px', height: '16px' }} />
-                  공고 목록을 불러오는 중입니다…
-                </span>
+            {isLoading ? (
+              <tr><td colSpan={8}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '8px' }}>
+                  <Loader2 className="animate-spin" style={{ width: '24px', height: '24px', color: '#2563EB' }} />
+                  <span style={{ fontSize: '13px', color: 'var(--dash-text-3)' }}>공고를 불러오는 중입니다...</span>
+                </div>
               </td></tr>
             ) : sortedBids.length === 0 ? (
               <tr><td colSpan={8} style={{ padding: '48px', textAlign: 'center' }}>
@@ -228,6 +228,15 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
                     <Inbox style={{ width: '28px', height: '28px', color: 'var(--dash-text-4)' }} />
                     <div style={{ fontSize: '13px', color: 'var(--dash-text-4)' }}>진행 중인 공고가 없습니다</div>
                     <div style={{ fontSize: '12px', color: 'var(--dash-text-5)' }}>담당자가 공고에 진행하기를 설정하면 여기에 표시됩니다</div>
+                  </div>
+                ) : bids.length === 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <Inbox style={{ width: '28px', height: '28px', color: 'var(--dash-text-4)' }} />
+                    <div style={{ fontSize: '13px', color: 'var(--dash-text-4)' }}>수집된 공고가 없습니다</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--dash-text-4)' }}>
+                      <RefreshCw style={{ width: '12px', height: '12px' }} />
+                      동기화 버튼을 눌러 공고를 불러오세요
+                    </div>
                   </div>
                 ) : (
                   <span style={{ color: 'var(--dash-text-4)', fontSize: '13px' }}>해당 기간에 수집된 공고가 없습니다</span>
