@@ -230,9 +230,9 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
               {[
                 { label: '공고명', width: undefined },
                 { label: '발주기관', width: '96px' },
-                { label: '예산', width: '84px' },
-                { label: '마감일', width: '84px' },
-                { label: '위험도', width: '76px' },
+                { label: '예산', width: '68px' },
+                { label: '마감일', width: '68px' },
+                { label: '위험도', width: '60px' },
                 { label: '액션', width: '80px' },
               ].map((col) => (
                 <th
