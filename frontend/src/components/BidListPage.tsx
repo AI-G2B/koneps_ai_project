@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Bookmark, BookmarkX, Play, Building2, Banknote, Calendar,
   FileSearch, ListFilter,
@@ -295,11 +296,13 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
   onToggleInProgress: (bidId: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number } | null>(null);
   const urgent = isDeadlineUrgent(bid.deadline);
   const daysLeft = getDaysUntilDeadline(bid.deadline);
   const rowBg = isSelected ? 'rgba(37,99,235,0.08)' : hovered ? 'var(--dash-row-hover)' : 'transparent';
 
   return (
+    <>
     <tr
       onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
@@ -313,7 +316,14 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
       }}
     >
       <td style={{ padding: '10px 12px' }}>
-        <div style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', lineHeight: 1.45, marginBottom: '3px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+        <div
+          onMouseEnter={(e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            setTooltip({ x: rect.left, y: rect.bottom + 6 });
+          }}
+          onMouseLeave={() => setTooltip(null)}
+          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', lineHeight: 1.45, marginBottom: '3px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+        >
           {bid.title}
         </div>
         <div className="flex items-center gap-1" style={{ flexWrap: 'wrap', rowGap: '2px' }}>
@@ -376,6 +386,28 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
         </div>
       </td>
     </tr>
+    {tooltip && createPortal(
+      <div style={{
+        position: 'fixed',
+        top: tooltip.y,
+        left: Math.min(tooltip.x, window.innerWidth - 420),
+        zIndex: 9999,
+        maxWidth: '400px',
+        backgroundColor: '#1e293b',
+        color: '#f1f5f9',
+        fontSize: '12px',
+        lineHeight: 1.6,
+        padding: '7px 11px',
+        borderRadius: '7px',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+        wordBreak: 'keep-all',
+        pointerEvents: 'none',
+      }}>
+        {bid.title}
+      </div>,
+      document.body
+    )}
+    </>
   );
 }
 
