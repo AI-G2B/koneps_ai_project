@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, Bell, ChevronDown, RefreshCw, Sun, Moon, LogOut, Sparkles, Info, AlertTriangle, Trash2, CheckCheck, Loader2 } from 'lucide-react';
+import { Search, Bell, ChevronDown, RefreshCw, Sun, Moon, LogOut, Sparkles, Bookmark, Play, Trash2, CheckCheck, Loader2 } from 'lucide-react';
 import { searchBids, type SearchBidsResult } from '../services/api';
 import { useToast } from './ToastProvider';
 import { useTheme } from 'next-themes';
@@ -39,26 +39,37 @@ const formatDate = (date: Date): string => {
 };
 
 const NOTIF_ICON: Record<NotificationItem['type'], { icon: React.ElementType; color: string; bg: string }> = {
-  analysis_complete: { icon: Sparkles, color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
-  info:              { icon: Info,          color: '#2563EB', bg: 'rgba(37,99,235,0.12)' },
-  warning:           { icon: AlertTriangle, color: '#F97316', bg: 'rgba(249,115,22,0.12)' },
+  sync:              { icon: RefreshCw, color: '#2563EB', bg: 'rgba(37,99,235,0.12)' },
+  analysis_complete: { icon: Sparkles,  color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
+  analysis_fail:     { icon: Sparkles,  color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
+  bookmark:          { icon: Bookmark,  color: '#2563EB', bg: 'rgba(37,99,235,0.12)' },
+  inprogress:        { icon: Play,      color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
 };
 
 export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead, onMarkAsRead, onClearNotifications, onSync, isSyncing = false }: DashboardHeaderProps) {
-  const { showToast } = useToast();
+  const { showToast, dismissToast } = useToast();
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
   const [isOpen, setIsOpen] = useState(false);
   const [now, setNow] = useState(new Date());
+  const syncToastId = useRef<string | null>(null);
 
   const handleSync = async () => {
     if (isSyncing || !onSync) return;
-    showToast('info', '동기화', '나라장터에서 공고를 수집하고 있습니다');
+    syncToastId.current = showToast('info', '나라장터에서 공고를 수집하고 있습니다', 0);
     try {
       await onSync();
-      showToast('success', '동기화 완료', '공고 데이터가 업데이트되었습니다');
+      if (syncToastId.current) {
+        dismissToast(syncToastId.current);
+        syncToastId.current = null;
+      }
+      showToast('success', '공고 데이터가 업데이트되었습니다');
     } catch {
-      showToast('error', '동기화 실패', '잠시 후 다시 시도해주세요');
+      if (syncToastId.current) {
+        dismissToast(syncToastId.current);
+        syncToastId.current = null;
+      }
+      showToast('warning', '동기화에 실패했습니다. 잠시 후 다시 시도해주세요');
     }
   };
 
@@ -74,7 +85,6 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
     return () => clearInterval(timer);
   }, []);
 
-  // 검색어 디바운스 처리
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const q = searchQuery.trim();
@@ -93,7 +103,6 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [searchQuery]);
 
-  // 검색 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
@@ -103,6 +112,7 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const unread = notifications.filter(n => !n.isRead).length;
@@ -195,7 +205,6 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
               </div>
             ) : (
               <>
-                {/* 출처 레이블 */}
                 <div style={{ padding: '8px 12px 4px', fontSize: '11px', color: 'var(--dash-text-5)', borderBottom: '1px solid var(--dash-border-faint)' }}>
                   {searchResult.source === 'naramarket' && '나라장터에서 가져온 결과'}
                   {searchResult.source === 'db' && '수집된 공고에서 찾은 결과'}
@@ -384,11 +393,11 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
                           <Icon style={{ width: '15px', height: '15px', color: cfg.color }} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '2px' }}>
-                            {n.bidTitle}
+                          <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '2px' }}>
+                            {n.title}
                           </div>
                           <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '3px' }}>{n.message}</div>
-                          <div style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>{getTimeAgo(n.createdAt)}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>{getTimeAgo(n.createdAt)}</div>
                         </div>
                         {!n.isRead && (
                           <span style={{ width: '7px', height: '7px', borderRadius: '9999px', backgroundColor: '#2563EB', flexShrink: 0, marginTop: '5px' }} />

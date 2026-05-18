@@ -7,13 +7,15 @@ interface Toast {
   id: string;
   type: ToastType;
   message: string;
+  duration: number;
 }
 
 interface ToastContextValue {
-  showToast: (type: ToastType, message: string) => void;
+  showToast: (type: ToastType, message: string, duration?: number) => string;
+  dismissToast: (id: string) => void;
 }
 
-const ToastContext = createContext<ToastContextValue>({ showToast: () => {} });
+const ToastContext = createContext<ToastContextValue>({ showToast: () => '', dismissToast: () => {} });
 
 export function useToast() {
   return useContext(ToastContext);
@@ -70,16 +72,23 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const showToast = useCallback((type: ToastType, message: string) => {
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  const showToast = useCallback((type: ToastType, message: string, duration = 4000): string => {
     const id = crypto.randomUUID();
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    setToasts((prev) => [...prev, { id, type, message, duration }]);
+    if (duration > 0) {
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, duration);
+    }
+    return id;
   }, []);
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={{ showToast, dismissToast }}>
       <style>{`
         @keyframes toastSlideIn {
           from { transform: translateY(-20px); opacity: 0; }
@@ -97,7 +106,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           <ToastItem
             key={toast.id}
             toast={toast}
-            onDismiss={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
+            onDismiss={() => dismissToast(toast.id)}
           />
         ))}
       </div>

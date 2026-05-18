@@ -49,10 +49,9 @@ export interface AgencySettings {
 
 export interface NotificationItem {
   id: string;
-  bidId: string;
-  bidTitle: string;
+  type: 'sync' | 'analysis_complete' | 'analysis_fail' | 'bookmark' | 'inprogress';
+  title: string;
   message: string;
-  type: 'analysis_complete' | 'info' | 'warning';
   createdAt: Date;
   isRead: boolean;
 }
@@ -104,7 +103,7 @@ export default function App() {
       id: crypto.randomUUID(),
       createdAt: new Date(),
       isRead: false,
-    }, ...prev]);
+    }, ...prev].slice(0, 50));
   };
 
   const markAllAsRead = () => {
@@ -139,6 +138,11 @@ export default function App() {
       });
       setDashboardStats(stats);
       setTypeStats(types);
+      addNotification({
+        type: 'sync',
+        title: '동기화 완료',
+        message: `공고 ${fetchedBids.length}건이 업데이트되었습니다`,
+      });
     } finally {
       setIsFetching(false);
     }
@@ -167,6 +171,7 @@ export default function App() {
       aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'none' };
       setAiStatuses(prev => ({ ...prev, [bidId]: 'none' }));
       showToast('info', 'AI 분석 기능이 아직 준비 중입니다');
+      addNotification({ type: 'analysis_fail', title: 'AI 분석 실패', message: 'AI 분석 기능이 아직 준비 중입니다' });
       return;
     }
 
@@ -176,7 +181,7 @@ export default function App() {
     const bid = bids.find(b => b.id === bidId);
     if (bid) {
       showToast('success', `AI 분석이 완료되었습니다 — ${bid.title}`);
-      addNotification({ bidId, bidTitle: bid.title, message: 'AI 분석이 완료되었습니다', type: 'analysis_complete' });
+      addNotification({ type: 'analysis_complete', title: 'AI 분석 완료', message: `${bid.title} 분석이 완료되었습니다` });
     }
   };
 
@@ -193,6 +198,10 @@ const toggleBookmark = (bidId: string) => {
     const current = bidFlags[bidId] ?? { bookmarked: false, inProgress: false };
     const newBookmarked = !current.bookmarked;
     setBidFlags(prev => ({ ...prev, [bidId]: { ...current, bookmarked: newBookmarked } }));
+    if (newBookmarked) {
+      const bid = bids.find(b => b.id === bidId);
+      if (bid) addNotification({ type: 'bookmark', title: '관심 공고 추가', message: `${bid.title}을 관심 공고에 추가했습니다` });
+    }
     toggleBookmarkApi(bidId, newBookmarked).then(success => {
       if (!success) {
         setBidFlags(prev => ({ ...prev, [bidId]: { ...prev[bidId], bookmarked: !newBookmarked } }));
@@ -210,6 +219,8 @@ const toggleBookmark = (bidId: string) => {
       }
     });
     if (newInProgress) {
+      const bid = bids.find(b => b.id === bidId);
+      if (bid) addNotification({ type: 'inprogress', title: '진행 프로젝트 추가', message: `${bid.title}을 진행 프로젝트에 추가했습니다` });
       requestAnalysis(bidId);
     } else if (!current.bookmarked) {
       resetAnalysis(bidId);
@@ -357,7 +368,7 @@ const toggleBookmark = (bidId: string) => {
               <div className="flex gap-4" style={{ minHeight: '440px' }}>
                 <BidTable
                   bids={inProgressBids}
-                  bidsLoading={isFetching}
+                  isLoading={isFetching}
                   selectedBid={selectedBid}
                   onSelectBid={handleSelectBid}
                   agencySettings={agencySettings}

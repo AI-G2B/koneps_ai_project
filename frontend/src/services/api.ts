@@ -1,5 +1,4 @@
 import {
-  bids as mockBids,
   type Bid,
   type BidDetail,
   type RiskFactor,
@@ -302,8 +301,8 @@ export async function fetchBids(params?: FetchBidsParams): Promise<{ bids: Bid[]
     });
     return { bids: data.bids.map(mapApiBidListItemToBid), flags };
   } catch (err) {
-    console.warn('[api] fetchBids 실패 → mockData fallback:', err);
-    return { bids: mockBids, flags: {} };
+    console.error('[api] fetchBids 실패:', err);
+    throw err;
   }
 }
 
@@ -319,10 +318,8 @@ export async function fetchBidById(id: string): Promise<Bid> {
     const data: ApiBidDetailResponse = await res.json();
     return mapApiBidDetailToBid(data);
   } catch (err) {
-    console.warn(`[api] fetchBidById(${id}) 실패 → mockData fallback:`, err);
-    const found = mockBids.find((b) => b.id === id || b.number === id);
-    if (found) return found;
-    throw new Error(`공고 ID ${id}를 찾을 수 없습니다`);
+    console.error(`[api] fetchBidById(${id}) 실패:`, err);
+    throw err;
   }
 }
 
@@ -358,15 +355,8 @@ export async function searchBids(query: string): Promise<SearchBidsResult> {
       total: data.total,
     };
   } catch (err) {
-    console.warn('[api] searchBids 실패 → local fallback:', err);
-    const q = query.toLowerCase();
-    const matched = mockBids.filter(
-      (b) =>
-        b.title.toLowerCase().includes(q) ||
-        b.agency.toLowerCase().includes(q) ||
-        b.number.includes(q),
-    );
-    return { source: 'local', results: matched, total: matched.length };
+    console.error('[api] searchBids 실패:', err);
+    return { source: 'empty', results: [], total: 0 };
   }
 }
 
