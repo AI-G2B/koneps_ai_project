@@ -135,12 +135,17 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
               <RiskBadge risk={bid.risk} />
 
               {/* D-day 배지 */}
-              {isUrgent && (
+              {daysLeft < 0 ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-gray-bg)', color: '#81878F', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#81878F', flexShrink: 0, display: 'inline-block' }} />
+                  마감
+                </span>
+              ) : isUrgent ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />
                   D-{daysLeft}
                 </span>
-              )}
+              ) : null}
 
               {/* 우측 버튼들 */}
               <div className="flex items-center gap-1.5 ml-auto">

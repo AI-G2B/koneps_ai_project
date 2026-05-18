@@ -196,11 +196,11 @@ function ProjectCard({ bid, isSelected, onSelect, aiStatus }: {
           <Banknote style={{ width: '12px', height: '12px', color: 'var(--dash-icon-off)', flexShrink: 0 }} />
           {formatBudget(bid.budget)}
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: urgent ? '#EF4444' : 'var(--dash-text-3)', fontWeight: urgent ? 600 : 400 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: daysLeft < 0 ? 'var(--dash-text-3)' : urgent ? '#EF4444' : 'var(--dash-text-3)', fontWeight: daysLeft < 0 ? 400 : urgent ? 600 : 400 }}>
           <Calendar style={{ width: '12px', height: '12px', flexShrink: 0 }} />
           {bid.deadline.substring(5)}
-          <span style={{ fontSize: '10px', padding: '0 5px', marginLeft: '2px', borderRadius: '9999px', backgroundColor: daysLeft < 0 ? 'rgba(239,68,68,0.15)' : urgent ? 'rgba(239,68,68,0.15)' : 'rgba(37,99,235,0.1)', color: daysLeft < 0 ? '#EF4444' : urgent ? '#EF4444' : '#60A5FA' }}>
-            {daysLeft >= 0 ? `D-${daysLeft}` : `D+${Math.abs(daysLeft)}`}
+          <span style={{ fontSize: '10px', padding: '0 5px', marginLeft: '2px', borderRadius: '9999px', backgroundColor: daysLeft < 0 ? 'rgba(129,135,143,0.12)' : urgent ? 'rgba(239,68,68,0.15)' : 'rgba(37,99,235,0.1)', color: daysLeft < 0 ? '#81878F' : urgent ? '#EF4444' : '#60A5FA' }}>
+            {daysLeft < 0 ? '마감' : `D-${daysLeft}`}
           </span>
         </span>
         <AiStatusIndicator status={aiStatus} />

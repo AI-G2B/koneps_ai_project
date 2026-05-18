@@ -145,6 +145,7 @@ interface LeftPanelProps extends BidListPageProps {
 function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selectedBid, onOpenSlide }: LeftPanelProps) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [excludeExpired, setExcludeExpired] = useState(true);
 
   const getFromDate = (f: DateFilter): Date | null => {
     const base = new Date(TODAY);
@@ -156,6 +157,7 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
   };
 
   const filtered = bids.filter((bid) => {
+    if (excludeExpired && getDaysUntilDeadline(bid.deadline) < 0) return false;
     const fromDate = getFromDate(dateFilter);
     if (fromDate && new Date(bid.collectedAt) < fromDate) return false;
     if (statusFilter === 'urgent') return isDeadlineUrgent(bid.deadline);
@@ -221,6 +223,11 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
               </button>
             ))}
           </div>
+          <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--dash-border)', margin: '0 2px', flexShrink: 0 }} />
+          <button onClick={() => setExcludeExpired(v => !v)} className="rounded-md transition-colors"
+            style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: excludeExpired ? 'rgba(37,99,235,0.12)' : 'transparent', color: excludeExpired ? '#2563EB' : 'var(--dash-text-4)', border: `1px solid ${excludeExpired ? 'rgba(37,99,235,0.3)' : 'var(--dash-border-btn)'}`, fontWeight: excludeExpired ? 600 : 400, cursor: 'pointer' }}>
+            {excludeExpired ? '마감 제외' : '마감 포함'}
+          </button>
         </div>
       </div>
 
@@ -350,13 +357,19 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
         <span style={{ fontSize: '12px', fontWeight: urgent ? 600 : 400, color: urgent ? '#EF4444' : 'var(--dash-text-2)', whiteSpace: 'nowrap' }}>
           {bid.deadline.substring(5)}
         </span>
-        {urgent && (
+        {daysLeft < 0 ? (
+          <div className="mt-0.5">
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-gray-bg)', color: '#81878F', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#81878F', flexShrink: 0, display: 'inline-block' }} />마감
+            </span>
+          </div>
+        ) : urgent ? (
           <div className="mt-0.5">
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />D-{daysLeft}
             </span>
           </div>
-        )}
+        ) : null}
       </td>
       <td style={{ padding: '10px 12px' }}>
         <RiskBadge risk={bid.risk} />

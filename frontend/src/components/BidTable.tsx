@@ -89,6 +89,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [currentPage, setCurrentPage] = useState(1);
+  const [excludeExpired, setExcludeExpired] = useState(true);
 
   const handleSort = (key: SortKey) => {
     if (ceoMode) return;
@@ -106,6 +107,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
   };
 
   const filteredBids = (hideFilters || ceoMode) ? bids : bids.filter((bid) => {
+    if (excludeExpired && getDaysUntilDeadline(bid.deadline) < 0) return false;
     const fromDate = getDateRange(dateFilter);
     if (fromDate && new Date(bid.collectedAt) < fromDate) return false;
     if (statusFilter === 'urgent') return isDeadlineUrgent(bid.deadline);
@@ -127,7 +129,7 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
   const totalPages = Math.ceil(sortedBids.length / PAGE_SIZE);
   const pagedBids = sortedBids.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-  useEffect(() => { setCurrentPage(1); }, [statusFilter, dateFilter, sortKey]);
+  useEffect(() => { setCurrentPage(1); }, [statusFilter, dateFilter, sortKey, excludeExpired]);
 
   const getPageNumbers = (): (number | '...')[] => {
     if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -180,6 +182,11 @@ export function BidTable({ bids, bidsLoading = false, selectedBid, onSelectBid, 
                 </button>
               ))}
             </div>
+            <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--dash-border)', margin: '0 2px', flexShrink: 0 }} />
+            <button onClick={() => setExcludeExpired(v => !v)} className="rounded-md transition-colors"
+              style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: excludeExpired ? 'rgba(37,99,235,0.12)' : 'transparent', color: excludeExpired ? '#2563EB' : 'var(--dash-text-4)', border: `1px solid ${excludeExpired ? 'rgba(37,99,235,0.3)' : 'var(--dash-border-btn)'}`, fontWeight: excludeExpired ? 600 : 400, cursor: 'pointer' }}>
+              {excludeExpired ? '마감 제외' : '마감 포함'}
+            </button>
           </div>
         )}
       </div>
@@ -343,11 +350,15 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
       <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
         <div>
           <span style={{ fontSize: '12px', fontWeight: urgent ? 600 : 400, color: urgent ? '#EF4444' : 'var(--dash-text-2)', whiteSpace: 'nowrap' }}>{bid.deadline.substring(5)}</span>
-          {urgent && (
+          {daysLeft < 0 ? (
+            <div className="flex items-center gap-1 mt-0.5">
+              <span style={badge('var(--badge-gray-bg)', '#81878F', 'sm')}>{DOT('#81878F')}마감</span>
+            </div>
+          ) : urgent ? (
             <div className="flex items-center gap-1 mt-0.5">
               <span style={badge('var(--badge-red-bg)', '#F27A75', 'sm')}>{DOT('#F27A75')}D-{daysLeft}</span>
             </div>
-          )}
+          ) : null}
         </div>
       </td>
       <td style={{ padding: '10px 12px', verticalAlign: 'top' }}><RiskBadge risk={bid.risk} /></td>
