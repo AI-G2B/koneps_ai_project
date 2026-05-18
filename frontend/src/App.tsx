@@ -210,11 +210,6 @@ const toggleBookmark = (bidId: string) => {
         setBidFlags(prev => ({ ...prev, [bidId]: { ...prev[bidId], bookmarked: !newBookmarked } }));
       }
     });
-    if (newBookmarked) {
-      requestAnalysis(bidId);
-    } else if (!current.inProgress) {
-      resetAnalysis(bidId);
-    }
   };
 
   const toggleInProgress = (bidId: string) => {
@@ -440,7 +435,12 @@ const toggleBookmark = (bidId: string) => {
 
       {showAnalysisDetail && analysisDetailBid && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 200, overflowY: 'auto', backgroundColor: 'var(--dash-bg)' }}>
-          <AnalysisDetailPage bid={analysisDetailBid} onBack={() => setShowAnalysisDetail(false)} />
+          <AnalysisDetailPage
+            bid={analysisDetailBid}
+            onBack={() => setShowAnalysisDetail(false)}
+            aiStatus={aiStatuses[analysisDetailBid.id] ?? 'none'}
+            onRequestAnalysis={requestAnalysis}
+          />
         </div>
       )}
     </div>

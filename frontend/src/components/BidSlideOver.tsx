@@ -299,7 +299,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                   AI 분석 대기 중
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
-                  찜하기 또는 진행하기를 누르면<br />AI 분석이 자동으로 시작됩니다.
+                  진행하기를 누르거나 상세 리포트에서<br />직접 분석을 시작할 수 있습니다.
                 </div>
                 {aiStatus === 'none' && (
                   <button
@@ -307,7 +307,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                     style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(37,99,235,0.08)', color: '#2563EB', border: '1px solid rgba(37,99,235,0.2)', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer' }}
                   >
                     <Sparkles style={{ width: '13px', height: '13px' }} />
-                    AI 분석 요청
+                    AI 분석 시작
                   </button>
                 )}
               </div>

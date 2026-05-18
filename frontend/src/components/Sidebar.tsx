@@ -123,11 +123,13 @@ export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 
       </div>
 
       {/* Role badge */}
-      <div style={{ padding: '10px 12px 4px' }}>
-        <span className="inline-flex items-center rounded-md" style={{ fontSize: '10px', padding: '3px 8px', backgroundColor: roleBadgeBg, color: accentColor, border: `1px solid ${roleBadgeBorder}`, fontWeight: 500 }}>
-          {roleLabel}
-        </span>
-      </div>
+      {role !== 'manager' && (
+        <div style={{ padding: '10px 12px 4px' }}>
+          <span className="inline-flex items-center rounded-md" style={{ fontSize: '10px', padding: '3px 8px', backgroundColor: roleBadgeBg, color: accentColor, border: `1px solid ${roleBadgeBorder}`, fontWeight: 500 }}>
+            {roleLabel}
+          </span>
+        </div>
+      )}
 
       {/* Main Nav */}
       <nav className="flex-1 px-3 pt-2 overflow-y-auto">
