@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Info } from 'lucide-react';
+import { Info, Loader2 } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { DashboardHeader } from './components/DashboardHeader';
 import { KpiCards } from './components/KpiCards';
@@ -17,7 +17,19 @@ import { AnalysisDetailPage } from './components/AnalysisDetailPage';
 import { AnalysisListPage } from './components/AnalysisListPage';
 import { StrategyReportPage } from './components/StrategyReportPage';
 import { ProposalPage } from './components/ProposalPage';
-import { fetchBids, fetchBidById } from './services/api';
+import {
+  fetchBids,
+  fetchBidById,
+  toggleBookmarkApi,
+  toggleInProgressApi,
+  requestAnalysisApi,
+  fetchDashboardStats,
+  fetchTypeStats,
+  collectBidsApi,
+  type FetchBidsParams,
+  type ApiDashboardStats,
+  type ApiTypeStatItem,
+} from './services/api';
 
 const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정', '도움말'];
 
@@ -41,7 +53,8 @@ export interface NotificationItem {
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [bids, setBids] = useState<Bid[]>([]);
-  const [bidsLoading, setBidsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [activePage, setActivePage] = useState<PageType>('대시보드');
@@ -49,6 +62,8 @@ export default function App() {
   const [aiStatuses, setAiStatuses] = useState<Record<string, AiStatusType>>({});
   const [pursuedBids, setPursuedBids] = useState<Set<string>>(new Set());
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<ApiDashboardStats | null>(null);
+  const [typeStats, setTypeStats] = useState<ApiTypeStatItem[]>([]);
   const { showToast } = useToast();
 
   const addNotification = (item: Omit<NotificationItem, 'id' | 'createdAt' | 'isRead'>) => {
@@ -69,12 +84,51 @@ export default function App() {
   };
 
   const clearNotifications = () => setNotifications([]);
-  // analysisTimers: 진행 중인 타이머 추적 (중복 방지)
+
   const analysisTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  // aiStatusesRef: setState 외부에서 동기적으로 상태 확인하기 위한 미러 ref
   const aiStatusesRef = useRef<Record<string, AiStatusType>>({});
 
-  const requestAnalysis = (bidId: string) => {
+  const loadBids = async (params?: FetchBidsParams) => {
+    setIsFetching(true);
+    try {
+      const result = await fetchBids(params);
+      setBids(result);
+      setBidFlags(Object.fromEntries(result.map(b => [b.id, { bookmarked: false, inProgress: false }])));
+    } catch (err) {
+      console.error('공고 목록 로딩 실패:', err);
+    } finally {
+      setIsFetching(false);
+      setIsLoading(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setIsFetching(true);
+    try {
+      await collectBidsApi();
+      const [result, stats, types] = await Promise.all([
+        fetchBids(),
+        fetchDashboardStats(),
+        fetchTypeStats(),
+      ]);
+      setBids(result);
+      setBidFlags(Object.fromEntries(result.map(b => [b.id, { bookmarked: false, inProgress: false }])));
+      setDashboardStats(stats);
+      setTypeStats(types);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  useEffect(() => {
+    Promise.all([
+      loadBids(),
+      fetchDashboardStats().then(setDashboardStats),
+      fetchTypeStats().then(setTypeStats),
+    ]);
+  }, []);
+
+  const requestAnalysis = async (bidId: string) => {
     const current = aiStatusesRef.current[bidId] ?? 'none';
     if (current === 'analyzing' || current === 'complete') return;
     if (analysisTimers.current[bidId]) return;
@@ -82,18 +136,25 @@ export default function App() {
     aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'analyzing' };
     setAiStatuses(prev => ({ ...prev, [bidId]: 'analyzing' }));
 
-    analysisTimers.current[bidId] = setTimeout(() => {
-      delete analysisTimers.current[bidId];
-      // ref로 동기 확인 후 setState와 showToast를 완전히 분리
-      if ((aiStatusesRef.current[bidId] ?? 'none') !== 'analyzing') return;
-      aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'complete' };
-      setAiStatuses(prev => ({ ...prev, [bidId]: 'complete' }));
-      const bid = bids.find(b => b.id === bidId);
-      if (bid) {
-        showToast('success', `AI 분석이 완료되었습니다 — ${bid.title}`);
-        addNotification({ bidId, bidTitle: bid.title, message: 'AI 분석이 완료되었습니다', type: 'analysis_complete' });
-      }
-    }, 3000);
+    const success = await requestAnalysisApi(bidId);
+
+    delete analysisTimers.current[bidId];
+
+    if (!success) {
+      aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'none' };
+      setAiStatuses(prev => ({ ...prev, [bidId]: 'none' }));
+      showToast('info', 'AI 분석 기능이 아직 준비 중입니다');
+      return;
+    }
+
+    if ((aiStatusesRef.current[bidId] ?? 'none') !== 'analyzing') return;
+    aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'complete' };
+    setAiStatuses(prev => ({ ...prev, [bidId]: 'complete' }));
+    const bid = bids.find(b => b.id === bidId);
+    if (bid) {
+      showToast('success', `AI 분석이 완료되었습니다 — ${bid.title}`);
+      addNotification({ bidId, bidTitle: bid.title, message: 'AI 분석이 완료되었습니다', type: 'analysis_complete' });
+    }
   };
 
   const resetAnalysis = (bidId: string) => {
@@ -118,6 +179,7 @@ export default function App() {
     const current = bidFlags[bidId] ?? { bookmarked: false, inProgress: false };
     const newBookmarked = !current.bookmarked;
     setBidFlags(prev => ({ ...prev, [bidId]: { ...current, bookmarked: newBookmarked } }));
+    toggleBookmarkApi(bidId, newBookmarked);
     if (newBookmarked) {
       requestAnalysis(bidId);
     } else if (!current.inProgress) {
@@ -129,6 +191,7 @@ export default function App() {
     const current = bidFlags[bidId] ?? { bookmarked: false, inProgress: false };
     const newInProgress = !current.inProgress;
     setBidFlags(prev => ({ ...prev, [bidId]: { ...current, inProgress: newInProgress } }));
+    toggleInProgressApi(bidId, newInProgress);
     if (newInProgress) {
       requestAnalysis(bidId);
     } else if (!current.bookmarked) {
@@ -154,20 +217,8 @@ export default function App() {
     if (!CEO_ALLOWED_PAGES.includes(activePage)) setActivePage('대시보드');
   }, [user, activePage]);
 
-  useEffect(() => {
-    setBidsLoading(true);
-    fetchBids()
-      .then((data) => {
-        setBids(data);
-        setBidFlags(Object.fromEntries(data.map(b => [b.id, { bookmarked: false, inProgress: false }])));
-      })
-      .finally(() => setBidsLoading(false));
-  }, []);
-
   const handleSelectBid = async (bid: Bid) => {
-    // 기본 정보 즉시 표시
     setSelectedBid(bid);
-    // 이미 상세 데이터가 있으면 재조회 불필요
     if (bid.detail) return;
     setDetailLoading(true);
     try {
@@ -185,6 +236,18 @@ export default function App() {
   const isCeo = user.role === 'ceo';
   const inProgressBids = bids.filter(b => bidFlags[b.id]?.inProgress ?? false);
   const analysisCompleteCount = Object.values(aiStatuses).filter(s => s === 'complete').length;
+
+  if (isLoading) {
+    return (
+      <div
+        className="flex h-screen items-center justify-center flex-col gap-3"
+        style={{ backgroundColor: 'var(--dash-bg)' }}
+      >
+        <Loader2 className="animate-spin" style={{ width: '32px', height: '32px', color: '#2563EB' }} />
+        <span style={{ fontSize: '14px', color: 'var(--dash-text-3)' }}>공고 데이터를 불러오는 중입니다...</span>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -204,7 +267,20 @@ export default function App() {
           onMarkAllAsRead={markAllAsRead}
           onMarkAsRead={markAsRead}
           onClearNotifications={clearNotifications}
+          onSync={handleSync}
+          isSyncing={isFetching}
         />
+        {isFetching && (
+          <div style={{ height: '2px', backgroundColor: 'var(--dash-border)', flexShrink: 0 }}>
+            <div
+              style={{
+                height: '100%',
+                backgroundColor: '#2563EB',
+                animation: 'fetchProgress 1.2s ease-in-out infinite',
+              }}
+            />
+          </div>
+        )}
         <main
           className="flex-1 overflow-y-auto"
           style={{
@@ -265,7 +341,7 @@ export default function App() {
             />
           ) : isCeo ? (
             <>
-              <KpiCards bids={inProgressBids} bidsLoading={bidsLoading} ceoMode={true} aiStatuses={aiStatuses} />
+              <KpiCards bids={inProgressBids} bidsLoading={isFetching} ceoMode={true} aiStatuses={aiStatuses} dashboardStats={dashboardStats} />
               {inProgressBids.length === 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', borderRadius: '10px', backgroundColor: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
                   <Info style={{ width: '16px', height: '16px', color: '#7C3AED', flexShrink: 0 }} />
@@ -275,7 +351,7 @@ export default function App() {
               <div className="flex gap-4" style={{ minHeight: '440px' }}>
                 <BidTable
                   bids={inProgressBids}
-                  bidsLoading={bidsLoading}
+                  bidsLoading={isFetching}
                   selectedBid={selectedBid}
                   onSelectBid={handleSelectBid}
                   agencySettings={agencySettings}
@@ -295,15 +371,16 @@ export default function App() {
                 onOpenAnalysisDetail={openAnalysisDetail}
                 onRequestAnalysis={requestAnalysis}
                 ceoMode={true}
+                typeStats={typeStats}
               />
             </>
           ) : (
             <>
-              <KpiCards bids={bids} bidsLoading={bidsLoading} ceoMode={false} />
+              <KpiCards bids={bids} bidsLoading={isFetching} ceoMode={false} dashboardStats={dashboardStats} />
               <div className="flex gap-4" style={{ minHeight: '440px' }}>
                 <BidTable
                   bids={bids}
-                  bidsLoading={bidsLoading}
+                  bidsLoading={isFetching}
                   selectedBid={selectedBid}
                   onSelectBid={handleSelectBid}
                   agencySettings={agencySettings}
@@ -325,6 +402,7 @@ export default function App() {
                 onToggleInProgress={toggleInProgress}
                 onOpenAnalysisDetail={openAnalysisDetail}
                 onRequestAnalysis={requestAnalysis}
+                typeStats={typeStats}
               />
             </>
           )}

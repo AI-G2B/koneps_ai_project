@@ -14,7 +14,17 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 // 백엔드 응답 타입 (notices 테이블 기반)
 // ─────────────────────────────────────────────
 
+export interface AttachmentSchema {
+  id: number | null;
+  file_name: string;
+  file_url: string;
+  file_type: string;
+  local_path: string | null;
+  parse_status: string;
+}
+
 export interface ApiBidListItem {
+  id: number;
   id: number;
   bid_ntce_no: string;
   bid_ntce_nm: string;
@@ -36,31 +46,47 @@ export interface ApiBidListItem {
 
 export interface ApiAnalysisResult {
   budget_amt: number | null;
+  budget_raw: string | null;
   bid_qualify: string | null;
   exec_period_months: number | null;
+  exec_period_raw: string | null;
   manmonth_total: number | null;
+  manmonth_detail: Record<string, unknown> | null;
   eval_tech_score: number | null;
   eval_price_score: number | null;
   task_scope: string | null;
   joint_supply_yn: boolean | null;
-  required_docs: string | null;
+  joint_supply_detail: string | null;
+  required_docs: Record<string, unknown> | null;
   exec_location: string | null;
   key_tech_spec: string | null;
   disqualify_reason: string | null;
-  contact_person: string | null;
+  contact_person: Record<string, unknown> | null;
+  past_performance: string | null;
+  submit_deadline: string | null;
+  model_used: string | null;
+  analyzed_at: string | null;
+  confidence_score: number | null;
 }
 
 export interface ApiRiskFactor {
   risk_category: string | null;
-  risk_level: string | null;  // "high" | "medium" | "low"
+  risk_level: string | null;
   clause_title: string | null;
   clause_summary: string | null;
   mitigation_suggest: string | null;
 }
 
 export interface ApiBidDetailResponse extends ApiBidListItem {
+  bid_ntce_ord: string;
+  notice_type: string;
+  dminstt_nm: string | null;
+  bid_mtd_nm: string | null;
+  cntrct_cncls_mthd_nm: string | null;
+  openg_dt: string | null;
   analysis_result: ApiAnalysisResult | null;
   risk_factors: ApiRiskFactor[];
+  attachments: AttachmentSchema[];
 }
 
 export interface ApiBidListResponse {
@@ -101,6 +127,7 @@ function mapPipelineStatus(status: string | null): AiStatusType {
 }
 
 function normalizeDate(dateStr: string | null | undefined): string {
+function normalizeDate(dateStr: string | null | undefined): string {
   return dateStr ? dateStr.slice(0, 10) : '';
 }
 
@@ -112,17 +139,47 @@ function mapApiRiskFactor(rf: ApiRiskFactor): RiskFactor {
   };
 }
 
+function formatContactPerson(contact: Record<string, unknown> | null): string {
+  if (!contact) return '미정';
+  const name = contact.name as string | undefined;
+  const tel = contact.tel as string | undefined;
+  const dept = contact.dept as string | undefined;
+  const email = contact.email as string | undefined;
+  const parts: string[] = [];
+  if (name) parts.push(name);
+  if (dept) parts.push(dept);
+  if (tel) parts.push(tel);
+  if (email) parts.push(email);
+  return parts.length > 0 ? parts.join(' / ') : '미정';
+}
+
+function formatRequiredDocs(docs: Record<string, unknown> | null): string {
+  if (!docs) return '미정';
+  if (Array.isArray(docs)) return (docs as string[]).join(', ');
+  if (typeof docs === 'string') return docs;
+  const values = Object.values(docs);
+  if (values.length > 0) {
+    if (Array.isArray(values[0])) return (values[0] as string[]).join(', ');
+    return values.filter((v) => typeof v === 'string').join(', ');
+  }
+  return '미정';
+}
+
 function mapAnalysisResultToBidDetail(
   analysis: ApiAnalysisResult,
   budget: number | null,
 ): BidDetail {
-  const budgetFormatted = budget
+  const budgetStr = analysis.budget_raw
+    ? analysis.budget_raw
+    : budget
     ? budget >= 100_000_000
       ? `${(budget / 100_000_000).toFixed(1).replace(/\.0$/, '')}억원 (부가세 포함)`
       : `${(budget / 10_000).toFixed(0)}만원 (부가세 포함)`
     : '미공개';
 
-  const execPeriod = analysis.exec_period_months
+  const execPeriod = analysis.exec_period_raw
+    ? analysis.exec_period_raw
+    : analysis.exec_period_months
     ? `${analysis.exec_period_months}개월`
     : '미정';
 
@@ -134,7 +191,7 @@ function mapAnalysisResultToBidDetail(
   return {
     purpose: analysis.task_scope ?? '미정',
     execPeriod,
-    budget: budgetFormatted,
+    budget: budgetStr,
     deliveryMethod: analysis.exec_location ?? '미정',
     techRequirement: analysis.key_tech_spec ?? '미정',
     bidMethod: analysis.bid_qualify ?? '미정',
@@ -142,8 +199,9 @@ function mapAnalysisResultToBidDetail(
     securityRequirement: analysis.disqualify_reason ?? '해당 없음',
     subcontractLimit: '미정',
     performanceBond: '미정',
-    requiredDocs: analysis.required_docs ?? '미정',
-    contactPerson: analysis.contact_person ?? '미정',
+    requiredDocs: formatRequiredDocs(analysis.required_docs),
+    contactPerson: formatContactPerson(analysis.contact_person),
+    analysisModel: analysis.model_used ?? undefined,
   };
 }
 
@@ -201,15 +259,18 @@ export function mapApiBidDetailToBid(res: ApiBidDetailResponse): Bid {
 // ─────────────────────────────────────────────
 
 export interface FetchBidsParams {
-  page?: number;
-  per_page?: number;
-  date_from?: string; // "YYYY-MM-DD"
+  limit?: number;
+  offset?: number;
+  date_range?: 'today' | 'yesterday' | '3days' | '1week' | 'all';
+  date_from?: string;
   date_to?: string;
+  isp_ismp_only?: boolean;
+  bookmarked_only?: boolean;
+  in_progress_only?: boolean;
+  exclude_expired?: boolean;
+  search?: string;
 }
 
-/**
- * 공고 목록 조회. 실패 시 mockData로 fallback.
- */
 export async function fetchBids(params?: FetchBidsParams): Promise<Bid[]> {
   try {
     const url = new URL(`${BASE_URL}/bids`);
@@ -218,6 +279,11 @@ export async function fetchBids(params?: FetchBidsParams): Promise<Bid[]> {
       url.searchParams.set('offset', String((params.page - 1) * params.per_page));
     if (params?.date_from) url.searchParams.set('date_from', params.date_from);
     if (params?.date_to) url.searchParams.set('date_to', params.date_to);
+    if (params?.isp_ismp_only != null) url.searchParams.set('isp_ismp_only', String(params.isp_ismp_only));
+    if (params?.bookmarked_only != null) url.searchParams.set('bookmarked_only', String(params.bookmarked_only));
+    if (params?.in_progress_only != null) url.searchParams.set('in_progress_only', String(params.in_progress_only));
+    if (params?.exclude_expired != null) url.searchParams.set('exclude_expired', String(params.exclude_expired));
+    if (params?.search) url.searchParams.set('search', params.search);
 
     const res = await fetch(url.toString(), {
       headers: { 'Content-Type': 'application/json' },
@@ -234,9 +300,6 @@ export async function fetchBids(params?: FetchBidsParams): Promise<Bid[]> {
   }
 }
 
-/**
- * 공고 상세 조회 (분석결과 + 위험요소 포함). 실패 시 mockData에서 해당 공고 반환.
- */
 export async function fetchBidById(id: string): Promise<Bid> {
   try {
     const res = await fetch(`${BASE_URL}/bids/${encodeURIComponent(id)}`, {
@@ -274,9 +337,6 @@ export interface SearchBidsResult {
   total: number;
 }
 
-/**
- * 공고 검색. 백엔드 실패 시 mockData에서 로컬 검색으로 fallback.
- */
 export async function searchBids(query: string): Promise<SearchBidsResult> {
   try {
     const res = await fetch(
@@ -300,5 +360,109 @@ export async function searchBids(query: string): Promise<SearchBidsResult> {
         b.number.includes(q),
     );
     return { source: 'local', results: matched, total: matched.length };
+  }
+}
+
+export async function toggleBookmarkApi(
+  bid_ntce_no: string,
+  is_bookmarked: boolean
+): Promise<void> {
+  try {
+    await fetch(
+      `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/bookmark?is_bookmarked=${is_bookmarked}`,
+      { method: 'PATCH', signal: AbortSignal.timeout(10_000) }
+    );
+  } catch (err) {
+    console.warn('[api] toggleBookmarkApi 실패:', err);
+  }
+}
+
+export async function toggleInProgressApi(
+  bid_ntce_no: string,
+  is_in_progress: boolean
+): Promise<void> {
+  try {
+    await fetch(
+      `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/in_progress?is_in_progress=${is_in_progress}`,
+      { method: 'PATCH', signal: AbortSignal.timeout(10_000) }
+    );
+  } catch (err) {
+    console.warn('[api] toggleInProgressApi 실패:', err);
+  }
+}
+
+export interface ApiDashboardStats {
+  today_new: number;
+  deadline_soon: number;
+  analysis_done: number;
+  proposal_count: number;
+}
+
+export async function fetchDashboardStats(): Promise<ApiDashboardStats | null> {
+  try {
+    const res = await fetch(`${BASE_URL}/bids/stats`, {
+      signal: AbortSignal.timeout(10_000)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('[api] fetchDashboardStats 실패:', err);
+    return null;
+  }
+}
+
+export interface ApiTypeStatItem {
+  type: string;
+  count: number;
+  ratio: number;
+}
+
+export async function fetchTypeStats(): Promise<ApiTypeStatItem[]> {
+  try {
+    const res = await fetch(`${BASE_URL}/bids/type-stats`, {
+      signal: AbortSignal.timeout(10_000)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('[api] fetchTypeStats 실패:', err);
+    return [];
+  }
+}
+
+export interface CollectResult {
+  saved: number;
+  skipped: number;
+  errors: number;
+}
+
+export async function collectBidsApi(): Promise<CollectResult | null> {
+  try {
+    const res = await fetch(`${BASE_URL}/bids/collect`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('[api] collectBidsApi 실패:', err);
+    return null;
+  }
+}
+
+export async function requestAnalysisApi(bid_ntce_no: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/analysis/run/${encodeURIComponent(bid_ntce_no)}`,
+      { method: 'POST', signal: AbortSignal.timeout(10_000) }
+    );
+    if (res.status === 501) {
+      console.warn('[api] AI 분석 미구현 상태');
+      return false;
+    }
+    return res.ok;
+  } catch (err) {
+    console.warn('[api] requestAnalysisApi 실패:', err);
+    return false;
   }
 }

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { type Bid, type BidFlags, type AiStatusType, formatBudget, TODAY } from './mockData';
+import { type ApiTypeStatItem } from '../services/api';
 import { RiskBadge } from './BidTable';
 import { BidSlideOver } from './BidSlideOver';
 
@@ -41,13 +42,21 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: any[] 
   return null;
 }
 
-function BidTypeChart({ bids, ceoMode }: { bids: Bid[]; ceoMode: boolean }) {
+function BidTypeChart({ bids, ceoMode, typeStats }: { bids: Bid[]; ceoMode: boolean; typeStats?: ApiTypeStatItem[] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const total = bids.length;
   const typeCount: Record<string, number> = {};
   bids.forEach((b) => { typeCount[b.type] = (typeCount[b.type] || 0) + 1; });
-  const chartData = total > 0
+
+  const chartData = typeStats && typeStats.length > 0
+    ? typeStats.map((item) => ({
+        name: item.type,
+        value: Math.round(item.ratio * 100),
+        count: item.count,
+        color: TYPE_COLORS[item.type] ?? '#8B5CF6',
+      }))
+    : total > 0
     ? Object.entries(typeCount).map(([name, count]) => ({
         name,
         value: Math.round((count / total) * 100),
@@ -438,7 +447,7 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
   );
 }
 
-export function BottomWidgets({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false }: {
+export function BottomWidgets({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, typeStats }: {
   bids: Bid[];
   bidFlags: Record<string, BidFlags>;
   aiStatuses?: Record<string, AiStatusType>;
@@ -447,6 +456,7 @@ export function BottomWidgets({ bids, bidFlags, aiStatuses, onToggleBookmark, on
   onOpenAnalysisDetail?: (bid: Bid) => void;
   onRequestAnalysis?: (bidId: string) => void;
   ceoMode?: boolean;
+  typeStats?: ApiTypeStatItem[];
 }) {
   const [slideOverBid, setSlideOverBid] = useState<Bid | null>(null);
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
@@ -460,7 +470,7 @@ export function BottomWidgets({ bids, bidFlags, aiStatuses, onToggleBookmark, on
     <>
       <div className="flex gap-4">
         <DeadlineCalendar bids={bids} onOpenSlideOver={openSlideOver} />
-        <BidTypeChart bids={bids} ceoMode={ceoMode} />
+        <BidTypeChart bids={bids} ceoMode={ceoMode} typeStats={typeStats} />
       </div>
       <BidSlideOver
         bid={slideOverBid}

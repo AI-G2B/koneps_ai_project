@@ -13,6 +13,8 @@ interface DashboardHeaderProps {
   onMarkAllAsRead: () => void;
   onMarkAsRead: (id: string) => void;
   onClearNotifications: () => void;
+  onSync?: () => Promise<void>;
+  isSyncing?: boolean;
 }
 
 const getTimeAgo = (date: Date): string => {
@@ -42,22 +44,22 @@ const NOTIF_ICON: Record<NotificationItem['type'], { icon: React.ElementType; co
   warning:           { icon: AlertTriangle, color: '#F97316', bg: 'rgba(249,115,22,0.12)' },
 };
 
-export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead, onMarkAsRead, onClearNotifications }: DashboardHeaderProps) {
+export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead, onMarkAsRead, onClearNotifications, onSync, isSyncing = false }: DashboardHeaderProps) {
   const { showToast } = useToast();
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
   const [isOpen, setIsOpen] = useState(false);
   const [now, setNow] = useState(new Date());
-  const [isSyncing, setIsSyncing] = useState(false);
 
-  const handleSync = () => {
-    if (isSyncing) return;
-    setIsSyncing(true);
-    showToast('info', '동기화', '공고 데이터를 동기화하고 있습니다');
-    setTimeout(() => {
-      setIsSyncing(false);
-      showToast('info', '동기화 완료', '동기화가 완료되었습니다');
-    }, 2000);
+  const handleSync = async () => {
+    if (isSyncing || !onSync) return;
+    showToast('info', '동기화', '나라장터에서 공고를 수집하고 있습니다');
+    try {
+      await onSync();
+      showToast('success', '동기화 완료', '공고 데이터가 업데이트되었습니다');
+    } catch {
+      showToast('error', '동기화 실패', '잠시 후 다시 시도해주세요');
+    }
   };
 
   const [searchQuery, setSearchQuery] = useState('');
