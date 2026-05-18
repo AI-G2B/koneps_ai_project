@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Bookmark, BookmarkX, Play, Building2, Banknote, Calendar,
-  Eye, FileSearch, ListFilter,
+  FileSearch, ListFilter,
 } from 'lucide-react';
 import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
 import { RiskBadge } from './BidTable';
@@ -621,26 +621,7 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
               {flags.inProgress ? '진행중' : '진행하기'}
             </button>
           </>
-        ) : (
-          <button
-            onClick={() => onOpenSlide(bid)}
-            className="rounded-md flex items-center gap-1"
-            style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--dash-text-3)', backgroundColor: 'transparent', border: '1px solid var(--dash-border-btn)', cursor: 'pointer' }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = '#2563EB';
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.08)';
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.25)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)';
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-btn)';
-            }}
-          >
-            <Eye style={{ width: '11px', height: '11px' }} />
-            상세 보기
-          </button>
-        )}
+        ) : null}
       </div>
     </div>
   );

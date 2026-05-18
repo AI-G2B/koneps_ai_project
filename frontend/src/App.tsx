@@ -60,7 +60,6 @@ export default function App() {
   const [activePage, setActivePage] = useState<PageType>('대시보드');
   const [bidFlags, setBidFlags] = useState<Record<string, BidFlags>>({});
   const [aiStatuses, setAiStatuses] = useState<Record<string, AiStatusType>>({});
-  const [pursuedBids, setPursuedBids] = useState<Set<string>>(new Set());
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [dashboardStats, setDashboardStats] = useState<ApiDashboardStats | null>(null);
   const [typeStats, setTypeStats] = useState<ApiTypeStatItem[]>([]);
@@ -166,16 +165,7 @@ export default function App() {
     setAiStatuses(prev => ({ ...prev, [bidId]: 'none' }));
   };
 
-  const togglePursued = (bidId: string) => {
-    setPursuedBids(prev => {
-      const next = new Set(prev);
-      if (next.has(bidId)) next.delete(bidId);
-      else next.add(bidId);
-      return next;
-    });
-  };
-
-  const toggleBookmark = (bidId: string) => {
+const toggleBookmark = (bidId: string) => {
     const current = bidFlags[bidId] ?? { bookmarked: false, inProgress: false };
     const newBookmarked = !current.bookmarked;
     setBidFlags(prev => ({ ...prev, [bidId]: { ...current, bookmarked: newBookmarked } }));
@@ -377,22 +367,16 @@ export default function App() {
           ) : (
             <>
               <KpiCards bids={bids} bidsLoading={isFetching} ceoMode={false} dashboardStats={dashboardStats} />
-              <div className="flex gap-4" style={{ minHeight: '440px' }}>
-                <BidTable
+              <div style={{ height: '500px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                <BidListPage
                   bids={bids}
-                  bidsLoading={isFetching}
-                  selectedBid={selectedBid}
-                  onSelectBid={handleSelectBid}
-                  agencySettings={agencySettings}
                   bidFlags={bidFlags}
                   aiStatuses={aiStatuses}
                   onToggleBookmark={toggleBookmark}
                   onToggleInProgress={toggleInProgress}
-                  pursuedBids={pursuedBids}
-                  onTogglePursued={togglePursued}
+                  onOpenAnalysisDetail={openAnalysisDetail}
                   onRequestAnalysis={requestAnalysis}
                 />
-                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} />
               </div>
               <BottomWidgets
                 bids={bids}
