@@ -59,19 +59,30 @@ export interface NotificationItem {
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('koneps_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loginError, setLoginError] = useState('');
 
   const handleLogin = async (username: string, password: string) => {
     setLoginError('');
     const apiUser = await loginApi(username, password);
     if (apiUser) {
-      setUser({ id: apiUser.id, username: apiUser.username, name: apiUser.name, role: apiUser.role as User['role'] });
+      const userInfo: User = { id: apiUser.id, username: apiUser.username, name: apiUser.name, role: apiUser.role as User['role'] };
+      sessionStorage.setItem('koneps_user', JSON.stringify(userInfo));
+      setUser(userInfo);
       return;
     }
     const fallback = FALLBACK_ACCOUNTS.find(a => a.username === username && a.password === password);
     if (fallback) {
-      setUser({ id: fallback.id, username: fallback.username, name: fallback.name, role: fallback.role });
+      const userInfo: User = { id: fallback.id, username: fallback.username, name: fallback.name, role: fallback.role };
+      sessionStorage.setItem('koneps_user', JSON.stringify(userInfo));
+      setUser(userInfo);
       return;
     }
     setLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
@@ -291,7 +302,7 @@ const toggleBookmark = (bidId: string) => {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <DashboardHeader
           user={user}
-          onLogout={() => setUser(null)}
+          onLogout={() => { sessionStorage.removeItem('koneps_user'); setUser(null); }}
           notifications={notifications}
           onMarkAllAsRead={markAllAsRead}
           onMarkAsRead={markAsRead}
