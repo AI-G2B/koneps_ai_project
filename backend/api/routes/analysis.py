@@ -1,9 +1,7 @@
 """
 AI 분석 트리거 엔드포인트
-담당: 강현묵 (AI 분석 로직), 최서원 (엔드포인트 구조)
-
-POST /analysis/run/{notice_id}  → AI 분석 실행 (pipeline_status 관리)
-GET  /analysis/{notice_id}      → 분석 결과 조회
+POST /analysis/run/{bid_ntce_no}  → AI 분석 실행 (pipeline_status 관리)
+GET  /analysis/{bid_ntce_no}      → 분석 결과 조회
 """
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -17,6 +15,7 @@ from backend.db.crud import (
     update_pipeline_status,
 )
 from backend.db.database import get_db
+from backend.services.analysis_service import analyze_rfp
 
 router = APIRouter()
 
@@ -39,29 +38,24 @@ async def run_analysis(
 ) -> AnalysisRunResponse:
     """공고번호를 받아 AI 분석 파이프라인을 실행한다.
 
-    1. pipeline_status → 'analyzing'
-    2. AI 분석 실행 (강현묵 구현 예정)
-    3. pipeline_status → 'analyzed' 또는 'failed'
+    1. AI 분석 실행 (첨부파일 다운로드 → Gemini 호출 → DB 저장)
+    2. pipeline_status → 'analyzed' 또는 'failed'
     """
     notice = await get_notice_detail(db, bid_ntce_no)
     if not notice:
         raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
 
-    if notice.pipeline_status == "analyzing":
-        raise HTTPException(status_code=409, detail="이미 분석이 진행 중입니다.")
-
-    await update_pipeline_status(db, notice.id, "analyzing")
+    if notice.pipeline_status == "analyzed":
+        raise HTTPException(status_code=409, detail="이미 분석이 완료된 공고입니다.")
 
     try:
-        # TODO: 강현묵 — 아래 세 줄 주석 해제 후 raise NotImplementedError 삭제
-        # from backend.agents.orchestrator import run_pipeline
-        # await run_pipeline(notice.id, db)
-        # await update_pipeline_status(db, notice.id, "analyzed")
-        # return AnalysisRunResponse(bid_ntce_no=bid_ntce_no, pipeline_status="analyzed", message="AI 분석이 완료되었습니다.")
-        raise NotImplementedError("AI 분석 함수 미구현 (강현묵 담당)")
-    except NotImplementedError:
-        await update_pipeline_status(db, notice.id, "collected")
-        raise HTTPException(status_code=501, detail="AI 분석 함수가 아직 구현되지 않았습니다.")
+        await analyze_rfp(notice.id, db)
+        await update_pipeline_status(db, notice.id, "analyzed")
+        return AnalysisRunResponse(
+            bid_ntce_no=bid_ntce_no,
+            pipeline_status="analyzed",
+            message="AI 분석이 완료되었습니다.",
+        )
     except Exception as e:
         await update_pipeline_status(db, notice.id, "failed", str(e))
         raise HTTPException(status_code=500, detail=f"분석 실패: {e}")

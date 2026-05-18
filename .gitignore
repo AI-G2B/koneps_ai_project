@@ -20,4 +20,8 @@ downloads/
 # Mac
 .DS_Stores
 
-.env
+.env__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
