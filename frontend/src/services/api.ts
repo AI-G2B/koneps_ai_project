@@ -25,7 +25,6 @@ export interface AttachmentSchema {
 
 export interface ApiBidListItem {
   id: number;
-  id: number;
   bid_ntce_no: string;
   bid_ntce_nm: string;
   ntce_instt_nm: string | null;
@@ -126,7 +125,6 @@ function mapPipelineStatus(status: string | null): AiStatusType {
   return 'none';
 }
 
-function normalizeDate(dateStr: string | null | undefined): string {
 function normalizeDate(dateStr: string | null | undefined): string {
   return dateStr ? dateStr.slice(0, 10) : '';
 }

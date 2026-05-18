@@ -1,4 +1,4 @@
-from sqlalchemy import String, Boolean, Numeric, Text, Date, SmallInteger, ForeignKey, TIMESTAMP
+from sqlalchemy import String, Boolean, Numeric, Text, Date, SmallInteger, ForeignKey, TIMESTAMP, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
@@ -37,7 +37,7 @@ class Notice(Base):
     parse_error_msg:      Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     content_embedding:    Mapped[Optional[list]] = mapped_column(Vector(1536), nullable=True)
     collected_at:         Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
-    updated_at:           Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    updated_at:           Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
 
     attachments:       Mapped[list["Attachment"]]       = relationship("Attachment", back_populates="notice", cascade="all, delete-orphan")
     analysis_result:   Mapped["AnalysisResult"]         = relationship("AnalysisResult", back_populates="notice", uselist=False)
@@ -88,7 +88,7 @@ class AnalysisResult(Base):
     model_used:          Mapped[Optional[str]]  = mapped_column(String(50), nullable=True)
     prompt_version:      Mapped[Optional[str]]  = mapped_column(String(20), nullable=True)
     analyzed_at:         Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
-    updated_at:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    updated_at:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
 
     notice: Mapped["Notice"] = relationship("Notice", back_populates="analysis_result")
 
