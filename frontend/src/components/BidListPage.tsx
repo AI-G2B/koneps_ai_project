@@ -325,8 +325,11 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
       <td style={{ padding: '10px 12px' }}>
         <div
           onMouseEnter={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
-            setTooltip({ x: rect.left, y: rect.bottom + 6 });
+            const el = e.currentTarget;
+            if (el.scrollHeight > el.clientHeight) {
+              const rect = el.getBoundingClientRect();
+              setTooltip({ x: rect.left, y: rect.bottom + 6 });
+            }
           }}
           onMouseLeave={() => setTooltip(null)}
           style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', lineHeight: 1.45, marginBottom: '3px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}

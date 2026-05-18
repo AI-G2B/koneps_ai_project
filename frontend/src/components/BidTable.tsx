@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Inbox, Sparkles } from 'lucide-react';
 import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from './mockData';
 import type { AgencySettings } from '../App';
@@ -308,16 +309,27 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
   onRequestAnalysis?: (bidId: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [titleTooltip, setTitleTooltip] = useState<{ x: number; y: number } | null>(null);
   const rowBg = isSelected ? 'rgba(37,99,235,0.1)' : hovered ? 'var(--dash-row-hover)' : 'transparent';
 
   return (
+    <>
     <tr onClick={onSelect} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       style={{ backgroundColor: rowBg, borderBottom: '1px solid var(--dash-border-faint)', borderLeft: `2px solid ${isSelected ? '#2563EB' : isPursued ? '#8B5CF6' : isAvoided ? '#EF4444' : isPreferred ? '#2563EB' : 'transparent'}`, cursor: 'pointer', transition: 'background-color 0.15s, border-left-color 0.15s' }}>
       <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
         <span style={{ fontSize: '11px', color: 'var(--dash-text-4)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: '100px' }}>{bid.number.split('-').slice(-1)[0]}</span>
       </td>
       <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
-        <div title={bid.title} style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'normal', lineHeight: 1.4, wordBreak: 'keep-all', marginBottom: '4px' }}>
+        <div
+          onMouseEnter={(e) => {
+            const el = e.currentTarget;
+            if (el.scrollHeight > el.clientHeight) {
+              const rect = el.getBoundingClientRect();
+              setTitleTooltip({ x: rect.left, y: rect.bottom + 6 });
+            }
+          }}
+          onMouseLeave={() => setTitleTooltip(null)}
+          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'normal', lineHeight: 1.4, wordBreak: 'keep-all', marginBottom: '4px' }}>
           {bid.title}
         </div>
         <div className="flex items-center gap-1" style={{ flexWrap: 'wrap', rowGap: '2px' }}>
@@ -414,5 +426,27 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
         </div>
       </td>
     </tr>
+    {titleTooltip && createPortal(
+      <div style={{
+        position: 'fixed',
+        top: titleTooltip.y,
+        left: Math.min(titleTooltip.x, window.innerWidth - 420),
+        zIndex: 9999,
+        maxWidth: '400px',
+        backgroundColor: '#1e293b',
+        color: '#f1f5f9',
+        fontSize: '12px',
+        lineHeight: 1.6,
+        padding: '7px 11px',
+        borderRadius: '7px',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+        wordBreak: 'keep-all',
+        pointerEvents: 'none',
+      }}>
+        {bid.title}
+      </div>,
+      document.body
+    )}
+    </>
   );
 }
