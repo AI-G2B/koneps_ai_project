@@ -5,6 +5,7 @@ import {
   type RiskLevel,
   type BidType,
   type AiStatusType,
+  type Attachment,
 } from '../components/mockData';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
@@ -248,6 +249,12 @@ export function mapApiBidDetailToBid(res: ApiBidDetailResponse): Bid {
       ? mapAnalysisResultToBidDetail(res.analysis_result, budget)
       : undefined,
     riskFactors,
+    attachments: (res.attachments ?? []).map((a): Attachment => ({
+      id: a.id,
+      fileName: a.file_name,
+      fileUrl: a.file_url.startsWith('http') ? a.file_url : `${BASE_URL}/${a.file_url.replace(/^\//, '')}`,
+      fileType: a.file_type,
+    })),
   };
 }
 

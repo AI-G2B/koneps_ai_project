@@ -7,6 +7,7 @@ import {
 import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
 import { RiskBadge } from './BidTable';
 import { BidSlideOver } from './BidSlideOver';
+import { fetchBidById } from '../services/api';
 
 type DateFilter = 'today' | 'yesterday' | '3days' | '1week' | 'all';
 type StatusFilter = 'all' | 'urgent' | 'danger';
@@ -44,9 +45,16 @@ export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onTo
   const [focusBidId, setFocusBidId] = useState<string | null>(null);
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
 
-  const openSlide = (bid: Bid) => {
+  const openSlide = async (bid: Bid) => {
     setSelectedBid(bid);
     setIsSlideOpen(true);
+    if (bid.attachments !== undefined) return;
+    try {
+      const detailed = await fetchBidById(bid.id);
+      setSelectedBid(detailed);
+    } catch {
+      // 상세 로딩 실패 시 목록 데이터 유지
+    }
   };
 
   const closeSlide = () => setIsSlideOpen(false);

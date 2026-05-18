@@ -27,6 +27,13 @@ export interface AnalysisLog {
   status: 'info' | 'success' | 'error';
 }
 
+export interface Attachment {
+  id: number | null;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+}
+
 export interface BidDetail {
   purpose: string;
   execPeriod: string;
@@ -63,6 +70,7 @@ export interface Bid {
   ntce_dtl_url?: string;
   detail?: BidDetail;
   riskFactors?: RiskFactor[];
+  attachments?: Attachment[];
 }
 
 export const TODAY = new Date();

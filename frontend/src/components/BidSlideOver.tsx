@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   X, Bookmark, BookmarkX, Play,
   Target, Clock, Wallet, Truck, Code2, Gavel,
@@ -26,6 +26,19 @@ interface BidSlideOverProps {
 
 export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false }: BidSlideOverProps) {
   const { showToast } = useToast();
+  const [showFileMenu, setShowFileMenu] = useState(false);
+  const fileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showFileMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (fileMenuRef.current && !fileMenuRef.current.contains(e.target as Node)) {
+        setShowFileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showFileMenu]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -150,26 +163,52 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
               {/* 우측 버튼들 */}
               <div className="flex items-center gap-1.5 ml-auto">
                 <button
-                  title="나라장터 원문 링크"
-                  onClick={() => window.open('https://www.g2b.go.kr', '_blank')}
+                  title={bid.ntce_dtl_url ? '나라장터 원문 보기' : '나라장터 홈으로 이동'}
+                  onClick={() => window.open(bid.ntce_dtl_url || 'https://www.g2b.go.kr', '_blank')}
                   className="flex items-center justify-center rounded-md transition-colors"
-                  style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
+                  style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: bid.ntce_dtl_url ? 'var(--dash-text-3)' : 'var(--dash-text-5)', cursor: 'pointer' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = bid.ntce_dtl_url ? 'var(--dash-text-3)' : 'var(--dash-text-5)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
                 >
                   <ExternalLink style={{ width: '12px', height: '12px' }} />
                 </button>
                 {!ceoMode && (
-                  <button
-                    title="RFP 다운로드"
-                    onClick={() => showToast('info', '준비 중입니다')}
-                    className="flex items-center justify-center rounded-md transition-colors"
-                    style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
-                  >
-                    <Download style={{ width: '12px', height: '12px' }} />
-                  </button>
+                  <div ref={fileMenuRef} style={{ position: 'relative' }}>
+                    <button
+                      title={bid.attachments?.length ? `첨부파일 ${bid.attachments.length}개` : '첨부파일 없음'}
+                      onClick={() => {
+                        const files = bid.attachments ?? [];
+                        if (files.length === 0) { showToast('info', '첨부파일이 없습니다'); return; }
+                        if (files.length === 1) { window.open(files[0].fileUrl, '_blank'); return; }
+                        setShowFileMenu(v => !v);
+                      }}
+                      className="flex items-center justify-center rounded-md transition-colors"
+                      style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: bid.attachments?.length ? 'var(--dash-text-3)' : 'var(--dash-text-5)', cursor: 'pointer' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = bid.attachments?.length ? 'var(--dash-text-3)' : 'var(--dash-text-5)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
+                    >
+                      <Download style={{ width: '12px', height: '12px' }} />
+                    </button>
+                    {showFileMenu && (bid.attachments?.length ?? 0) > 1 && (
+                      <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, minWidth: '220px', maxWidth: '320px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 50, overflow: 'hidden' }}>
+                        <div style={{ padding: '6px 10px', fontSize: '11px', color: 'var(--dash-text-4)', borderBottom: '1px solid var(--dash-border-faint)' }}>
+                          첨부파일 {bid.attachments!.length}개
+                        </div>
+                        {bid.attachments!.map((file, i) => (
+                          <button
+                            key={i}
+                            onClick={() => { window.open(file.fileUrl, '_blank'); setShowFileMenu(false); }}
+                            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', fontSize: '12px', color: 'var(--dash-text-2)', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-row-hover)'; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
+                          >
+                            <Download style={{ width: '12px', height: '12px', color: '#2563EB', flexShrink: 0 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.fileName}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
