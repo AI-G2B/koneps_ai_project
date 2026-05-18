@@ -55,6 +55,18 @@ async def collect_gap():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from datetime import datetime, timedelta
+    from sqlalchemy import text
+    from backend.db.database import engine
+
+    async with engine.begin() as conn:
+        await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS notice_memos (
+                id         SERIAL PRIMARY KEY,
+                notice_id  INTEGER NOT NULL UNIQUE REFERENCES notices(id) ON DELETE CASCADE,
+                content    TEXT NOT NULL DEFAULT '',
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
 
     scheduler = AsyncIOScheduler()
     # 매일 정해진 시간 자동 수집

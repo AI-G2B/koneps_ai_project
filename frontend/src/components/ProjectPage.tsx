@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Briefcase, Building2, Banknote, Calendar, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Briefcase, Building2, Banknote, Calendar, ChevronLeft, ChevronRight, X, FileText } from 'lucide-react';
 import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
 import { RiskBadge, AiStatusIndicator } from './BidTable';
 import { BidDetailPanel } from './BidDetailPanel';
 import { BidSlideOver } from './BidSlideOver';
+import { fetchMemo, saveMemo } from '../services/api';
 
 interface ProjectPageProps {
   bids: Bid[];
@@ -44,12 +45,13 @@ export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedB
     <>
       <div style={{ display: 'flex', gap: '16px', flex: 1, minHeight: 0 }}>
         {/* 왼쪽: 카드 목록 + 캘린더 */}
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '16px', minHeight: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '16px', minHeight: 0, alignItems: 'stretch' }}>
           <div style={{ flex: 2, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             <CardList inProgressBids={inProgressBids} onSelectBid={onSelectBid} selectedBid={selectedBid} aiStatuses={aiStatuses} />
           </div>
-          <div style={{ flexShrink: 0, minWidth: '260px', maxWidth: '300px' }}>
+          <div style={{ flexShrink: 0, flexGrow: 0, width: '280px', display: 'flex', flexDirection: 'column', height: '100%', gap: '12px', overflow: 'hidden' }}>
             <ProjectCalendar inProgressBids={inProgressBids} onOpenSlideOver={openSlideOver} />
+            <MemoPanel selectedBid={selectedBid} />
           </div>
         </div>
 
@@ -184,6 +186,132 @@ function ProjectCard({ bid, isSelected, onSelect, aiStatus }: {
   );
 }
 
+function MemoPanel({ selectedBid }: { selectedBid: Bid | null }) {
+  const [memoContent, setMemoContent] = useState('');
+  const [memoSaving, setMemoSaving] = useState(false);
+  const [memoSaved, setMemoSaved] = useState(false);
+  const [memoLoading, setMemoLoading] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const contentRef = useRef('');
+  const prevBidNumberRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      // 공고 전환 시 pending debounce가 있으면 await로 저장 완료 후 fetch
+      if (debounceRef.current && prevBidNumberRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+        await saveMemo(prevBidNumberRef.current, contentRef.current);
+      }
+
+      prevBidNumberRef.current = selectedBid?.number ?? null;
+
+      if (!selectedBid || cancelled) {
+        setMemoContent('');
+        contentRef.current = '';
+        return;
+      }
+
+      setMemoLoading(true);
+      setMemoSaved(false);
+      console.log('[memo] 불러오기:', selectedBid.number);
+      const content = await fetchMemo(selectedBid.number);
+      console.log('[memo] 불러온 내용:', content);
+      if (!cancelled) {
+        setMemoContent(content);
+        contentRef.current = content;
+        setMemoLoading(false);
+      }
+    };
+
+    run();
+    return () => { cancelled = true; };
+  }, [selectedBid?.id]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setMemoContent(value);
+    contentRef.current = value;
+    setMemoSaved(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      if (!selectedBid) return;
+      debounceRef.current = null;
+      setMemoSaving(true);
+      console.log('[memo] 저장 시도:', selectedBid.number, value);
+      const ok = await saveMemo(selectedBid.number, value);
+      console.log('[memo] 저장 결과:', ok);
+      setMemoSaving(false);
+      if (ok) {
+        setMemoSaved(true);
+        if (savedResetRef.current) clearTimeout(savedResetRef.current);
+        savedResetRef.current = setTimeout(() => setMemoSaved(false), 2000);
+      }
+    }, 800);
+  };
+
+  const statusText = memoLoading ? '불러오는 중...' : memoSaving ? '저장 중...' : memoSaved ? '저장됨 ✓' : '자동 저장';
+  const statusColor = memoSaved ? '#5BC37E' : memoSaving || memoLoading ? 'var(--dash-text-4)' : 'var(--dash-text-5)';
+
+  const textareaBase: React.CSSProperties = {
+    width: '100%',
+    resize: 'none',
+    padding: '10px 12px',
+    backgroundColor: 'var(--dash-input-bg)',
+    border: `1px solid ${focused ? '#2563EB' : 'var(--dash-border-med)'}`,
+    borderRadius: '8px',
+    fontSize: '13px',
+    color: 'var(--dash-text)',
+    lineHeight: 1.6,
+    outline: 'none',
+    boxSizing: 'border-box',
+  };
+
+  return (
+    <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minHeight: '180px', maxHeight: '300px', overflow: 'hidden' }}>
+      {/* 헤더 */}
+      <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <FileText style={{ width: '13px', height: '13px', color: '#60A5FA', flexShrink: 0 }} />
+        <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--dash-text)', flexShrink: 0 }}>메모</span>
+        {selectedBid && (
+          <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+            {selectedBid.title}
+          </span>
+        )}
+      </div>
+
+      {!selectedBid ? (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+          <FileText style={{ width: '18px', height: '18px', color: 'var(--dash-text-5)' }} />
+          <span style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.4 }}>
+            공고를 선택하면 메모를 작성할 수 있습니다
+          </span>
+          <textarea disabled rows={4} style={{ ...textareaBase, opacity: 0.4, cursor: 'not-allowed', marginTop: '4px' }} />
+        </div>
+      ) : (
+        <>
+          <textarea
+            value={memoContent}
+            onChange={handleChange}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            disabled={memoLoading}
+            placeholder="이 공고에 대한 메모를 작성하세요..."
+            style={{ ...textareaBase, flex: 1, minHeight: 0, overflowY: 'auto' }}
+          />
+          <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
+            <span style={{ fontSize: '10px', color: statusColor }}>{statusText}</span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function ProjectCalendar({ inProgressBids, onOpenSlideOver }: { inProgressBids: Bid[]; onOpenSlideOver: (bid: Bid) => void }) {
   const [calYear, setCalYear] = useState(TODAY_YEAR);
   const [calMonth, setCalMonth] = useState(TODAY_MONTH);
@@ -235,7 +363,7 @@ function ProjectCalendar({ inProgressBids, onOpenSlideOver }: { inProgressBids: 
   const popupBids = selectedDay ? (deadlineMap.get(selectedDay) ?? []) : [];
 
   return (
-    <div style={{ borderRadius: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '14px 8px', overflow: 'hidden' }}>
+    <div style={{ flexShrink: 0, height: '360px', borderRadius: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '14px 8px', overflow: 'hidden' }}>
       {/* 헤더 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', padding: '0 4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>

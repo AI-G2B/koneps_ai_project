@@ -448,6 +448,56 @@ export async function collectBidsApi(): Promise<CollectResult | null> {
   }
 }
 
+export interface ApiMemo {
+  notice_id: number;
+  content: string;
+  updated_at: string | null;
+}
+
+export async function fetchMemo(bid_ntce_no: string): Promise<string> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/memo`,
+      { signal: AbortSignal.timeout(10_000) }
+    );
+    console.warn('[memo] fetchMemo HTTP:', res.status);
+    if (res.status === 404) return '';
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      console.error('[memo] fetchMemo 오류:', res.status, text);
+      return '';
+    }
+    const data: ApiMemo = await res.json();
+    return data.content ?? '';
+  } catch (err) {
+    console.error('[memo] fetchMemo 실패:', err);
+    return '';
+  }
+}
+
+export async function saveMemo(bid_ntce_no: string, content: string): Promise<boolean> {
+  try {
+    const url = `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/memo`;
+    const body = JSON.stringify({ content });
+    console.log('[memo] PUT 요청:', url, body);
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      signal: AbortSignal.timeout(10_000),
+    });
+    console.warn('[memo] saveMemo HTTP:', res.status);
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      console.error('[memo] saveMemo 오류:', res.status, text);
+    }
+    return res.ok;
+  } catch (err) {
+    console.error('[memo] saveMemo 실패:', err);
+    return false;
+  }
+}
+
 export async function requestAnalysisApi(bid_ntce_no: string): Promise<boolean> {
   try {
     const res = await fetch(

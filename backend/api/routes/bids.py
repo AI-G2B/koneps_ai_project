@@ -30,12 +30,14 @@ from backend.collector.service import collect_and_save, save_bids
 from backend.db.crud import (
     count_notices,
     get_dashboard_stats,
+    get_memo_by_notice_id,
     get_notice_detail,
     get_notices,
     get_type_stats,
     search_notices,
     set_bookmark,
     set_in_progress,
+    upsert_memo,
 )
 from backend.db.models import Notice
 from backend.db.database import get_db
@@ -527,6 +529,48 @@ async def search_bids(
         results=[_to_list_item(n) for n in notices],
         total=len(notices),
     )
+
+
+class MemoResponse(BaseModel):
+    notice_id: int
+    content: str
+    updated_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+
+class MemoUpdateRequest(BaseModel):
+    content: str
+
+
+@router.get("/{bid_ntce_no}/memo", summary="공고 메모 조회", response_model=MemoResponse)
+async def get_bid_memo(
+    bid_ntce_no: str,
+    db: AsyncSession = Depends(get_db),
+) -> MemoResponse:
+    """공고번호로 메모를 조회한다. 메모가 없으면 빈 content를 반환한다."""
+    notice = await get_notice_detail(db, bid_ntce_no)
+    if not notice:
+        raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
+    memo = await get_memo_by_notice_id(db, notice.id)
+    if memo:
+        return MemoResponse.model_validate(memo)
+    return MemoResponse(notice_id=notice.id, content="", updated_at=None)
+
+
+@router.put("/{bid_ntce_no}/memo", summary="공고 메모 저장", response_model=MemoResponse)
+async def upsert_bid_memo(
+    bid_ntce_no: str,
+    body: MemoUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+) -> MemoResponse:
+    """공고 메모를 생성하거나 업데이트한다."""
+    notice = await get_notice_detail(db, bid_ntce_no)
+    if not notice:
+        raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
+    memo = await upsert_memo(db, notice.id, body.content)
+    return MemoResponse.model_validate(memo)
 
 
 @router.get(

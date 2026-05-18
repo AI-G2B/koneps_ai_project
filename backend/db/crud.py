@@ -4,7 +4,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from .models import AnalysisResult, Attachment, Notice, ProposalOutline, RiskFactor
+from .models import AnalysisResult, Attachment, Notice, NoticeMemo, ProposalOutline, RiskFactor
 
 KST = timezone(timedelta(hours=9))
 
@@ -330,3 +330,23 @@ async def get_active_outline(db: AsyncSession, notice_id: int):
         )
     )
     return result.scalar_one_or_none()
+
+
+# notice_memos
+async def get_memo_by_notice_id(db: AsyncSession, notice_id: int) -> NoticeMemo | None:
+    result = await db.execute(
+        select(NoticeMemo).where(NoticeMemo.notice_id == notice_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def upsert_memo(db: AsyncSession, notice_id: int, content: str) -> NoticeMemo:
+    memo = await get_memo_by_notice_id(db, notice_id)
+    if memo:
+        memo.content = content
+    else:
+        memo = NoticeMemo(notice_id=notice_id, content=content)
+        db.add(memo)
+    await db.commit()
+    await db.refresh(memo)
+    return memo

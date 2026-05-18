@@ -43,6 +43,7 @@ class Notice(Base):
     analysis_result:   Mapped["AnalysisResult"]         = relationship("AnalysisResult", back_populates="notice", uselist=False)
     risk_factors:      Mapped[list["RiskFactor"]]       = relationship("RiskFactor", back_populates="notice")
     proposal_outlines: Mapped[list["ProposalOutline"]]  = relationship("ProposalOutline", back_populates="notice")
+    memo:              Mapped[Optional["NoticeMemo"]]   = relationship("NoticeMemo", back_populates="notice", uselist=False)
 
 
 class Attachment(Base):
@@ -126,6 +127,17 @@ class ProposalOutline(Base):
 
     notice:   Mapped["Notice"]               = relationship("Notice", back_populates="proposal_outlines")
     sections: Mapped[list["ProposalSection"]]= relationship("ProposalSection", back_populates="outline")
+
+
+class NoticeMemo(Base):
+    __tablename__ = "notice_memos"
+
+    id:         Mapped[int]               = mapped_column(primary_key=True)
+    notice_id:  Mapped[int]               = mapped_column(ForeignKey("notices.id", ondelete="CASCADE"), unique=True, nullable=False)
+    content:    Mapped[str]               = mapped_column(Text, nullable=False, default="")
+    updated_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
+
+    notice: Mapped["Notice"] = relationship("Notice", back_populates="memo")
 
 
 class ProposalSection(Base):
