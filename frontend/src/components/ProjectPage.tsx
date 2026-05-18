@@ -196,11 +196,11 @@ function ProjectCard({ bid, isSelected, onSelect, aiStatus }: {
           <Banknote style={{ width: '12px', height: '12px', color: 'var(--dash-icon-off)', flexShrink: 0 }} />
           {formatBudget(bid.budget)}
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: daysLeft < 0 ? 'var(--dash-text-3)' : urgent ? '#EF4444' : 'var(--dash-text-3)', fontWeight: daysLeft < 0 ? 400 : urgent ? 600 : 400 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: isNaN(daysLeft) ? 'var(--dash-text-3)' : daysLeft < 0 ? 'var(--dash-text-3)' : urgent ? '#EF4444' : 'var(--dash-text-3)', fontWeight: isNaN(daysLeft) ? 400 : daysLeft < 0 ? 400 : urgent ? 600 : 400 }}>
           <Calendar style={{ width: '12px', height: '12px', flexShrink: 0 }} />
-          {bid.deadline.substring(5)}
-          <span style={{ fontSize: '10px', padding: '0 5px', marginLeft: '2px', borderRadius: '9999px', backgroundColor: daysLeft < 0 ? 'rgba(129,135,143,0.12)' : urgent ? 'rgba(239,68,68,0.15)' : 'rgba(37,99,235,0.1)', color: daysLeft < 0 ? '#81878F' : urgent ? '#EF4444' : '#60A5FA' }}>
-            {daysLeft < 0 ? '마감' : `D-${daysLeft}`}
+          {bid.deadline ? bid.deadline.substring(5) : ''}
+          <span style={{ fontSize: '10px', padding: '0 5px', marginLeft: '2px', borderRadius: '9999px', backgroundColor: isNaN(daysLeft) ? 'rgba(129,135,143,0.12)' : daysLeft < 0 ? 'rgba(129,135,143,0.12)' : urgent ? 'rgba(239,68,68,0.15)' : 'rgba(37,99,235,0.1)', color: isNaN(daysLeft) ? '#81878F' : daysLeft < 0 ? '#81878F' : urgent ? '#EF4444' : '#60A5FA' }}>
+            {isNaN(daysLeft) ? '기간 미정' : daysLeft < 0 ? '마감' : `D-${daysLeft}`}
           </span>
         </span>
         <AiStatusIndicator status={aiStatus} />
@@ -370,9 +370,15 @@ function ProjectCalendar({ inProgressBids, onOpenSlideOver }: { inProgressBids: 
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
   // 이번 캘린더 월의 마감일 맵 구성
+  // ISO 형식("2026-06-02T10:00:00+09:00") 대응을 위해 slice(0,10) 처리
   const deadlineMap = new Map<number, Bid[]>();
+  console.log('[ProjectCalendar] inProgressBids:', inProgressBids.map(b => ({ id: b.id, title: b.title, deadline: b.deadline })));
+  console.log('[ProjectCalendar] 현재 연/월:', calYear, calMonth);
   for (const bid of inProgressBids) {
-    const [y, m, d] = bid.deadline.split('-').map(Number);
+    if (!bid.deadline) continue;
+    const dateStr = bid.deadline.slice(0, 10); // "YYYY-MM-DD"
+    const [y, m, d] = dateStr.split('-').map(Number);
+    console.log('[ProjectCalendar] bid deadline 파싱:', bid.title, dateStr, '->', y, m, d);
     if (y === calYear && m === calMonth) {
       deadlineMap.set(d, [...(deadlineMap.get(d) ?? []), bid]);
     }

@@ -64,7 +64,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
 
   const CEO_ITEMS = (ceoMode && bid && detail) ? [
     { icon: Wallet,    label: '예산 규모',               value: detail.budget },
-    { icon: Clock,     label: '마감일',                  value: `${bid.deadline.substring(5)} (${daysLeft}일 후)` },
+    { icon: Clock,     label: '마감일',                  value: bid.deadline ? `${bid.deadline.substring(5)} ${isNaN(daysLeft) ? '(기간 미정)' : `(${daysLeft}일 후)`}` : '기간 미정' },
     { icon: BarChart2, label: '평가방식 (기술/가격 배점)', value: detail.evalMethod },
     { icon: Phone,     label: '담당자 연락처',             value: detail.contactPerson },
   ] : [];

@@ -49,7 +49,7 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
 
   const infoGrid = [
     { label: '수요기관', value: bid.agency },
-    { label: '마감일시', value: `${bid.deadline} (D${daysLeft >= 0 ? `-${daysLeft}` : `+${Math.abs(daysLeft)}`})`, urgent: isUrgent },
+    { label: '마감일시', value: bid.deadline ? `${bid.deadline} ${isNaN(daysLeft) ? '(기간 미정)' : `(D${daysLeft >= 0 ? `-${daysLeft}` : `+${Math.abs(daysLeft)}`})`}` : '기간 미정', urgent: isUrgent },
     { label: '추정가격', value: formatBudget(bid.budget) },
     { label: '배정예산', value: detail?.budget ?? '-' },
     { label: '공고번호', value: bid.number },

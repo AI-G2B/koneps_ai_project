@@ -198,12 +198,16 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
   const popupRef = useRef<HTMLDivElement>(null);
 
   const bidsByDate = useMemo(() => {
+    // ISO 형식("2026-06-02T10:00:00+09:00") 대응을 위해 slice(0,10) 처리
     const map = new Map<string, Bid[]>();
     bids.forEach((bid) => {
-      const arr = map.get(bid.deadline) ?? [];
+      if (!bid.deadline) return;
+      const dateKey = bid.deadline.slice(0, 10); // "YYYY-MM-DD"
+      const arr = map.get(dateKey) ?? [];
       arr.push(bid);
-      map.set(bid.deadline, arr);
+      map.set(dateKey, arr);
     });
+    console.log('[DeadlineCalendar] bidsByDate keys:', [...map.keys()]);
     return map;
   }, [bids]);
 
