@@ -114,9 +114,15 @@ export default function App() {
   const loadBids = async (params?: FetchBidsParams) => {
     setIsFetching(true);
     try {
-      const result = await fetchBids(params);
-      setBids(result);
-      setBidFlags(Object.fromEntries(result.map(b => [b.id, { bookmarked: false, inProgress: false }])));
+      const { bids: fetchedBids, flags } = await fetchBids(params);
+      setBids(fetchedBids);
+      setBidFlags(prev => {
+        const merged = { ...prev };
+        Object.entries(flags).forEach(([id, flag]) => {
+          merged[id] = { bookmarked: flag.bookmarked, inProgress: flag.inProgress };
+        });
+        return merged;
+      });
     } catch (err) {
       console.error('공고 목록 로딩 실패:', err);
     } finally {
@@ -129,13 +135,19 @@ export default function App() {
     setIsFetching(true);
     try {
       await collectBidsApi();
-      const [result, stats, types] = await Promise.all([
+      const [{ bids: fetchedBids, flags }, stats, types] = await Promise.all([
         fetchBids(),
         fetchDashboardStats(),
         fetchTypeStats(),
       ]);
-      setBids(result);
-      setBidFlags(Object.fromEntries(result.map(b => [b.id, { bookmarked: false, inProgress: false }])));
+      setBids(fetchedBids);
+      setBidFlags(prev => {
+        const merged = { ...prev };
+        Object.entries(flags).forEach(([id, flag]) => {
+          merged[id] = { bookmarked: flag.bookmarked, inProgress: flag.inProgress };
+        });
+        return merged;
+      });
       setDashboardStats(stats);
       setTypeStats(types);
     } finally {
@@ -193,7 +205,11 @@ const toggleBookmark = (bidId: string) => {
     const current = bidFlags[bidId] ?? { bookmarked: false, inProgress: false };
     const newBookmarked = !current.bookmarked;
     setBidFlags(prev => ({ ...prev, [bidId]: { ...current, bookmarked: newBookmarked } }));
-    toggleBookmarkApi(bidId, newBookmarked);
+    toggleBookmarkApi(bidId, newBookmarked).then(success => {
+      if (!success) {
+        setBidFlags(prev => ({ ...prev, [bidId]: { ...prev[bidId], bookmarked: !newBookmarked } }));
+      }
+    });
     if (newBookmarked) {
       requestAnalysis(bidId);
     } else if (!current.inProgress) {
@@ -205,7 +221,11 @@ const toggleBookmark = (bidId: string) => {
     const current = bidFlags[bidId] ?? { bookmarked: false, inProgress: false };
     const newInProgress = !current.inProgress;
     setBidFlags(prev => ({ ...prev, [bidId]: { ...current, inProgress: newInProgress } }));
-    toggleInProgressApi(bidId, newInProgress);
+    toggleInProgressApi(bidId, newInProgress).then(success => {
+      if (!success) {
+        setBidFlags(prev => ({ ...prev, [bidId]: { ...prev[bidId], inProgress: !newInProgress } }));
+      }
+    });
     if (newInProgress) {
       requestAnalysis(bidId);
     } else if (!current.bookmarked) {

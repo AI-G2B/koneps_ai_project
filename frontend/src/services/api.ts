@@ -269,12 +269,14 @@ export interface FetchBidsParams {
   search?: string;
 }
 
-export async function fetchBids(params?: FetchBidsParams): Promise<Bid[]> {
+export type BidFlagsMap = Record<string, { bookmarked: boolean; inProgress: boolean }>;
+
+export async function fetchBids(params?: FetchBidsParams): Promise<{ bids: Bid[]; flags: BidFlagsMap }> {
   try {
     const url = new URL(`${BASE_URL}/bids`);
-    url.searchParams.set('limit', String(params?.per_page ?? 100));
-    if (params?.page != null && params?.per_page != null)
-      url.searchParams.set('offset', String((params.page - 1) * params.per_page));
+    url.searchParams.set('limit', String(params?.limit ?? 100));
+    if (params?.offset != null)
+      url.searchParams.set('offset', String(params.offset));
     if (params?.date_from) url.searchParams.set('date_from', params.date_from);
     if (params?.date_to) url.searchParams.set('date_to', params.date_to);
     if (params?.isp_ismp_only != null) url.searchParams.set('isp_ismp_only', String(params.isp_ismp_only));
@@ -291,10 +293,17 @@ export async function fetchBids(params?: FetchBidsParams): Promise<Bid[]> {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     const data: ApiBidListResponse = await res.json();
-    return data.bids.map(mapApiBidListItemToBid);
+    const flags: BidFlagsMap = {};
+    data.bids.forEach(item => {
+      flags[item.bid_ntce_no] = {
+        bookmarked: item.is_bookmarked ?? false,
+        inProgress: item.is_in_progress ?? false,
+      };
+    });
+    return { bids: data.bids.map(mapApiBidListItemToBid), flags };
   } catch (err) {
     console.warn('[api] fetchBids 실패 → mockData fallback:', err);
-    return mockBids;
+    return { bids: mockBids, flags: {} };
   }
 }
 
@@ -364,28 +373,40 @@ export async function searchBids(query: string): Promise<SearchBidsResult> {
 export async function toggleBookmarkApi(
   bid_ntce_no: string,
   is_bookmarked: boolean
-): Promise<void> {
+): Promise<boolean> {
   try {
-    await fetch(
+    const res = await fetch(
       `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/bookmark?is_bookmarked=${is_bookmarked}`,
       { method: 'PATCH', signal: AbortSignal.timeout(10_000) }
     );
+    if (!res.ok) {
+      console.warn('[api] toggleBookmarkApi HTTP:', res.status);
+      return false;
+    }
+    return true;
   } catch (err) {
     console.warn('[api] toggleBookmarkApi 실패:', err);
+    return false;
   }
 }
 
 export async function toggleInProgressApi(
   bid_ntce_no: string,
   is_in_progress: boolean
-): Promise<void> {
+): Promise<boolean> {
   try {
-    await fetch(
+    const res = await fetch(
       `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/in_progress?is_in_progress=${is_in_progress}`,
       { method: 'PATCH', signal: AbortSignal.timeout(10_000) }
     );
+    if (!res.ok) {
+      console.warn('[api] toggleInProgressApi HTTP:', res.status);
+      return false;
+    }
+    return true;
   } catch (err) {
     console.warn('[api] toggleInProgressApi 실패:', err);
+    return false;
   }
 }
 

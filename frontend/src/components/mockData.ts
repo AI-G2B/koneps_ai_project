@@ -57,6 +57,10 @@ export interface Bid {
   type: BidType;
   dangerCount: number;
   collectedAt: string;
+  is_bookmarked?: boolean;
+  is_in_progress?: boolean;
+  is_expired?: boolean;
+  ntce_dtl_url?: string;
   detail?: BidDetail;
   riskFactors?: RiskFactor[];
 }
