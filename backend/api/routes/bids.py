@@ -534,6 +534,8 @@ async def search_bids(
 class MemoResponse(BaseModel):
     notice_id: int
     content: str
+    author_id: int | None = None
+    author_name: str | None = None
     updated_at: datetime | None = None
 
     class Config:
@@ -542,6 +544,8 @@ class MemoResponse(BaseModel):
 
 class MemoUpdateRequest(BaseModel):
     content: str
+    author_name: str | None = None
+    author_id: int | None = None
 
 
 @router.get("/{bid_ntce_no}/memo", summary="공고 메모 조회", response_model=MemoResponse)
@@ -569,7 +573,7 @@ async def upsert_bid_memo(
     notice = await get_notice_detail(db, bid_ntce_no)
     if not notice:
         raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
-    memo = await upsert_memo(db, notice.id, body.content)
+    memo = await upsert_memo(db, notice.id, body.content, body.author_id, body.author_name)
     return MemoResponse.model_validate(memo)
 
 

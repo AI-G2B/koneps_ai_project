@@ -129,13 +129,26 @@ class ProposalOutline(Base):
     sections: Mapped[list["ProposalSection"]]= relationship("ProposalSection", back_populates="outline")
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id:         Mapped[int]                = mapped_column(primary_key=True)
+    username:   Mapped[str]                = mapped_column(String(50), unique=True, nullable=False)
+    password:   Mapped[str]                = mapped_column(String(200), nullable=False)
+    name:       Mapped[str]                = mapped_column(String(50), nullable=False)
+    role:       Mapped[str]                = mapped_column(String(20), nullable=False, default='manager')
+    created_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
 class NoticeMemo(Base):
     __tablename__ = "notice_memos"
 
-    id:         Mapped[int]               = mapped_column(primary_key=True)
-    notice_id:  Mapped[int]               = mapped_column(ForeignKey("notices.id", ondelete="CASCADE"), unique=True, nullable=False)
-    content:    Mapped[str]               = mapped_column(Text, nullable=False, default="")
-    updated_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
+    id:          Mapped[int]               = mapped_column(primary_key=True)
+    notice_id:   Mapped[int]               = mapped_column(ForeignKey("notices.id", ondelete="CASCADE"), unique=True, nullable=False)
+    content:     Mapped[str]               = mapped_column(Text, nullable=False, default="")
+    author_id:   Mapped[Optional[int]]     = mapped_column(ForeignKey("users.id"), nullable=True)
+    author_name: Mapped[Optional[str]]     = mapped_column(String(50), nullable=True)
+    updated_at:  Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
 
     notice: Mapped["Notice"] = relationship("Notice", back_populates="memo")
 

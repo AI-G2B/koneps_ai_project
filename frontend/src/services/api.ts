@@ -451,34 +451,65 @@ export async function collectBidsApi(): Promise<CollectResult | null> {
 export interface ApiMemo {
   notice_id: number;
   content: string;
+  author_id: number | null;
+  author_name: string | null;
   updated_at: string | null;
 }
 
-export async function fetchMemo(bid_ntce_no: string): Promise<string> {
+export interface ApiUser {
+  id: number;
+  username: string;
+  name: string;
+  role: string;
+}
+
+export async function loginApi(username: string, password: string): Promise<ApiUser | null> {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn('[api] loginApi 실패:', err);
+    return null;
+  }
+}
+
+const _emptyMemo: ApiMemo = { notice_id: 0, content: '', author_id: null, author_name: null, updated_at: null };
+
+export async function fetchMemo(bid_ntce_no: string): Promise<ApiMemo> {
   try {
     const res = await fetch(
       `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/memo`,
       { signal: AbortSignal.timeout(10_000) }
     );
     console.warn('[memo] fetchMemo HTTP:', res.status);
-    if (res.status === 404) return '';
+    if (res.status === 404) return _emptyMemo;
     if (!res.ok) {
       const text = await res.text().catch(() => '');
       console.error('[memo] fetchMemo 오류:', res.status, text);
-      return '';
+      return _emptyMemo;
     }
-    const data: ApiMemo = await res.json();
-    return data.content ?? '';
+    return await res.json();
   } catch (err) {
     console.error('[memo] fetchMemo 실패:', err);
-    return '';
+    return _emptyMemo;
   }
 }
 
-export async function saveMemo(bid_ntce_no: string, content: string): Promise<boolean> {
+export async function saveMemo(
+  bid_ntce_no: string,
+  content: string,
+  author_id: number | null = null,
+  author_name: string | null = null,
+): Promise<boolean> {
   try {
     const url = `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/memo`;
-    const body = JSON.stringify({ content });
+    const body = JSON.stringify({ content, author_id, author_name });
     console.log('[memo] PUT 요청:', url, body);
     const res = await fetch(url, {
       method: 'PUT',

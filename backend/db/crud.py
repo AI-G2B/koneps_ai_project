@@ -4,7 +4,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from .models import AnalysisResult, Attachment, Notice, NoticeMemo, ProposalOutline, RiskFactor
+from .models import AnalysisResult, Attachment, Notice, NoticeMemo, ProposalOutline, RiskFactor, User
 
 KST = timezone(timedelta(hours=9))
 
@@ -332,6 +332,14 @@ async def get_active_outline(db: AsyncSession, notice_id: int):
     return result.scalar_one_or_none()
 
 
+# users
+async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
+    result = await db.execute(
+        select(User).where(User.username == username)
+    )
+    return result.scalar_one_or_none()
+
+
 # notice_memos
 async def get_memo_by_notice_id(db: AsyncSession, notice_id: int) -> NoticeMemo | None:
     result = await db.execute(
@@ -340,12 +348,22 @@ async def get_memo_by_notice_id(db: AsyncSession, notice_id: int) -> NoticeMemo 
     return result.scalar_one_or_none()
 
 
-async def upsert_memo(db: AsyncSession, notice_id: int, content: str) -> NoticeMemo:
+async def upsert_memo(
+    db: AsyncSession,
+    notice_id: int,
+    content: str,
+    author_id: int | None = None,
+    author_name: str | None = None,
+) -> NoticeMemo:
     memo = await get_memo_by_notice_id(db, notice_id)
     if memo:
         memo.content = content
+        if author_id is not None:
+            memo.author_id = author_id
+        if author_name is not None:
+            memo.author_name = author_name
     else:
-        memo = NoticeMemo(notice_id=notice_id, content=content)
+        memo = NoticeMemo(notice_id=notice_id, content=content, author_id=author_id, author_name=author_name)
         db.add(memo)
     await db.commit()
     await db.refresh(memo)

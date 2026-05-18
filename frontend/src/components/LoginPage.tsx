@@ -4,43 +4,34 @@ import { Building2, Eye, EyeOff, ShieldCheck, BarChart3 } from 'lucide-react';
 export type UserRole = 'manager' | 'ceo' | 'proposal';
 
 export interface User {
-  role: UserRole;
+  id: number;
+  username: string;
   name: string;
+  role: UserRole;
 }
 
-const MOCK_USERS = [
-  { id: 'manager01', password: '1234', role: 'manager' as UserRole, name: '홍길동 PM' },
-  { id: 'ceo01', password: '1234', role: 'ceo' as UserRole, name: '홍길동2 대표' },
+const TEST_ACCOUNTS = [
+  { label: '담당자', username: 'manager01', password: '1234' },
+  { label: '담당자', username: 'manager02', password: '1234' },
+  { label: '담당자', username: 'manager03', password: '1234' },
+  { label: 'CEO',   username: 'ceo01',     password: '1234' },
 ];
 
 interface LoginPageProps {
-  onLogin: (user: User) => void;
+  onLogin: (username: string, password: string) => Promise<void>;
+  loginError?: string;
 }
 
-export function LoginPage({ onLogin }: LoginPageProps) {
+export function LoginPage({ onLogin, loginError }: LoginPageProps) {
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    setError('');
+  const handleLogin = async () => {
     setLoading(true);
-    setTimeout(() => {
-      const user = MOCK_USERS.find((u) => u.id === id && u.password === password);
-      if (user) {
-        onLogin({ role: user.role, name: user.name });
-      } else {
-        setError('아이디 또는 비밀번호가 올바르지 않습니다.');
-      }
-      setLoading(false);
-    }, 600);
-  };
-
-  const handleQuickLogin = (role: UserRole) => {
-    const user = MOCK_USERS.find((u) => u.role === role);
-    if (user) onLogin({ role: user.role, name: user.name });
+    await onLogin(id, password);
+    setLoading(false);
   };
 
   return (
@@ -163,9 +154,9 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           </div>
 
           {/* 에러 메시지 */}
-          {error && (
+          {loginError && (
             <div style={{ fontSize: '12px', color: '#EF4444', backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px', padding: '8px 12px' }}>
-              {error}
+              {loginError}
             </div>
           )}
 
@@ -189,42 +180,21 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             {loading ? '로그인 중...' : '로그인'}
           </button>
 
-          {/* 구분선 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--dash-border)' }} />
-            <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>빠른 로그인 (데모)</span>
-            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--dash-border)' }} />
-          </div>
-
-          {/* 빠른 로그인 */}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {[
-              { role: 'manager' as UserRole, label: '담당자로 입장', color: '#2563EB', bg: 'rgba(37,99,235,0.08)', border: 'rgba(37,99,235,0.2)' },
-              { role: 'ceo' as UserRole, label: 'CEO로 입장', color: '#7C3AED', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.2)' },
-            ].map((item) => (
-              <button
-                key={item.role}
-                onClick={() => handleQuickLogin(item.role)}
-                style={{
-                  flex: 1,
-                  padding: '9px',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  borderRadius: '8px',
-                  backgroundColor: item.bg,
-                  color: item.color,
-                  border: `1px solid ${item.border}`,
-                  cursor: 'pointer',
-                  transition: 'opacity 0.15s',
-                }}
+          {/* 테스트 계정 */}
+          <div style={{ backgroundColor: 'var(--dash-card-deep)', border: '1px solid var(--dash-border)', borderRadius: '8px', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--dash-text-3)', marginBottom: '2px' }}>테스트 계정</div>
+            {TEST_ACCOUNTS.map((acc) => (
+              <div
+                key={acc.username}
+                onClick={() => { setId(acc.username); setPassword(acc.password); }}
+                style={{ fontSize: '11px', color: 'var(--dash-text-3)', cursor: 'pointer', display: 'flex', gap: '8px' }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.color = 'var(--dash-text)'; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.color = 'var(--dash-text-3)'; }}
               >
-                {item.label}
-              </button>
+                <span style={{ width: '36px', flexShrink: 0 }}>{acc.label}</span>
+                <span>{acc.username} / {acc.password}</span>
+              </div>
             ))}
-          </div>
-
-          <div style={{ fontSize: '11px', color: 'var(--dash-text-5)', textAlign: 'center' }}>
-            데모 계정: manager01 / ceo01 (비밀번호: 1234)
           </div>
         </div>
       </div>

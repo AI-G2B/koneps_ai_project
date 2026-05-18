@@ -26,10 +26,18 @@ import {
   fetchDashboardStats,
   fetchTypeStats,
   collectBidsApi,
+  loginApi,
   type FetchBidsParams,
   type ApiDashboardStats,
   type ApiTypeStatItem,
 } from './services/api';
+
+const FALLBACK_ACCOUNTS = [
+  { id: 0, username: 'manager01', password: '1234', name: '홍길동 PM',  role: 'manager' as const },
+  { id: 0, username: 'manager02', password: '1234', name: '김철수 PM',  role: 'manager' as const },
+  { id: 0, username: 'manager03', password: '1234', name: '이영희 PM',  role: 'manager' as const },
+  { id: 0, username: 'ceo01',     password: '1234', name: '대표이사',   role: 'ceo'     as const },
+];
 
 const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정', '도움말'];
 
@@ -52,6 +60,22 @@ export interface NotificationItem {
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [loginError, setLoginError] = useState('');
+
+  const handleLogin = async (username: string, password: string) => {
+    setLoginError('');
+    const apiUser = await loginApi(username, password);
+    if (apiUser) {
+      setUser({ id: apiUser.id, username: apiUser.username, name: apiUser.name, role: apiUser.role as User['role'] });
+      return;
+    }
+    const fallback = FALLBACK_ACCOUNTS.find(a => a.username === username && a.password === password);
+    if (fallback) {
+      setUser({ id: fallback.id, username: fallback.username, name: fallback.name, role: fallback.role });
+      return;
+    }
+    setLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
+  };
   const [bids, setBids] = useState<Bid[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFetching, setIsFetching] = useState(false);
@@ -220,7 +244,7 @@ const toggleBookmark = (bidId: string) => {
   };
 
   if (!user) {
-    return <LoginPage onLogin={setUser} />;
+    return <LoginPage onLogin={handleLogin} loginError={loginError} />;
   }
 
   const isCeo = user.role === 'ceo';
@@ -328,6 +352,7 @@ const toggleBookmark = (bidId: string) => {
               onOpenAnalysisDetail={openAnalysisDetail}
               onRequestAnalysis={requestAnalysis}
               ceoMode={isCeo}
+              currentUser={user}
             />
           ) : isCeo ? (
             <>

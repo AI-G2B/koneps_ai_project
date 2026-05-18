@@ -6,6 +6,13 @@ import { BidDetailPanel } from './BidDetailPanel';
 import { BidSlideOver } from './BidSlideOver';
 import { fetchMemo, saveMemo } from '../services/api';
 
+interface CurrentUser {
+  id: number;
+  username: string;
+  name: string;
+  role: string;
+}
+
 interface ProjectPageProps {
   bids: Bid[];
   bidFlags: Record<string, BidFlags>;
@@ -17,6 +24,22 @@ interface ProjectPageProps {
   onOpenAnalysisDetail?: (bid: Bid) => void;
   onRequestAnalysis?: (bidId: string) => void;
   ceoMode?: boolean;
+  currentUser?: CurrentUser | null;
+}
+
+function formatRelativeTime(dateStr: string | null): string {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const diffMs = Date.now() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHour = Math.floor(diffMs / 3600000);
+  const diffDay = Math.floor(diffMs / 86400000);
+  if (diffMin < 1) return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  if (diffDay === 1) return '어제';
+  if (diffDay < 7) return `${diffDay}일 전`;
+  return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
 }
 
 const TODAY_YEAR = TODAY.getFullYear();
@@ -31,7 +54,7 @@ function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
-export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedBid, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false }: ProjectPageProps) {
+export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedBid, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, currentUser }: ProjectPageProps) {
   const inProgressBids = bids.filter((b) => bidFlags[b.id]?.inProgress ?? false);
   const [slideOverBid, setSlideOverBid] = useState<Bid | null>(null);
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
@@ -51,7 +74,7 @@ export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedB
           </div>
           <div style={{ flexShrink: 0, flexGrow: 0, width: '280px', display: 'flex', flexDirection: 'column', height: '100%', gap: '12px', overflow: 'hidden' }}>
             <ProjectCalendar inProgressBids={inProgressBids} onOpenSlideOver={openSlideOver} />
-            <MemoPanel selectedBid={selectedBid} />
+            <MemoPanel selectedBid={selectedBid} currentUser={currentUser ?? null} />
           </div>
         </div>
 
@@ -186,11 +209,13 @@ function ProjectCard({ bid, isSelected, onSelect, aiStatus }: {
   );
 }
 
-function MemoPanel({ selectedBid }: { selectedBid: Bid | null }) {
+function MemoPanel({ selectedBid, currentUser }: { selectedBid: Bid | null; currentUser: CurrentUser | null }) {
   const [memoContent, setMemoContent] = useState('');
   const [memoSaving, setMemoSaving] = useState(false);
   const [memoSaved, setMemoSaved] = useState(false);
   const [memoLoading, setMemoLoading] = useState(false);
+  const [memoAuthorName, setMemoAuthorName] = useState<string | null>(null);
+  const [memoUpdatedAt, setMemoUpdatedAt] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -201,11 +226,10 @@ function MemoPanel({ selectedBid }: { selectedBid: Bid | null }) {
     let cancelled = false;
 
     const run = async () => {
-      // 공고 전환 시 pending debounce가 있으면 await로 저장 완료 후 fetch
       if (debounceRef.current && prevBidNumberRef.current) {
         clearTimeout(debounceRef.current);
         debounceRef.current = null;
-        await saveMemo(prevBidNumberRef.current, contentRef.current);
+        await saveMemo(prevBidNumberRef.current, contentRef.current, currentUser?.id ?? null, currentUser?.name ?? null);
       }
 
       prevBidNumberRef.current = selectedBid?.number ?? null;
@@ -213,17 +237,21 @@ function MemoPanel({ selectedBid }: { selectedBid: Bid | null }) {
       if (!selectedBid || cancelled) {
         setMemoContent('');
         contentRef.current = '';
+        setMemoAuthorName(null);
+        setMemoUpdatedAt(null);
         return;
       }
 
       setMemoLoading(true);
       setMemoSaved(false);
       console.log('[memo] 불러오기:', selectedBid.number);
-      const content = await fetchMemo(selectedBid.number);
-      console.log('[memo] 불러온 내용:', content);
+      const memo = await fetchMemo(selectedBid.number);
+      console.log('[memo] 불러온 내용:', memo);
       if (!cancelled) {
-        setMemoContent(content);
-        contentRef.current = content;
+        setMemoContent(memo.content);
+        contentRef.current = memo.content;
+        setMemoAuthorName(memo.author_name ?? null);
+        setMemoUpdatedAt(memo.updated_at ?? null);
         setMemoLoading(false);
       }
     };
@@ -243,11 +271,13 @@ function MemoPanel({ selectedBid }: { selectedBid: Bid | null }) {
       debounceRef.current = null;
       setMemoSaving(true);
       console.log('[memo] 저장 시도:', selectedBid.number, value);
-      const ok = await saveMemo(selectedBid.number, value);
+      const ok = await saveMemo(selectedBid.number, value, currentUser?.id ?? null, currentUser?.name ?? null);
       console.log('[memo] 저장 결과:', ok);
       setMemoSaving(false);
       if (ok) {
         setMemoSaved(true);
+        if (currentUser?.name) setMemoAuthorName(currentUser.name);
+        setMemoUpdatedAt(new Date().toISOString());
         if (savedResetRef.current) clearTimeout(savedResetRef.current);
         savedResetRef.current = setTimeout(() => setMemoSaved(false), 2000);
       }
@@ -283,6 +313,18 @@ function MemoPanel({ selectedBid }: { selectedBid: Bid | null }) {
           </span>
         )}
       </div>
+
+      {/* 작성자 정보 */}
+      {selectedBid && memoContent && (memoAuthorName || memoUpdatedAt) && (
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {memoAuthorName && (
+            <span style={{ fontSize: '11px', color: 'var(--dash-text-3)' }}>마지막 수정: {memoAuthorName}</span>
+          )}
+          {memoUpdatedAt && (
+            <span style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>{formatRelativeTime(memoUpdatedAt)}</span>
+          )}
+        </div>
+      )}
 
       {!selectedBid ? (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>

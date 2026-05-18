@@ -4,7 +4,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api.routes import bids, analysis, search
+from backend.api.routes import bids, analysis, search, auth
 
 SCHEDULE_HOURS = [10, 13, 16, 20]
 
@@ -60,12 +60,28 @@ async def lifespan(app: FastAPI):
 
     async with engine.begin() as conn:
         await conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS users (
+                id         SERIAL PRIMARY KEY,
+                username   VARCHAR(50) NOT NULL UNIQUE,
+                password   VARCHAR(200) NOT NULL,
+                name       VARCHAR(50) NOT NULL,
+                role       VARCHAR(20) NOT NULL DEFAULT 'manager',
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        """))
+        await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS notice_memos (
                 id         SERIAL PRIMARY KEY,
                 notice_id  INTEGER NOT NULL UNIQUE REFERENCES notices(id) ON DELETE CASCADE,
                 content    TEXT NOT NULL DEFAULT '',
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             )
+        """))
+        await conn.execute(text("""
+            ALTER TABLE notice_memos ADD COLUMN IF NOT EXISTS author_id INTEGER REFERENCES users(id)
+        """))
+        await conn.execute(text("""
+            ALTER TABLE notice_memos ADD COLUMN IF NOT EXISTS author_name VARCHAR(50)
         """))
 
     scheduler = AsyncIOScheduler()
@@ -89,6 +105,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(bids.router, prefix="/bids", tags=["공고"])
 app.include_router(analysis.router, prefix="/analysis", tags=["분석"])
 app.include_router(search.router, prefix="/search", tags=["검색"])
