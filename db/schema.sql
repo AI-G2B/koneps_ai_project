@@ -45,6 +45,20 @@ CREATE INDEX idx_notices_ntce_instt_nm   ON notices (ntce_instt_nm);
 CREATE INDEX idx_notices_bid_ntce_no     ON notices (bid_ntce_no);
 CREATE INDEX idx_notices_collected_at    ON notices (collected_at DESC);
 
+CREATE TABLE attachments (
+    id            SERIAL PRIMARY KEY,
+    notice_id     INTEGER         NOT NULL REFERENCES notices(id) ON DELETE CASCADE,
+    file_name     VARCHAR(300)    NOT NULL,
+    file_url      TEXT            NOT NULL,
+    file_type     VARCHAR(20)     NOT NULL,
+    local_path    TEXT,
+    parse_status  VARCHAR(20)     NOT NULL DEFAULT 'pending'
+                      CHECK (parse_status IN ('pending','done','failed')),
+    downloaded_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_attachments_notice_id ON attachments (notice_id);
+
 CREATE TABLE analysis_results (
     id                      SERIAL PRIMARY KEY,
     notice_id               INTEGER         NOT NULL REFERENCES notices(id) ON DELETE CASCADE,
