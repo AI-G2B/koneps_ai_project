@@ -1,4 +1,4 @@
-from sqlalchemy import String, Boolean, Numeric, Text, Date, SmallInteger, ForeignKey, TIMESTAMP
+from sqlalchemy import String, Boolean, Numeric, Text, Date, ForeignKey, TIMESTAMP
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
@@ -119,28 +119,10 @@ class ProposalOutline(Base):
     outline_version:       Mapped[int]           = mapped_column(default=1)
     guideline_base:        Mapped[str]           = mapped_column(String(20), default="MOIS_ISP")
     total_pages_estimate:  Mapped[Optional[int]] = mapped_column(nullable=True)
+    sections:              Mapped[list]          = mapped_column(JSONB, default=list)
     model_used:            Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     prompt_version:        Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     generated_at:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     is_active:             Mapped[bool]          = mapped_column(Boolean, default=True)
 
     notice:   Mapped["Notice"]               = relationship("Notice", back_populates="proposal_outlines")
-    sections: Mapped[list["ProposalSection"]]= relationship("ProposalSection", back_populates="outline")
-
-
-class ProposalSection(Base):
-    __tablename__ = "proposal_sections"
-
-    id:             Mapped[int]           = mapped_column(primary_key=True)
-    outline_id:     Mapped[int]           = mapped_column(ForeignKey("proposal_outlines.id", ondelete="CASCADE"))
-    level:          Mapped[int]           = mapped_column(SmallInteger)
-    parent_id:      Mapped[Optional[int]] = mapped_column(ForeignKey("proposal_sections.id", ondelete="CASCADE"), nullable=True)
-    sort_order:     Mapped[int]           = mapped_column(default=0)
-    section_no:     Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    section_title:  Mapped[str]           = mapped_column(String(300))
-    section_desc:   Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    pages_estimate: Mapped[Optional[int]] = mapped_column(nullable=True)
-    is_mandatory:   Mapped[bool]          = mapped_column(Boolean, default=True)
-
-    outline:  Mapped["ProposalOutline"]       = relationship("ProposalOutline", back_populates="sections")
-    children: Mapped[list["ProposalSection"]] = relationship("ProposalSection")
