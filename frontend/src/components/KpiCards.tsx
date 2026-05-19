@@ -1,12 +1,14 @@
 import { FileText, Clock, TrendingUp, TrendingDown, Loader2, Inbox, Briefcase, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { type Bid, type AiStatusType, isDeadlineUrgent, TODAY } from './mockData';
+import { type ApiDashboardStats } from '../services/api';
 
 interface KpiCardsProps {
   bids: Bid[];
   bidsLoading?: boolean;
   ceoMode?: boolean;
   aiStatuses?: Record<string, AiStatusType>;
+  dashboardStats?: ApiDashboardStats | null;
 }
 
 interface KpiCardProps {
@@ -85,20 +87,21 @@ function KpiCard({ title, value, unit, sub, subColor, trend, trendUp, icon: Icon
   );
 }
 
-export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuses: _aiStatuses }: KpiCardsProps) {
+export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuses: _aiStatuses, dashboardStats }: KpiCardsProps) {
   const todayStr = TODAY.toISOString().slice(0, 10);
 
-  // 영업담당자 모드 전용
+  // 영업담당자 모드 전용 (fallback: bids 기반 계산)
   const urgentBids = bids.filter((b) => isDeadlineUrgent(b.deadline));
   const todayBids = bids.filter((b) => b.collectedAt === todayStr);
   const yesterday = new Date(TODAY);
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = yesterday.toISOString().slice(0, 10);
   const yesterdayBids = bids.filter((b) => b.collectedAt === yesterdayStr);
-  const todayCount = todayBids.length;
+  const todayCount = dashboardStats != null ? dashboardStats.today_new : todayBids.length;
   const yesterdayCount = yesterdayBids.length;
   const diffCount = todayCount - yesterdayCount;
   const diffPct = yesterdayCount > 0 ? ((diffCount / yesterdayCount) * 100).toFixed(1) : '0';
+  const urgentCount = dashboardStats != null ? dashboardStats.deadline_soon : urgentBids.length;
 
   // CEO 모드 전용
   const dangerBids = bids.filter((b) => b.risk === 'danger');
@@ -182,16 +185,16 @@ export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuse
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}>
         <KpiCard
           title="마감 임박 공고"
-          value={String(urgentBids.length)}
+          value={String(urgentCount)}
           unit="건"
           sub="3일 이내 마감 예정"
-          trend={`+${urgentBids.length}건`}
+          trend={`+${urgentCount}건`}
           trendUp={false}
           icon={Clock}
           iconBgColor="rgba(239,68,68,0.12)"
           iconColor="#EF4444"
           accentColor="#EF4444"
-          alert={urgentBids.length > 0}
+          alert={urgentCount > 0}
           loading={bidsLoading}
         />
       </motion.div>

@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Bookmark, BookmarkX, Play, Building2, Banknote, Calendar,
-  Eye, FileSearch, ListFilter,
+  FileSearch, ListFilter,
 } from 'lucide-react';
 import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
 import { RiskBadge } from './BidTable';
 import { BidSlideOver } from './BidSlideOver';
+import { fetchBidById } from '../services/api';
 
 type DateFilter = 'today' | 'yesterday' | '3days' | '1week' | 'all';
 type StatusFilter = 'all' | 'urgent' | 'danger';
@@ -33,18 +35,26 @@ interface BidListPageProps {
   onToggleInProgress: (bidId: string) => void;
   onOpenAnalysisDetail?: (bid: Bid) => void;
   onRequestAnalysis?: (bidId: string) => void;
+  hideTargetList?: boolean;
 }
 
-export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis }: BidListPageProps) {
+export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false }: BidListPageProps) {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('bookmarked');
   const [focusBidId, setFocusBidId] = useState<string | null>(null);
   const [removingIds, setRemovingIds] = useState<Set<string>>(new Set());
 
-  const openSlide = (bid: Bid) => {
+  const openSlide = async (bid: Bid) => {
     setSelectedBid(bid);
     setIsSlideOpen(true);
+    if (bid.attachments !== undefined) return;
+    try {
+      const detailed = await fetchBidById(bid.id);
+      setSelectedBid(detailed);
+    } catch {
+      // 상세 로딩 실패 시 목록 데이터 유지
+    }
   };
 
   const closeSlide = () => setIsSlideOpen(false);
@@ -100,18 +110,22 @@ export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onTo
           selectedBid={selectedBid}
           onOpenSlide={openSlide}
         />
-        <div style={{ width: '1px', backgroundColor: 'var(--dash-border)', flexShrink: 0 }} />
-        <RightPanel
-          bids={bids}
-          bidFlags={bidFlags}
-          onToggleBookmark={handleToggleBookmark}
-          onToggleInProgress={handleToggleInProgress}
-          onOpenSlide={openSlide}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          focusBidId={focusBidId}
-          removingIds={removingIds}
-        />
+        {!hideTargetList && (
+          <>
+            <div style={{ width: '1px', backgroundColor: 'var(--dash-border)', flexShrink: 0 }} />
+            <RightPanel
+              bids={bids}
+              bidFlags={bidFlags}
+              onToggleBookmark={handleToggleBookmark}
+              onToggleInProgress={handleToggleInProgress}
+              onOpenSlide={openSlide}
+              activeTab={activeTab}
+              setActiveTab={setActiveTab}
+              focusBidId={focusBidId}
+              removingIds={removingIds}
+            />
+          </>
+        )}
       </div>
 
       <BidSlideOver
@@ -139,6 +153,7 @@ interface LeftPanelProps extends BidListPageProps {
 function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selectedBid, onOpenSlide }: LeftPanelProps) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [excludeExpired, setExcludeExpired] = useState(true);
 
   const getFromDate = (f: DateFilter): Date | null => {
     const base = new Date(TODAY);
@@ -150,6 +165,7 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
   };
 
   const filtered = bids.filter((bid) => {
+    if (excludeExpired && getDaysUntilDeadline(bid.deadline) < 0) return false;
     const fromDate = getFromDate(dateFilter);
     if (fromDate && new Date(bid.collectedAt) < fromDate) return false;
     if (statusFilter === 'urgent') return isDeadlineUrgent(bid.deadline);
@@ -215,6 +231,11 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
               </button>
             ))}
           </div>
+          <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--dash-border)', margin: '0 2px', flexShrink: 0 }} />
+          <button onClick={() => setExcludeExpired(v => !v)} className="rounded-md transition-colors"
+            style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: excludeExpired ? 'rgba(37,99,235,0.12)' : 'transparent', color: excludeExpired ? '#2563EB' : 'var(--dash-text-4)', border: `1px solid ${excludeExpired ? 'rgba(37,99,235,0.3)' : 'var(--dash-border-btn)'}`, fontWeight: excludeExpired ? 600 : 400, cursor: 'pointer' }}>
+            {excludeExpired ? '마감 제외' : '마감 포함'}
+          </button>
         </div>
       </div>
 
@@ -225,9 +246,9 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
               {[
                 { label: '공고명', width: undefined },
                 { label: '발주기관', width: '96px' },
-                { label: '예산', width: '84px' },
-                { label: '마감일', width: '84px' },
-                { label: '위험도', width: '76px' },
+                { label: '예산', width: '68px' },
+                { label: '마감일', width: '68px' },
+                { label: '위험도', width: '60px' },
                 { label: '액션', width: '80px' },
               ].map((col) => (
                 <th
@@ -290,11 +311,13 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
   onToggleInProgress: (bidId: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [tooltip, setTooltip] = useState<{ x: number; y: number } | null>(null);
   const urgent = isDeadlineUrgent(bid.deadline);
   const daysLeft = getDaysUntilDeadline(bid.deadline);
   const rowBg = isSelected ? 'rgba(37,99,235,0.08)' : hovered ? 'var(--dash-row-hover)' : 'transparent';
 
   return (
+    <>
     <tr
       onClick={onSelect}
       onMouseEnter={() => setHovered(true)}
@@ -308,7 +331,17 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
       }}
     >
       <td style={{ padding: '10px 12px' }}>
-        <div style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', lineHeight: 1.45, marginBottom: '3px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+        <div
+          onMouseEnter={(e) => {
+            const el = e.currentTarget;
+            if (el.scrollHeight > el.clientHeight) {
+              const rect = el.getBoundingClientRect();
+              setTooltip({ x: rect.left, y: rect.bottom + 6 });
+            }
+          }}
+          onMouseLeave={() => setTooltip(null)}
+          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', lineHeight: 1.45, marginBottom: '3px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+        >
           {bid.title}
         </div>
         <div className="flex items-center gap-1" style={{ flexWrap: 'wrap', rowGap: '2px' }}>
@@ -335,13 +368,19 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
         <span style={{ fontSize: '12px', fontWeight: urgent ? 600 : 400, color: urgent ? '#EF4444' : 'var(--dash-text-2)', whiteSpace: 'nowrap' }}>
           {bid.deadline.substring(5)}
         </span>
-        {urgent && (
+        {daysLeft < 0 ? (
+          <div className="mt-0.5">
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-gray-bg)', color: '#81878F', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#81878F', flexShrink: 0, display: 'inline-block' }} />마감
+            </span>
+          </div>
+        ) : urgent ? (
           <div className="mt-0.5">
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />D-{daysLeft}
             </span>
           </div>
-        )}
+        ) : null}
       </td>
       <td style={{ padding: '10px 12px' }}>
         <RiskBadge risk={bid.risk} />
@@ -371,6 +410,28 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
         </div>
       </td>
     </tr>
+    {tooltip && createPortal(
+      <div style={{
+        position: 'fixed',
+        top: tooltip.y,
+        left: Math.min(tooltip.x, window.innerWidth - 420),
+        zIndex: 9999,
+        maxWidth: '400px',
+        backgroundColor: '#1e293b',
+        color: '#f1f5f9',
+        fontSize: '12px',
+        lineHeight: 1.6,
+        padding: '7px 11px',
+        borderRadius: '7px',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+        wordBreak: 'keep-all',
+        pointerEvents: 'none',
+      }}>
+        {bid.title}
+      </div>,
+      document.body
+    )}
+    </>
   );
 }
 
@@ -621,26 +682,7 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
               {flags.inProgress ? '진행중' : '진행하기'}
             </button>
           </>
-        ) : (
-          <button
-            onClick={() => onOpenSlide(bid)}
-            className="rounded-md flex items-center gap-1"
-            style={{ padding: '3px 8px', fontSize: '11px', color: 'var(--dash-text-3)', backgroundColor: 'transparent', border: '1px solid var(--dash-border-btn)', cursor: 'pointer' }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = '#2563EB';
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.08)';
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.25)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)';
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-              (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-btn)';
-            }}
-          >
-            <Eye style={{ width: '11px', height: '11px' }} />
-            상세 보기
-          </button>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   X, Bookmark, BookmarkX, Play,
   Target, Clock, Wallet, Truck, Code2, Gavel,
@@ -21,10 +21,24 @@ interface BidSlideOverProps {
   onOpenAnalysisDetail?: (bid: Bid) => void;
   onRequestAnalysis?: (bidId: string) => void;
   ceoMode?: boolean;
+  showFullDetail?: boolean;
 }
 
-export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false }: BidSlideOverProps) {
+export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false }: BidSlideOverProps) {
   const { showToast } = useToast();
+  const [showFileMenu, setShowFileMenu] = useState(false);
+  const fileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showFileMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (fileMenuRef.current && !fileMenuRef.current.contains(e.target as Node)) {
+        setShowFileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showFileMenu]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -63,7 +77,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
 
   const CEO_ITEMS = (ceoMode && bid && detail) ? [
     { icon: Wallet,    label: '예산 규모',               value: detail.budget },
-    { icon: Clock,     label: '마감일',                  value: `${bid.deadline.substring(5)} (${daysLeft}일 후)` },
+    { icon: Clock,     label: '마감일',                  value: bid.deadline ? `${bid.deadline.substring(5)} ${isNaN(daysLeft) ? '(기간 미정)' : `(${daysLeft}일 후)`}` : '기간 미정' },
     { icon: BarChart2, label: '평가방식 (기술/가격 배점)', value: detail.evalMethod },
     { icon: Phone,     label: '담당자 연락처',             value: detail.contactPerson },
   ] : [];
@@ -134,36 +148,67 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
               <RiskBadge risk={bid.risk} />
 
               {/* D-day 배지 */}
-              {isUrgent && (
+              {daysLeft < 0 ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-gray-bg)', color: '#81878F', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#81878F', flexShrink: 0, display: 'inline-block' }} />
+                  마감
+                </span>
+              ) : isUrgent ? (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />
                   D-{daysLeft}
                 </span>
-              )}
+              ) : null}
 
               {/* 우측 버튼들 */}
               <div className="flex items-center gap-1.5 ml-auto">
                 <button
-                  title="나라장터 원문 링크"
-                  onClick={() => window.open('https://www.g2b.go.kr', '_blank')}
+                  title={bid.ntce_dtl_url ? '나라장터 원문 보기' : '나라장터 홈으로 이동'}
+                  onClick={() => window.open(bid.ntce_dtl_url || 'https://www.g2b.go.kr', '_blank')}
                   className="flex items-center justify-center rounded-md transition-colors"
-                  style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
+                  style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: bid.ntce_dtl_url ? 'var(--dash-text-3)' : 'var(--dash-text-5)', cursor: 'pointer' }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = bid.ntce_dtl_url ? 'var(--dash-text-3)' : 'var(--dash-text-5)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
                 >
                   <ExternalLink style={{ width: '12px', height: '12px' }} />
                 </button>
                 {!ceoMode && (
-                  <button
-                    title="RFP 다운로드"
-                    onClick={() => showToast('info', '준비 중입니다')}
-                    className="flex items-center justify-center rounded-md transition-colors"
-                    style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
-                  >
-                    <Download style={{ width: '12px', height: '12px' }} />
-                  </button>
+                  <div ref={fileMenuRef} style={{ position: 'relative' }}>
+                    <button
+                      title={bid.attachments?.length ? `첨부파일 ${bid.attachments.length}개` : '첨부파일 없음'}
+                      onClick={() => {
+                        const files = bid.attachments ?? [];
+                        if (files.length === 0) { showToast('info', '첨부파일이 없습니다'); return; }
+                        if (files.length === 1) { window.open(files[0].fileUrl, '_blank'); return; }
+                        setShowFileMenu(v => !v);
+                      }}
+                      className="flex items-center justify-center rounded-md transition-colors"
+                      style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: bid.attachments?.length ? 'var(--dash-text-3)' : 'var(--dash-text-5)', cursor: 'pointer' }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = bid.attachments?.length ? 'var(--dash-text-3)' : 'var(--dash-text-5)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
+                    >
+                      <Download style={{ width: '12px', height: '12px' }} />
+                    </button>
+                    {showFileMenu && (bid.attachments?.length ?? 0) > 1 && (
+                      <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, minWidth: '220px', maxWidth: '320px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 50, overflow: 'hidden' }}>
+                        <div style={{ padding: '6px 10px', fontSize: '11px', color: 'var(--dash-text-4)', borderBottom: '1px solid var(--dash-border-faint)' }}>
+                          첨부파일 {bid.attachments!.length}개
+                        </div>
+                        {bid.attachments!.map((file, i) => (
+                          <button
+                            key={i}
+                            onClick={() => { window.open(file.fileUrl, '_blank'); setShowFileMenu(false); }}
+                            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', fontSize: '12px', color: 'var(--dash-text-2)', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-row-hover)'; }}
+                            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
+                          >
+                            <Download style={{ width: '12px', height: '12px', color: '#2563EB', flexShrink: 0 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.fileName}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -298,7 +343,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                   AI 분석 대기 중
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
-                  찜하기 또는 진행하기를 누르면<br />AI 분석이 자동으로 시작됩니다.
+                  진행하기를 누르거나 상세 리포트에서<br />직접 분석을 시작할 수 있습니다.
                 </div>
                 {aiStatus === 'none' && (
                   <button
@@ -306,7 +351,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                     style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(37,99,235,0.08)', color: '#2563EB', border: '1px solid rgba(37,99,235,0.2)', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer' }}
                   >
                     <Sparkles style={{ width: '13px', height: '13px' }} />
-                    AI 분석 요청
+                    AI 분석 시작
                   </button>
                 )}
               </div>
@@ -333,8 +378,8 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
               <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--dash-border)' }}>
                 <SlideOverSectionTitle
                   icon={Sparkles}
-                  title={ceoMode ? '핵심 요약' : 'AI 추출 핵심항목'}
-                  badge={ceoMode
+                  title={ceoMode && !showFullDetail ? '핵심 요약' : 'AI 추출 핵심항목'}
+                  badge={ceoMode && !showFullDetail
                     ? (detail ? '4건' : undefined)
                     : (detail ? `${AI_HIGHLIGHT_ITEMS.length + AI_DETAIL_ITEMS.length}건` : undefined)}
                   accentColor="#2563EB"
@@ -343,7 +388,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                   <div style={{ marginTop: '12px', textAlign: 'center', padding: '20px', color: 'var(--dash-text-4)', fontSize: '12px' }}>
                     공고를 선택하면 AI 분석 결과가 표시됩니다
                   </div>
-                ) : ceoMode ? (
+                ) : ceoMode && !showFullDetail ? (
                   <div className="grid grid-cols-2 gap-2" style={{ marginTop: '12px' }}>
                     {CEO_ITEMS.map((item) => (
                       <div
@@ -429,7 +474,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
                     {riskFactors.map((w) => (
-                      <RiskCard key={w.title} title={w.title} desc={w.desc} severity={w.severity} ceoMode={ceoMode} />
+                      <RiskCard key={w.title} title={w.title} desc={w.desc} severity={w.severity} ceoMode={ceoMode && !showFullDetail} />
                     ))}
                   </div>
                 )}
@@ -541,11 +586,6 @@ function RiskCard({ title, desc, severity, ceoMode = false }: { title: string; d
       </div>
       {!ceoMode && (
         <p style={{ fontSize: '11px', color: 'var(--dash-text-2)', lineHeight: 1.6, marginBottom: '0' }}>{desc}</p>
-      )}
-      {ceoMode && (
-        <div style={{ fontSize: '11px', color: 'var(--dash-text-4)', marginTop: '6px' }}>
-          담당자에게 상세 내용 문의
-        </div>
       )}
     </div>
   );

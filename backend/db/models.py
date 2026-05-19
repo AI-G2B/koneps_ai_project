@@ -1,4 +1,4 @@
-from sqlalchemy import String, Boolean, Numeric, Text, Date, SmallInteger, ForeignKey, TIMESTAMP
+from sqlalchemy import String, Boolean, Numeric, Text, Date, SmallInteger, ForeignKey, TIMESTAMP, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
@@ -37,12 +37,13 @@ class Notice(Base):
     parse_error_msg:      Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     content_embedding:    Mapped[Optional[list]] = mapped_column(Vector(1536), nullable=True)
     collected_at:         Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
-    updated_at:           Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    updated_at:           Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
 
     attachments:       Mapped[list["Attachment"]]       = relationship("Attachment", back_populates="notice", cascade="all, delete-orphan")
     analysis_result:   Mapped["AnalysisResult"]         = relationship("AnalysisResult", back_populates="notice", uselist=False)
     risk_factors:      Mapped[list["RiskFactor"]]       = relationship("RiskFactor", back_populates="notice")
     proposal_outlines: Mapped[list["ProposalOutline"]]  = relationship("ProposalOutline", back_populates="notice")
+    memo:              Mapped[Optional["NoticeMemo"]]   = relationship("NoticeMemo", back_populates="notice", uselist=False)
 
 
 class Attachment(Base):
@@ -88,7 +89,7 @@ class AnalysisResult(Base):
     model_used:          Mapped[Optional[str]]  = mapped_column(String(50), nullable=True)
     prompt_version:      Mapped[Optional[str]]  = mapped_column(String(20), nullable=True)
     analyzed_at:         Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
-    updated_at:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    updated_at:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
 
     notice: Mapped["Notice"] = relationship("Notice", back_populates="analysis_result")
 
@@ -126,6 +127,30 @@ class ProposalOutline(Base):
 
     notice:   Mapped["Notice"]               = relationship("Notice", back_populates="proposal_outlines")
     sections: Mapped[list["ProposalSection"]]= relationship("ProposalSection", back_populates="outline")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id:         Mapped[int]                = mapped_column(primary_key=True)
+    username:   Mapped[str]                = mapped_column(String(50), unique=True, nullable=False)
+    password:   Mapped[str]                = mapped_column(String(200), nullable=False)
+    name:       Mapped[str]                = mapped_column(String(50), nullable=False)
+    role:       Mapped[str]                = mapped_column(String(20), nullable=False, default='manager')
+    created_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+
+
+class NoticeMemo(Base):
+    __tablename__ = "notice_memos"
+
+    id:          Mapped[int]               = mapped_column(primary_key=True)
+    notice_id:   Mapped[int]               = mapped_column(ForeignKey("notices.id", ondelete="CASCADE"), unique=True, nullable=False)
+    content:     Mapped[str]               = mapped_column(Text, nullable=False, default="")
+    author_id:   Mapped[Optional[int]]     = mapped_column(ForeignKey("users.id"), nullable=True)
+    author_name: Mapped[Optional[str]]     = mapped_column(String(50), nullable=True)
+    updated_at:  Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=True)
+
+    notice: Mapped["Notice"] = relationship("Notice", back_populates="memo")
 
 
 class ProposalSection(Base):

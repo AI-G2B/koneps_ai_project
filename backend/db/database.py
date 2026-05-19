@@ -10,7 +10,11 @@ DATABASE_URL = os.getenv(
     "postgresql+asyncpg://kangjuhyeon@localhost:5432/koneps"
 )
 
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=True,
+    connect_args={"statement_cache_size": 0},
+)
 
 AsyncSessionLocal = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False

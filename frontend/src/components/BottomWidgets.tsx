@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { type Bid, type BidFlags, formatBudget, TODAY } from './mockData';
+import { type Bid, type BidFlags, type AiStatusType, formatBudget, TODAY } from './mockData';
+import { type ApiTypeStatItem } from '../services/api';
 import { RiskBadge } from './BidTable';
 import { BidSlideOver } from './BidSlideOver';
 
@@ -41,13 +42,21 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: any[] 
   return null;
 }
 
-function BidTypeChart({ bids, ceoMode }: { bids: Bid[]; ceoMode: boolean }) {
+function BidTypeChart({ bids, ceoMode, typeStats }: { bids: Bid[]; ceoMode: boolean; typeStats?: ApiTypeStatItem[] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   const total = bids.length;
   const typeCount: Record<string, number> = {};
   bids.forEach((b) => { typeCount[b.type] = (typeCount[b.type] || 0) + 1; });
-  const chartData = total > 0
+
+  const chartData = typeStats && typeStats.length > 0
+    ? typeStats.map((item) => ({
+        name: item.type,
+        value: Math.round(item.ratio * 100),
+        count: item.count,
+        color: TYPE_COLORS[item.type] ?? '#8B5CF6',
+      }))
+    : total > 0
     ? Object.entries(typeCount).map(([name, count]) => ({
         name,
         value: Math.round((count / total) * 100),
@@ -62,10 +71,10 @@ function BidTypeChart({ bids, ceoMode }: { bids: Bid[]; ceoMode: boolean }) {
       style={{
         backgroundColor: 'var(--dash-card)',
         border: '1px solid var(--dash-border)',
-        padding: '20px',
+        padding: '14px 16px',
       }}
     >
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-2">
         <div
           className="rounded-md flex items-center justify-center flex-shrink-0"
           style={{ width: '20px', height: '20px', backgroundColor: 'rgba(37,99,235,0.15)' }}
@@ -83,16 +92,16 @@ function BidTypeChart({ bids, ceoMode }: { bids: Bid[]; ceoMode: boolean }) {
         </span>
       </div>
 
-      <div className="flex items-center gap-6">
-        <div style={{ width: '160px', height: '160px', flexShrink: 0 }}>
+      <div className="flex items-center gap-4">
+        <div style={{ width: '120px', height: '120px', flexShrink: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={chartData}
                 cx="50%"
                 cy="50%"
-                innerRadius={46}
-                outerRadius={70}
+                innerRadius={34}
+                outerRadius={52}
                 paddingAngle={3}
                 dataKey="value"
                 onMouseEnter={(_, index) => setActiveIndex(index)}
@@ -113,7 +122,7 @@ function BidTypeChart({ bids, ceoMode }: { bids: Bid[]; ceoMode: boolean }) {
           </ResponsiveContainer>
         </div>
 
-        <div className="flex-1 space-y-3">
+        <div className="flex-1 space-y-2">
           {chartData.map((item, i) => (
             <div
               key={item.name}
@@ -151,7 +160,7 @@ function BidTypeChart({ bids, ceoMode }: { bids: Bid[]; ceoMode: boolean }) {
       </div>
 
       <div
-        className="grid grid-cols-4 gap-3 mt-4 pt-4"
+        className="grid grid-cols-4 gap-3 mt-3 pt-3"
         style={{ borderTop: '1px solid var(--dash-border)' }}
       >
         {chartData.map((item) => (
@@ -159,12 +168,12 @@ function BidTypeChart({ bids, ceoMode }: { bids: Bid[]; ceoMode: boolean }) {
             key={item.name}
             className="rounded-lg text-center"
             style={{
-              padding: '10px 8px',
+              padding: '7px 6px',
               backgroundColor: 'var(--dash-item-bg)',
               border: `1px solid ${item.color}22`,
             }}
           >
-            <div style={{ fontSize: '20px', fontWeight: 700, color: item.color, lineHeight: 1 }}>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: item.color, lineHeight: 1 }}>
               {item.count}
             </div>
             <div style={{ fontSize: '11px', color: 'var(--dash-text-4)', marginTop: '3px' }}>{item.name}</div>
@@ -189,12 +198,16 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
   const popupRef = useRef<HTMLDivElement>(null);
 
   const bidsByDate = useMemo(() => {
+    // ISO 형식("2026-06-02T10:00:00+09:00") 대응을 위해 slice(0,10) 처리
     const map = new Map<string, Bid[]>();
     bids.forEach((bid) => {
-      const arr = map.get(bid.deadline) ?? [];
+      if (!bid.deadline) return;
+      const dateKey = bid.deadline.slice(0, 10); // "YYYY-MM-DD"
+      const arr = map.get(dateKey) ?? [];
       arr.push(bid);
-      map.set(bid.deadline, arr);
+      map.set(dateKey, arr);
     });
+    console.log('[DeadlineCalendar] bidsByDate keys:', [...map.keys()]);
     return map;
   }, [bids]);
 
@@ -242,10 +255,10 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
   return (
     <div
       className="flex-1 rounded-xl"
-      style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '20px' }}
+      style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '14px 16px' }}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-2">
         <div
           className="rounded-md flex items-center justify-center flex-shrink-0"
           style={{ width: '20px', height: '20px', backgroundColor: 'rgba(239,68,68,0.15)' }}
@@ -257,7 +270,7 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
           <button
             onClick={() => setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
             className="flex items-center justify-center rounded-md"
-            style={{ width: '22px', height: '22px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
+            style={{ width: '20px', height: '20px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
           >
             <ChevronLeft style={{ width: '12px', height: '12px' }} />
           </button>
@@ -267,7 +280,7 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
           <button
             onClick={() => setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
             className="flex items-center justify-center rounded-md"
-            style={{ width: '22px', height: '22px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
+            style={{ width: '20px', height: '20px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
           >
             <ChevronRight style={{ width: '12px', height: '12px' }} />
           </button>
@@ -284,7 +297,7 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
               fontSize: '11px',
               fontWeight: 600,
               color: i === 0 ? '#EF4444' : i === 6 ? '#60A5FA' : 'var(--dash-text-4)',
-              padding: '4px 0',
+              padding: '2px 0',
             }}
           >
             {d}
@@ -293,7 +306,7 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
       </div>
 
       {/* Day cells */}
-      <div className="grid grid-cols-7 gap-0.5">
+      <div className="grid grid-cols-7 gap-px">
         {cells.map((dateStr, i) => {
           if (!dateStr) return <div key={`empty-${i}`} />;
           const hasBids = bidsByDate.has(dateStr);
@@ -310,7 +323,7 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
               onClick={(e) => handleDayClick(dateStr, e)}
               className="relative flex flex-col items-center rounded-lg transition-colors"
               style={{
-                padding: '4px 2px',
+                padding: '2px 2px',
                 cursor: hasBids ? 'pointer' : 'default',
                 backgroundColor: isSelected
                   ? 'rgba(37,99,235,0.15)'
@@ -346,8 +359,8 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
                 <span
                   className="mt-0.5 rounded-full flex items-center justify-center"
                   style={{
-                    width: '16px',
-                    height: '16px',
+                    width: '14px',
+                    height: '14px',
                     backgroundColor: isSelected ? '#2563EB' : '#EF4444',
                     fontSize: '9px',
                     fontWeight: 700,
@@ -365,7 +378,7 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
 
       {/* Legend */}
       <div
-        className="flex items-center gap-3 mt-3 pt-3"
+        className="flex items-center gap-3 mt-2 pt-2"
         style={{ borderTop: '1px solid var(--dash-border)' }}
       >
         <div className="flex items-center gap-1.5">
@@ -438,14 +451,16 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
   );
 }
 
-export function BottomWidgets({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false }: {
+export function BottomWidgets({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, typeStats }: {
   bids: Bid[];
   bidFlags: Record<string, BidFlags>;
+  aiStatuses?: Record<string, AiStatusType>;
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
   onOpenAnalysisDetail?: (bid: Bid) => void;
   onRequestAnalysis?: (bidId: string) => void;
   ceoMode?: boolean;
+  typeStats?: ApiTypeStatItem[];
 }) {
   const [slideOverBid, setSlideOverBid] = useState<Bid | null>(null);
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
@@ -457,15 +472,16 @@ export function BottomWidgets({ bids, bidFlags, onToggleBookmark, onToggleInProg
 
   return (
     <>
-      <div className="flex gap-4">
+      <div className="flex gap-3">
         <DeadlineCalendar bids={bids} onOpenSlideOver={openSlideOver} />
-        <BidTypeChart bids={bids} ceoMode={ceoMode} />
+        <BidTypeChart bids={bids} ceoMode={ceoMode} typeStats={typeStats} />
       </div>
       <BidSlideOver
         bid={slideOverBid}
         isOpen={isSlideOverOpen}
         onClose={() => setIsSlideOverOpen(false)}
         bidFlags={bidFlags}
+        aiStatuses={aiStatuses}
         onToggleBookmark={onToggleBookmark}
         onToggleInProgress={onToggleInProgress}
         onOpenAnalysisDetail={onOpenAnalysisDetail}

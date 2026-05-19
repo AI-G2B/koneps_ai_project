@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import {
   ArrowLeft, Sparkles, Trash2, RefreshCw, Download,
-  Circle, CheckCircle2, XCircle,
+  Circle, CheckCircle2, XCircle, Loader2,
 } from 'lucide-react';
-import { type Bid, formatBudget, getDaysUntilDeadline } from './mockData';
+import { type Bid, type AiStatusType, formatBudget, getDaysUntilDeadline } from './mockData';
 import { RiskBadge } from './BidTable';
 import { useToast } from './ToastProvider';
 
 interface AnalysisDetailPageProps {
   bid: Bid;
   onBack: () => void;
+  aiStatus?: AiStatusType;
+  onRequestAnalysis?: (bidId: string) => void;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -28,10 +30,11 @@ function getCategoryColor(category: string): string {
   return DEFAULT_CATEGORY_COLOR;
 }
 
-export function AnalysisDetailPage({ bid, onBack }: AnalysisDetailPageProps) {
+export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequestAnalysis }: AnalysisDetailPageProps) {
   const { showToast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  const aiStatus: AiStatusType = aiStatusProp ?? bid.aiStatus ?? 'none';
   const detail = bid.detail;
   const requirements = detail?.requirements ?? [];
   const analysisLogs = detail?.analysisLogs ?? [];
@@ -46,7 +49,7 @@ export function AnalysisDetailPage({ bid, onBack }: AnalysisDetailPageProps) {
 
   const infoGrid = [
     { label: '수요기관', value: bid.agency },
-    { label: '마감일시', value: `${bid.deadline} (D${daysLeft >= 0 ? `-${daysLeft}` : `+${Math.abs(daysLeft)}`})`, urgent: isUrgent },
+    { label: '마감일시', value: bid.deadline ? `${bid.deadline} ${isNaN(daysLeft) ? '(기간 미정)' : `(D${daysLeft >= 0 ? `-${daysLeft}` : `+${Math.abs(daysLeft)}`})`}` : '기간 미정', urgent: isUrgent },
     { label: '추정가격', value: formatBudget(bid.budget) },
     { label: '배정예산', value: detail?.budget ?? '-' },
     { label: '공고번호', value: bid.number },
@@ -98,45 +101,47 @@ export function AnalysisDetailPage({ bid, onBack }: AnalysisDetailPageProps) {
         </div>
       </div>
 
-      {/* 3. 분석 액션 버튼 영역 */}
-      <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        {analysisModel && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-blue-bg)', color: '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0, marginRight: '4px' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />
-            {analysisModel}
-          </span>
-        )}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => showToast('info', '준비 중입니다')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#2563EB', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
-          >
-            <Sparkles style={{ width: '14px', height: '14px' }} />
-            AI 재분석
-          </button>
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)', backgroundColor: 'transparent', color: '#EF4444', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
-          >
-            <Trash2 style={{ width: '14px', height: '14px' }} />
-            분석 결과 삭제
-          </button>
-          <button
-            onClick={() => showToast('info', '준비 중입니다')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
-          >
-            <RefreshCw style={{ width: '14px', height: '14px' }} />
-            목차 재생성
-          </button>
-          <button
-            onClick={() => showToast('info', '준비 중입니다')}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
-          >
-            <Download style={{ width: '14px', height: '14px' }} />
-            엑셀 다운로드
-          </button>
+      {/* 3. 분석 액션 버튼 영역 - 분석 완료 시에만 표시 */}
+      {aiStatus === 'complete' && (
+        <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          {analysisModel && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-blue-bg)', color: '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0, marginRight: '4px' }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />
+              {analysisModel}
+            </span>
+          )}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => onRequestAnalysis?.(bid.id)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+            >
+              <RefreshCw style={{ width: '13px', height: '13px' }} />
+              AI 재분석
+            </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)', backgroundColor: 'transparent', color: '#EF4444', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+            >
+              <Trash2 style={{ width: '14px', height: '14px' }} />
+              분석 결과 삭제
+            </button>
+            <button
+              onClick={() => showToast('info', '준비 중입니다')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+            >
+              <RefreshCw style={{ width: '14px', height: '14px' }} />
+              목차 재생성
+            </button>
+            <button
+              onClick={() => showToast('info', '준비 중입니다')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+            >
+              <Download style={{ width: '14px', height: '14px' }} />
+              엑셀 다운로드
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 삭제 확인 다이얼로그 */}
       {showDeleteConfirm && (
@@ -189,70 +194,95 @@ export function AnalysisDetailPage({ bid, onBack }: AnalysisDetailPageProps) {
         </div>
       )}
 
-      {/* 5. 요구사항 목록 테이블 */}
-      <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', overflow: 'hidden' }}>
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--dash-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', margin: 0 }}>AI 추출 요구사항</h2>
-          {requirements.length > 0 && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-blue-bg)', color: '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />
-              {requirements.length}건
-            </span>
-          )}
+      {/* 5. 분석 결과 영역 - aiStatus에 따라 분기 */}
+      {(aiStatus === 'none' || aiStatus === 'pending') ? (
+        <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '72px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+          <Sparkles style={{ width: '44px', height: '44px', color: '#2563EB', marginBottom: '4px' }} />
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--dash-text)', margin: 0 }}>아직 AI 분석이 진행되지 않았습니다</p>
+          <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: 0 }}>아래 버튼을 눌러 분석을 시작하세요</p>
+          <button
+            onClick={() => onRequestAnalysis?.(bid.id)}
+            style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 22px', borderRadius: '8px', border: 'none', backgroundColor: '#2563EB', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+          >
+            <Sparkles style={{ width: '14px', height: '14px' }} />
+            AI 분석 시작
+          </button>
         </div>
-
-        {requirements.length === 0 ? (
-          <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
-            AI 분석 완료 후 요구사항이 표시됩니다
+      ) : aiStatus === 'analyzing' ? (
+        <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '72px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+          <Loader2 className="animate-spin" style={{ width: '44px', height: '44px', color: '#2563EB', marginBottom: '4px' }} />
+          <p style={{ fontSize: '15px', color: 'var(--dash-text)', margin: 0 }}>AI 분析을 진행하고 있습니다...</p>
+          <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: 0 }}>잠시 후 결과가 표시됩니다</p>
+          <button
+            disabled
+            style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 22px', borderRadius: '8px', border: 'none', backgroundColor: 'var(--dash-border)', color: 'var(--dash-text-4)', fontSize: '13px', fontWeight: 500, cursor: 'not-allowed' }}
+          >
+            분석 중...
+          </button>
+        </div>
+      ) : (
+        /* aiStatus === 'complete' - 요구사항 목록 테이블 */
+        <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', overflow: 'hidden' }}>
+          <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--dash-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', margin: 0 }}>AI 추출 요구사항</h2>
+            {requirements.length > 0 && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-blue-bg)', color: '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />
+                {requirements.length}건
+              </span>
+            )}
           </div>
-        ) : (
-          <div style={{ overflowX: 'auto', overflowY: 'visible' }}>
-            <div style={{ minWidth: '800px' }}>
-              {/* 헤더 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.5fr 2fr 3fr', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--dash-card-deep)', borderBottom: '1px solid var(--dash-border)' }}>
-                {['분류', 'CODE', '명칭', '정의', '상세설명'].map((col) => (
-                  <div key={col} style={{ padding: '10px 16px', fontSize: '11px', fontWeight: 600, color: 'var(--dash-text-4)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-                    {col}
-                  </div>
-                ))}
-              </div>
-              {/* 데이터 행 */}
-              {requirements.map((req, i) => {
-                const bg = getCategoryColor(req.category);
-                const isFirstInGroup = i === 0 || requirements[i - 1].category !== req.category;
-                return (
-                  <div key={i}>
-                    {isFirstInGroup && i > 0 && (
-                      <div style={{ borderTop: '2px solid var(--dash-border)' }} />
-                    )}
-                    <div
-                      style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.5fr 2fr 3fr', backgroundColor: bg, borderBottom: '1px solid var(--dash-border-faint)', alignItems: 'flex-start' }}
-                      onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.filter = 'brightness(0.96)'; }}
-                      onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.filter = 'none'; }}
-                    >
-                      <div style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--dash-text-3)' }}>
-                        {isFirstInGroup ? req.category : ''}
-                      </div>
-                      <div style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 600, color: 'var(--dash-text)', fontFamily: 'monospace' }}>
-                        {req.code}
-                      </div>
-                      <div style={{ padding: '14px 16px', fontSize: '13px', fontWeight: 500, color: 'var(--dash-text)' }}>
-                        {req.name}
-                      </div>
-                      <div style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--dash-text-2)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflow: 'visible' }}>
-                        {req.definition}
-                      </div>
-                      <div style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--dash-text-3)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflow: 'visible' }}>
-                        {req.detail}
+          {requirements.length === 0 ? (
+            <div style={{ padding: '48px 24px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
+              AI 분析 완료 후 요구사항이 표시됩니다
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto', overflowY: 'visible' }}>
+              <div style={{ minWidth: '800px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.5fr 2fr 3fr', position: 'sticky', top: 0, zIndex: 10, backgroundColor: 'var(--dash-card-deep)', borderBottom: '1px solid var(--dash-border)' }}>
+                  {['분류', 'CODE', '명칭', '정의', '상세설명'].map((col) => (
+                    <div key={col} style={{ padding: '10px 16px', fontSize: '11px', fontWeight: 600, color: 'var(--dash-text-4)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                      {col}
+                    </div>
+                  ))}
+                </div>
+                {requirements.map((req, i) => {
+                  const bg = getCategoryColor(req.category);
+                  const isFirstInGroup = i === 0 || requirements[i - 1].category !== req.category;
+                  return (
+                    <div key={i}>
+                      {isFirstInGroup && i > 0 && (
+                        <div style={{ borderTop: '2px solid var(--dash-border)' }} />
+                      )}
+                      <div
+                        style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1.5fr 2fr 3fr', backgroundColor: bg, borderBottom: '1px solid var(--dash-border-faint)', alignItems: 'flex-start' }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.filter = 'brightness(0.96)'; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.filter = 'none'; }}
+                      >
+                        <div style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--dash-text-3)' }}>
+                          {isFirstInGroup ? req.category : ''}
+                        </div>
+                        <div style={{ padding: '14px 16px', fontSize: '12px', fontWeight: 600, color: 'var(--dash-text)', fontFamily: 'monospace' }}>
+                          {req.code}
+                        </div>
+                        <div style={{ padding: '14px 16px', fontSize: '13px', fontWeight: 500, color: 'var(--dash-text)' }}>
+                          {req.name}
+                        </div>
+                        <div style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--dash-text-2)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflow: 'visible' }}>
+                          {req.definition}
+                        </div>
+                        <div style={{ padding: '14px 16px', fontSize: '12px', color: 'var(--dash-text-3)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'keep-all', overflow: 'visible' }}>
+                          {req.detail}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
     </div>
   );

@@ -17,7 +17,26 @@ import { AnalysisDetailPage } from './components/AnalysisDetailPage';
 import { AnalysisListPage } from './components/AnalysisListPage';
 import { StrategyReportPage } from './components/StrategyReportPage';
 import { ProposalPage } from './components/ProposalPage';
-import { fetchBids, fetchBidById } from './services/api';
+import {
+  fetchBids,
+  fetchBidById,
+  toggleBookmarkApi,
+  toggleInProgressApi,
+  requestAnalysisApi,
+  fetchDashboardStats,
+  fetchTypeStats,
+  collectBidsApi,
+  loginApi,
+  type ApiDashboardStats,
+  type ApiTypeStatItem,
+} from './services/api';
+
+const FALLBACK_ACCOUNTS = [
+  { id: 0, username: 'manager01', password: '1234', name: '홍길동 PM',  role: 'manager' as const },
+  { id: 0, username: 'manager02', password: '1234', name: '김철수 PM',  role: 'manager' as const },
+  { id: 0, username: 'manager03', password: '1234', name: '이영희 PM',  role: 'manager' as const },
+  { id: 0, username: 'ceo01',     password: '1234', name: '대표이사',   role: 'ceo'     as const },
+];
 
 const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정', '도움말'];
 
@@ -30,25 +49,52 @@ export interface AgencySettings {
 
 export interface NotificationItem {
   id: string;
-  bidId: string;
-  bidTitle: string;
+  type: 'sync' | 'analysis_complete' | 'analysis_fail' | 'bookmark' | 'inprogress';
+  title: string;
   message: string;
-  type: 'analysis_complete' | 'info' | 'warning';
   createdAt: Date;
   isRead: boolean;
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('koneps_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [loginError, setLoginError] = useState('');
+
+  const handleLogin = async (username: string, password: string) => {
+    setLoginError('');
+    const apiUser = await loginApi(username, password);
+    if (apiUser) {
+      const userInfo: User = { id: apiUser.id, username: apiUser.username, name: apiUser.name, role: apiUser.role as User['role'] };
+      sessionStorage.setItem('koneps_user', JSON.stringify(userInfo));
+      setUser(userInfo);
+      return;
+    }
+    const fallback = FALLBACK_ACCOUNTS.find(a => a.username === username && a.password === password);
+    if (fallback) {
+      const userInfo: User = { id: fallback.id, username: fallback.username, name: fallback.name, role: fallback.role };
+      sessionStorage.setItem('koneps_user', JSON.stringify(userInfo));
+      setUser(userInfo);
+      return;
+    }
+    setLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
+  };
   const [bids, setBids] = useState<Bid[]>([]);
-  const [bidsLoading, setBidsLoading] = useState(true);
+  const [isFetching, setIsFetching] = useState(false);
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [activePage, setActivePage] = useState<PageType>('대시보드');
   const [bidFlags, setBidFlags] = useState<Record<string, BidFlags>>({});
   const [aiStatuses, setAiStatuses] = useState<Record<string, AiStatusType>>({});
-  const [pursuedBids, setPursuedBids] = useState<Set<string>>(new Set());
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<ApiDashboardStats | null>(null);
+  const [typeStats, setTypeStats] = useState<ApiTypeStatItem[]>([]);
   const { showToast } = useToast();
 
   const addNotification = (item: Omit<NotificationItem, 'id' | 'createdAt' | 'isRead'>) => {
@@ -57,7 +103,7 @@ export default function App() {
       id: crypto.randomUUID(),
       createdAt: new Date(),
       isRead: false,
-    }, ...prev]);
+    }, ...prev].slice(0, 50));
   };
 
   const markAllAsRead = () => {
@@ -69,12 +115,47 @@ export default function App() {
   };
 
   const clearNotifications = () => setNotifications([]);
-  // analysisTimers: 진행 중인 타이머 추적 (중복 방지)
+
   const analysisTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  // aiStatusesRef: setState 외부에서 동기적으로 상태 확인하기 위한 미러 ref
   const aiStatusesRef = useRef<Record<string, AiStatusType>>({});
 
-  const requestAnalysis = (bidId: string) => {
+  const handleSync = async () => {
+    setIsFetching(true);
+    try {
+      await collectBidsApi();
+      const [{ bids: fetchedBids, flags }, stats, types] = await Promise.all([
+        fetchBids(),
+        fetchDashboardStats(),
+        fetchTypeStats(),
+      ]);
+      setBids(fetchedBids);
+      setBidFlags(prev => {
+        const merged = { ...prev };
+        Object.entries(flags).forEach(([id, flag]) => {
+          merged[id] = { bookmarked: flag.bookmarked, inProgress: flag.inProgress };
+        });
+        return merged;
+      });
+      setDashboardStats(stats);
+      setTypeStats(types);
+      addNotification({
+        type: 'sync',
+        title: '동기화 완료',
+        message: `공고 ${fetchedBids.length}건이 업데이트되었습니다`,
+      });
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  useEffect(() => {
+    Promise.all([
+      fetchDashboardStats().then(setDashboardStats),
+      fetchTypeStats().then(setTypeStats),
+    ]);
+  }, []);
+
+  const requestAnalysis = async (bidId: string) => {
     const current = aiStatusesRef.current[bidId] ?? 'none';
     if (current === 'analyzing' || current === 'complete') return;
     if (analysisTimers.current[bidId]) return;
@@ -82,18 +163,26 @@ export default function App() {
     aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'analyzing' };
     setAiStatuses(prev => ({ ...prev, [bidId]: 'analyzing' }));
 
-    analysisTimers.current[bidId] = setTimeout(() => {
-      delete analysisTimers.current[bidId];
-      // ref로 동기 확인 후 setState와 showToast를 완전히 분리
-      if ((aiStatusesRef.current[bidId] ?? 'none') !== 'analyzing') return;
-      aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'complete' };
-      setAiStatuses(prev => ({ ...prev, [bidId]: 'complete' }));
-      const bid = bids.find(b => b.id === bidId);
-      if (bid) {
-        showToast('success', `AI 분석이 완료되었습니다 — ${bid.title}`);
-        addNotification({ bidId, bidTitle: bid.title, message: 'AI 분석이 완료되었습니다', type: 'analysis_complete' });
-      }
-    }, 3000);
+    const success = await requestAnalysisApi(bidId);
+
+    delete analysisTimers.current[bidId];
+
+    if (!success) {
+      aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'none' };
+      setAiStatuses(prev => ({ ...prev, [bidId]: 'none' }));
+      showToast('info', 'AI 분석 기능이 아직 준비 중입니다');
+      addNotification({ type: 'analysis_fail', title: 'AI 분석 실패', message: 'AI 분석 기능이 아직 준비 중입니다' });
+      return;
+    }
+
+    if ((aiStatusesRef.current[bidId] ?? 'none') !== 'analyzing') return;
+    aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'complete' };
+    setAiStatuses(prev => ({ ...prev, [bidId]: 'complete' }));
+    const bid = bids.find(b => b.id === bidId);
+    if (bid) {
+      showToast('success', `AI 분석이 완료되었습니다 — ${bid.title}`);
+      addNotification({ type: 'analysis_complete', title: 'AI 분석 완료', message: `${bid.title} 분석이 완료되었습니다` });
+    }
   };
 
   const resetAnalysis = (bidId: string) => {
@@ -105,31 +194,33 @@ export default function App() {
     setAiStatuses(prev => ({ ...prev, [bidId]: 'none' }));
   };
 
-  const togglePursued = (bidId: string) => {
-    setPursuedBids(prev => {
-      const next = new Set(prev);
-      if (next.has(bidId)) next.delete(bidId);
-      else next.add(bidId);
-      return next;
-    });
-  };
-
-  const toggleBookmark = (bidId: string) => {
+const toggleBookmark = (bidId: string) => {
     const current = bidFlags[bidId] ?? { bookmarked: false, inProgress: false };
     const newBookmarked = !current.bookmarked;
     setBidFlags(prev => ({ ...prev, [bidId]: { ...current, bookmarked: newBookmarked } }));
     if (newBookmarked) {
-      requestAnalysis(bidId);
-    } else if (!current.inProgress) {
-      resetAnalysis(bidId);
+      const bid = bids.find(b => b.id === bidId);
+      if (bid) addNotification({ type: 'bookmark', title: '관심 공고 추가', message: `${bid.title}을 관심 공고에 추가했습니다` });
     }
+    toggleBookmarkApi(bidId, newBookmarked).then(success => {
+      if (!success) {
+        setBidFlags(prev => ({ ...prev, [bidId]: { ...prev[bidId], bookmarked: !newBookmarked } }));
+      }
+    });
   };
 
   const toggleInProgress = (bidId: string) => {
     const current = bidFlags[bidId] ?? { bookmarked: false, inProgress: false };
     const newInProgress = !current.inProgress;
     setBidFlags(prev => ({ ...prev, [bidId]: { ...current, inProgress: newInProgress } }));
+    toggleInProgressApi(bidId, newInProgress).then(success => {
+      if (!success) {
+        setBidFlags(prev => ({ ...prev, [bidId]: { ...prev[bidId], inProgress: !newInProgress } }));
+      }
+    });
     if (newInProgress) {
+      const bid = bids.find(b => b.id === bidId);
+      if (bid) addNotification({ type: 'inprogress', title: '진행 프로젝트 추가', message: `${bid.title}을 진행 프로젝트에 추가했습니다` });
       requestAnalysis(bidId);
     } else if (!current.bookmarked) {
       resetAnalysis(bidId);
@@ -154,20 +245,8 @@ export default function App() {
     if (!CEO_ALLOWED_PAGES.includes(activePage)) setActivePage('대시보드');
   }, [user, activePage]);
 
-  useEffect(() => {
-    setBidsLoading(true);
-    fetchBids()
-      .then((data) => {
-        setBids(data);
-        setBidFlags(Object.fromEntries(data.map(b => [b.id, { bookmarked: false, inProgress: false }])));
-      })
-      .finally(() => setBidsLoading(false));
-  }, []);
-
   const handleSelectBid = async (bid: Bid) => {
-    // 기본 정보 즉시 표시
     setSelectedBid(bid);
-    // 이미 상세 데이터가 있으면 재조회 불필요
     if (bid.detail) return;
     setDetailLoading(true);
     try {
@@ -179,7 +258,7 @@ export default function App() {
   };
 
   if (!user) {
-    return <LoginPage onLogin={setUser} />;
+    return <LoginPage onLogin={handleLogin} loginError={loginError} />;
   }
 
   const isCeo = user.role === 'ceo';
@@ -199,12 +278,25 @@ export default function App() {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <DashboardHeader
           user={user}
-          onLogout={() => setUser(null)}
+          onLogout={() => { sessionStorage.removeItem('koneps_user'); setUser(null); }}
           notifications={notifications}
           onMarkAllAsRead={markAllAsRead}
           onMarkAsRead={markAsRead}
           onClearNotifications={clearNotifications}
+          onSync={handleSync}
+          isSyncing={isFetching}
         />
+        {isFetching && (
+          <div style={{ height: '2px', backgroundColor: 'var(--dash-border)', flexShrink: 0 }}>
+            <div
+              style={{
+                height: '100%',
+                backgroundColor: '#2563EB',
+                animation: 'fetchProgress 1.2s ease-in-out infinite',
+              }}
+            />
+          </div>
+        )}
         <main
           className="flex-1 overflow-y-auto"
           style={{
@@ -254,16 +346,19 @@ export default function App() {
             <ProjectPage
               bids={bids}
               bidFlags={bidFlags}
+              aiStatuses={aiStatuses}
               onSelectBid={handleSelectBid}
               selectedBid={selectedBid}
               onToggleBookmark={toggleBookmark}
               onToggleInProgress={toggleInProgress}
               onOpenAnalysisDetail={openAnalysisDetail}
               onRequestAnalysis={requestAnalysis}
+              ceoMode={isCeo}
+              currentUser={user}
             />
           ) : isCeo ? (
             <>
-              <KpiCards bids={inProgressBids} bidsLoading={bidsLoading} ceoMode={true} aiStatuses={aiStatuses} />
+              <KpiCards bids={inProgressBids} bidsLoading={isFetching} ceoMode={true} aiStatuses={aiStatuses} dashboardStats={dashboardStats} />
               {inProgressBids.length === 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', borderRadius: '10px', backgroundColor: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
                   <Info style={{ width: '16px', height: '16px', color: '#7C3AED', flexShrink: 0 }} />
@@ -273,7 +368,7 @@ export default function App() {
               <div className="flex gap-4" style={{ minHeight: '440px' }}>
                 <BidTable
                   bids={inProgressBids}
-                  bidsLoading={bidsLoading}
+                  isLoading={isFetching}
                   selectedBid={selectedBid}
                   onSelectBid={handleSelectBid}
                   agencySettings={agencySettings}
@@ -282,45 +377,44 @@ export default function App() {
                   ceoMode={true}
                   onRequestAnalysis={requestAnalysis}
                 />
-                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} />
+                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} ceoMode={true} />
               </div>
               <BottomWidgets
                 bids={inProgressBids}
                 bidFlags={bidFlags}
+                aiStatuses={aiStatuses}
                 onToggleBookmark={toggleBookmark}
                 onToggleInProgress={toggleInProgress}
                 onOpenAnalysisDetail={openAnalysisDetail}
                 onRequestAnalysis={requestAnalysis}
                 ceoMode={true}
+                typeStats={typeStats}
               />
             </>
           ) : (
             <>
-              <KpiCards bids={bids} bidsLoading={bidsLoading} ceoMode={false} />
-              <div className="flex gap-4" style={{ minHeight: '440px' }}>
-                <BidTable
+              <KpiCards bids={bids} bidsLoading={isFetching} ceoMode={false} dashboardStats={dashboardStats} />
+              <div style={{ height: '500px', flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
+                <BidListPage
                   bids={bids}
-                  bidsLoading={bidsLoading}
-                  selectedBid={selectedBid}
-                  onSelectBid={handleSelectBid}
-                  agencySettings={agencySettings}
                   bidFlags={bidFlags}
                   aiStatuses={aiStatuses}
                   onToggleBookmark={toggleBookmark}
                   onToggleInProgress={toggleInProgress}
-                  pursuedBids={pursuedBids}
-                  onTogglePursued={togglePursued}
+                  onOpenAnalysisDetail={openAnalysisDetail}
                   onRequestAnalysis={requestAnalysis}
+                  hideTargetList={true}
                 />
-                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} onNavigateToProposal={() => setActivePage('제안목차')} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} />
               </div>
               <BottomWidgets
                 bids={bids}
                 bidFlags={bidFlags}
+                aiStatuses={aiStatuses}
                 onToggleBookmark={toggleBookmark}
                 onToggleInProgress={toggleInProgress}
                 onOpenAnalysisDetail={openAnalysisDetail}
                 onRequestAnalysis={requestAnalysis}
+                typeStats={typeStats}
               />
             </>
           )}
@@ -329,7 +423,12 @@ export default function App() {
 
       {showAnalysisDetail && analysisDetailBid && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 200, overflowY: 'auto', backgroundColor: 'var(--dash-bg)' }}>
-          <AnalysisDetailPage bid={analysisDetailBid} onBack={() => setShowAnalysisDetail(false)} />
+          <AnalysisDetailPage
+            bid={analysisDetailBid}
+            onBack={() => setShowAnalysisDetail(false)}
+            aiStatus={aiStatuses[analysisDetailBid.id] ?? 'none'}
+            onRequestAnalysis={requestAnalysis}
+          />
         </div>
       )}
     </div>

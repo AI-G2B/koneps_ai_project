@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Target, Clock, Wallet, Truck, Code2, Gavel, BarChart2, Shield,
   GitBranch, Percent, AlertTriangle, FileText,
@@ -16,10 +16,25 @@ interface BidDetailPanelProps {
   aiStatuses?: Record<string, AiStatusType>;
   onOpenAnalysisDetail?: (bid: Bid) => void;
   onRequestAnalysis?: (bidId: string) => void;
+  ceoMode?: boolean;
+  showFullDetail?: boolean;
 }
 
-export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenAnalysisDetail, onRequestAnalysis }: BidDetailPanelProps) {
+export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false }: BidDetailPanelProps) {
   const { showToast } = useToast();
+  const [showFileMenu, setShowFileMenu] = useState(false);
+  const fileMenuRef = useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!showFileMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (fileMenuRef.current && !fileMenuRef.current.contains(e.target as Node)) {
+        setShowFileMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showFileMenu]);
 
   if (!bid) {
     return (
@@ -58,10 +73,17 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
     { icon: Phone,     label: '담당자',      value: detail.contactPerson },
   ] : [];
 
+  const CEO_ITEMS = (ceoMode && detail) ? [
+    { icon: Wallet,    label: '예산 규모',               value: detail.budget },
+    { icon: Clock,     label: '마감일',                  value: bid.deadline ? `${bid.deadline.substring(5)} ${isNaN(daysLeft) ? '(기간 미정)' : `(${daysLeft}일 후)`}` : '기간 미정' },
+    { icon: BarChart2, label: '평가방식 (기술/가격 배점)', value: detail.evalMethod },
+    { icon: Phone,     label: '담당자 연락처',             value: detail.contactPerson },
+  ] : [];
+
   return (
     <div className="w-[390px] flex-shrink-0 rounded-xl flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)' }}>
       {/* 헤더 */}
-      <div className="flex-shrink-0 px-5 py-4" style={{ borderBottom: '1px solid var(--dash-border)', background: 'var(--dash-panel-header)' }}>
+      <div className="flex-shrink-0" style={{ padding: ceoMode ? '10px 20px 12px' : '16px 20px', borderBottom: '1px solid var(--dash-border)', background: 'var(--dash-panel-header)' }}>
         <div className="flex items-center gap-2 mb-2.5">
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: isAnalyzing ? 'var(--badge-orange-bg)' : isNoneOrPending ? 'var(--badge-gray-bg)' : 'var(--badge-green-bg)', color: isAnalyzing ? '#FFC379' : isNoneOrPending ? '#81878F' : '#5BC37E', whiteSpace: 'nowrap', flexShrink: 0 }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: isAnalyzing ? '#FFC379' : isNoneOrPending ? '#81878F' : '#5BC37E', flexShrink: 0, display: 'inline-block', ...(isAnalyzing || aiStatus === 'pending' ? { animation: 'pulse 1.2s ease-in-out infinite' } : {}) }} />
@@ -69,31 +91,63 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
           </span>
           <RiskBadge risk={bid.risk} />
           <div className="flex items-center gap-1.5 ml-auto">
-            {isUrgent && (
+            {daysLeft < 0 ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-gray-bg)', color: '#81878F', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#81878F', flexShrink: 0, display: 'inline-block' }} />마감
+              </span>
+            ) : isUrgent ? (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />D-{daysLeft}
               </span>
-            )}
+            ) : null}
             <button
-              title="나라장터 원문 링크"
-              onClick={() => window.open('https://www.g2b.go.kr', '_blank')}
+              title={bid.ntce_dtl_url ? '나라장터 원문 보기' : '나라장터 홈으로 이동'}
+              onClick={() => window.open(bid.ntce_dtl_url || 'https://www.g2b.go.kr', '_blank')}
               className="flex items-center justify-center rounded-md transition-colors"
-              style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
+              style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: bid.ntce_dtl_url ? 'var(--dash-text-3)' : 'var(--dash-text-5)', cursor: 'pointer' }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = bid.ntce_dtl_url ? 'var(--dash-text-3)' : 'var(--dash-text-5)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
             >
               <ExternalLink style={{ width: '12px', height: '12px' }} />
             </button>
-            <button
-              title="RFP 다운로드"
-              onClick={() => showToast('info', '준비 중입니다')}
-              className="flex items-center justify-center rounded-md transition-colors"
-              style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
-            >
-              <Download style={{ width: '12px', height: '12px' }} />
-            </button>
+            {!ceoMode && (
+              <div ref={fileMenuRef} style={{ position: 'relative' }}>
+                <button
+                  title={bid.attachments?.length ? `첨부파일 ${bid.attachments.length}개` : '첨부파일 없음'}
+                  onClick={() => {
+                    const files = bid.attachments ?? [];
+                    if (files.length === 0) { showToast('info', '첨부파일이 없습니다'); return; }
+                    if (files.length === 1) { window.open(files[0].fileUrl, '_blank'); return; }
+                    setShowFileMenu(v => !v);
+                  }}
+                  className="flex items-center justify-center rounded-md transition-colors"
+                  style={{ width: '26px', height: '26px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border-med)', color: bid.attachments?.length ? 'var(--dash-text-3)' : 'var(--dash-text-5)', cursor: 'pointer' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(37,99,235,0.4)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = bid.attachments?.length ? 'var(--dash-text-3)' : 'var(--dash-text-5)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-med)'; }}
+                >
+                  <Download style={{ width: '12px', height: '12px' }} />
+                </button>
+                {showFileMenu && (bid.attachments?.length ?? 0) > 1 && (
+                  <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, minWidth: '220px', maxWidth: '320px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 50, overflow: 'hidden' }}>
+                    <div style={{ padding: '6px 10px', fontSize: '11px', color: 'var(--dash-text-4)', borderBottom: '1px solid var(--dash-border-faint)' }}>
+                      첨부파일 {bid.attachments!.length}개
+                    </div>
+                    {bid.attachments!.map((file, i) => (
+                      <button
+                        key={i}
+                        onClick={() => { window.open(file.fileUrl, '_blank'); setShowFileMenu(false); }}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', fontSize: '12px', color: 'var(--dash-text-2)', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-row-hover)'; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
+                      >
+                        <Download style={{ width: '12px', height: '12px', color: '#2563EB', flexShrink: 0 }} />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.fileName}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -105,7 +159,7 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
           <InfoCell label="발주기관" value={bid.agency} />
           <InfoCell label="사업 유형" value={bid.type} />
           <InfoCell label="예산" value={formatBudget(bid.budget)} valueStyle={{ fontSize: '14px', fontWeight: 700, color: '#F59E0B' }} />
-          <InfoCell label="마감일" value={`${bid.deadline.substring(5)} (${daysLeft}일 후)`} valueStyle={{ color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }} />
+          <InfoCell label="마감일" value={bid.deadline ? `${bid.deadline.substring(5)} ${isNaN(daysLeft) ? '(기간 미정)' : `(${daysLeft}일 후)`}` : '기간 미정'} valueStyle={{ color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }} />
         </div>
       </div>
 
@@ -131,15 +185,15 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
             </div>
             <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '4px' }}>AI 분석 대기 중</div>
             <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
-              찜하기 또는 진행하기를 누르면<br />AI 분석이 자동으로 시작됩니다.
+              진행하기를 누르거나 상세 리포트에서<br />직접 분석을 시작할 수 있습니다.
             </div>
-            {aiStatus === 'none' && (
+            {aiStatus === 'none' && !ceoMode && (
               <button
                 onClick={() => onRequestAnalysis?.(bid.id)}
                 style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(37,99,235,0.08)', color: '#2563EB', border: '1px solid rgba(37,99,235,0.2)', borderRadius: '8px', padding: '8px 16px', fontSize: '13px', cursor: 'pointer' }}
               >
                 <Sparkles style={{ width: '13px', height: '13px' }} />
-                AI 분석 요청
+                AI 분석 시작
               </button>
             )}
           </div>
@@ -159,20 +213,41 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
         {/* AI 핵심 항목 */}
         {!isAnalyzing && !isNoneOrPending && detail && (
           <div className="px-5 py-4" style={{ borderBottom: '1px solid var(--dash-border)' }}>
-            <SectionTitle icon={Sparkles} title="AI 추출 핵심항목" badge="12" accentColor="#2563EB" />
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              {AI_ITEMS.map((item) => (
-                <div key={item.label} className="flex items-start gap-2 rounded-lg" style={{ padding: '8px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)' }}>
-                  <item.icon style={{ width: '13px', height: '13px', color: '#2563EB', flexShrink: 0, marginTop: '1px' }} />
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '10px', color: 'var(--dash-text-4)', marginBottom: '1px' }}>{item.label}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--dash-text-detail)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.value}>
+            <SectionTitle
+              icon={Sparkles}
+              title={ceoMode && !showFullDetail ? '핵심 요약' : 'AI 추출 핵심항목'}
+              badge={ceoMode && !showFullDetail ? '4건' : '12'}
+              accentColor="#2563EB"
+            />
+            {ceoMode && !showFullDetail ? (
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                {CEO_ITEMS.map((item) => (
+                  <div key={item.label} className="flex flex-col rounded-lg" style={{ padding: '16px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)' }}>
+                    <div className="flex items-center gap-1" style={{ marginBottom: '8px' }}>
+                      <item.icon style={{ width: '12px', height: '12px', color: '#2563EB', flexShrink: 0 }} />
+                      <div style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>{item.label}</div>
+                    </div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', lineHeight: 1.3 }} title={item.value}>
                       {item.value}
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                {AI_ITEMS.map((item) => (
+                  <div key={item.label} className="flex items-start gap-2 rounded-lg" style={{ padding: '8px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)' }}>
+                    <item.icon style={{ width: '13px', height: '13px', color: '#2563EB', flexShrink: 0, marginTop: '1px' }} />
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: '10px', color: 'var(--dash-text-4)', marginBottom: '1px' }}>{item.label}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--dash-text-detail)', lineHeight: 1.4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.value}>
+                        {item.value}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -195,7 +270,7 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
             ) : (
               <div className="space-y-2 mt-3">
                 {riskFactors.map((w) => (
-                  <WarningCard key={w.title} title={w.title} desc={w.desc} severity={w.severity} />
+                  <WarningCard key={w.title} title={w.title} desc={w.desc} severity={w.severity} ceoMode={ceoMode && !showFullDetail} />
                 ))}
               </div>
             )}
@@ -205,22 +280,24 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
 
       {/* CTA */}
       <div className="flex-shrink-0 px-5 py-4" style={{ borderTop: '1px solid var(--dash-border)' }}>
+        {!ceoMode && (
+          <button
+            onClick={() => showToast('info', '제안목차 자동 생성 기능은 현재 개발 중입니다.')}
+            className="w-full flex items-center justify-center gap-2 rounded-xl"
+            style={{ padding: '11px 16px', fontSize: '14px', fontWeight: 600, color: 'var(--dash-text-3)', backgroundColor: 'var(--dash-card-deep)', border: '1px solid var(--dash-border-med)', cursor: 'default' }}
+          >
+            <Clock style={{ width: '16px', height: '16px' }} />
+            제안목차 생성 (개발 중)
+          </button>
+        )}
         <button
-          onClick={() => showToast('info', '제안목차 자동 생성 기능은 현재 개발 중입니다.')}
-          className="w-full flex items-center justify-center gap-2 rounded-xl"
-          style={{ padding: '11px 16px', fontSize: '14px', fontWeight: 600, color: 'var(--dash-text-3)', backgroundColor: 'var(--dash-card-deep)', border: '1px solid var(--dash-border-med)', cursor: 'default' }}
-        >
-          <Clock style={{ width: '16px', height: '16px' }} />
-          제안목차 생성 (개발 중)
-        </button>
-        <button
-          className="w-full flex items-center justify-center gap-1.5 rounded-xl transition-colors mt-2"
+          className="w-full flex items-center justify-center gap-1.5 rounded-xl transition-colors"
           onClick={() => { if (bid) onOpenAnalysisDetail?.(bid); }}
-          style={{ padding: '9px 16px', fontSize: '13px', color: 'var(--dash-text-2)', backgroundColor: 'transparent', border: '1px solid var(--dash-border-med)', cursor: 'pointer' }}
+          style={{ marginTop: ceoMode ? 0 : '8px', padding: '9px 16px', fontSize: '13px', color: 'var(--dash-text-2)', backgroundColor: 'transparent', border: '1px solid var(--dash-border-med)', cursor: 'pointer' }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-item-bg-alt)'; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
         >
-          상세 분석 리포트 보기
+          {ceoMode ? '담당자 상세 보고서 보기' : '상세 분석 리포트 보기'}
           <ChevronRight style={{ width: '13px', height: '13px' }} />
         </button>
       </div>
@@ -230,8 +307,8 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
 
 function InfoCell({ label, value, valueStyle }: { label: string; value: string; valueStyle?: React.CSSProperties }) {
   return (
-    <div className="rounded-lg" style={{ padding: '8px 10px', backgroundColor: 'var(--dash-item-bg-alt)' }}>
-      <div style={{ fontSize: '10px', color: 'var(--dash-text-4)', marginBottom: '2px' }}>{label}</div>
+    <div className="rounded-lg" style={{ padding: '5px 8px', backgroundColor: 'var(--dash-item-bg-alt)' }}>
+      <div style={{ fontSize: '10px', color: 'var(--dash-text-4)', marginBottom: '1px' }}>{label}</div>
       <div style={{ fontSize: '12px', color: 'var(--dash-text-2)', ...valueStyle }}>{value}</div>
     </div>
   );
@@ -253,16 +330,17 @@ function SectionTitle({ icon: Icon, title, badge, accentColor, badgeBg, badgeCol
   );
 }
 
-function WarningCard({ title, desc, severity }: { title: string; desc: string; severity: 'high' | 'medium' }) {
+function WarningCard({ title, desc, severity, ceoMode = false }: { title: string; desc: string; severity: 'high' | 'medium'; ceoMode?: boolean }) {
   const isHigh = severity === 'high';
+  const color = isHigh ? '#EF4444' : '#F97316';
   return (
-    <div className="rounded-lg" style={{ padding: '10px 12px', backgroundColor: isHigh ? 'rgba(239,68,68,0.07)' : 'rgba(249,115,22,0.07)', borderTop: `1px solid ${isHigh ? 'rgba(239,68,68,0.15)' : 'rgba(249,115,22,0.15)'}`, borderRight: `1px solid ${isHigh ? 'rgba(239,68,68,0.15)' : 'rgba(249,115,22,0.15)'}`, borderBottom: `1px solid ${isHigh ? 'rgba(239,68,68,0.15)' : 'rgba(249,115,22,0.15)'}`, borderLeft: `3px solid ${isHigh ? '#EF4444' : '#F97316'}` }}>
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <AlertTriangle style={{ width: '12px', height: '12px', color: isHigh ? '#EF4444' : '#F97316', flexShrink: 0 }} />
-        <span style={{ fontSize: '11px', fontWeight: 600, color: isHigh ? '#EF4444' : '#F97316' }}>독소조항</span>
+    <div className="rounded-lg" style={{ padding: '10px 12px', backgroundColor: isHigh ? 'rgba(239,68,68,0.07)' : 'rgba(249,115,22,0.07)', borderTop: `1px solid ${isHigh ? 'rgba(239,68,68,0.15)' : 'rgba(249,115,22,0.15)'}`, borderRight: `1px solid ${isHigh ? 'rgba(239,68,68,0.15)' : 'rgba(249,115,22,0.15)'}`, borderBottom: `1px solid ${isHigh ? 'rgba(239,68,68,0.15)' : 'rgba(249,115,22,0.15)'}`, borderLeft: `3px solid ${color}` }}>
+      <div className="flex items-center gap-1.5" style={{ marginBottom: ceoMode ? 0 : '6px' }}>
+        <AlertTriangle style={{ width: '12px', height: '12px', color, flexShrink: 0 }} />
+        <span style={{ fontSize: '11px', fontWeight: 600, color }}>{isHigh ? '고위험' : '중위험'}</span>
         <span style={{ fontSize: '11px', color: 'var(--dash-text)', fontWeight: 500 }}>— {title}</span>
       </div>
-      <p style={{ fontSize: '11px', color: 'var(--dash-text-2)', lineHeight: 1.6 }}>{desc}</p>
+      {!ceoMode && <p style={{ fontSize: '11px', color: 'var(--dash-text-2)', lineHeight: 1.6 }}>{desc}</p>}
     </div>
   );
 }
