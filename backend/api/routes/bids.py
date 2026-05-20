@@ -141,47 +141,27 @@ class BidListResponse(BaseModel):
 
 
 class AnalysisResultSchema(BaseModel):
-    """AI 분석 결과 스키마"""
+    """AI 분석 결과 스키마. 독소조항은 poison_clauses JSONB에 포함."""
 
-    budget_amt: float | None = None
-    budget_raw: str | None = None
-    bid_qualify: str | None = None
-    exec_period_months: int | None = None
-    exec_period_raw: str | None = None
-    manmonth_total: float | None = None
-    manmonth_detail: dict | None = None
-    past_performance: str | None = None
-    eval_tech_score: float | None = None
-    eval_price_score: float | None = None
-    task_scope: str | None = None
-    joint_supply_yn: bool | None = None
-    joint_supply_detail: str | None = None
+    project_type: str | None = None
+    estimated_price: int | None = None
+    allocated_budget: int | None = None
+    project_duration: str | None = None
+    contract_method: str | None = None
     submit_deadline: datetime | None = None
-    required_docs: dict | None = None
-    exec_location: str | None = None
-    key_tech_spec: str | None = None
-    disqualify_reason: str | None = None
-    contact_person: dict | None = None
-    confidence_score: float | None = None
+    risk_level: str | None = None
+    issuing_org: str | None = None
+    project_summary: str | None = None
+    project_scope: str | None = None
+    qualification: str | None = None
+    eval_criteria: list | None = None
+    requirements: list | None = None
+    tech_requirements: list | None = None
+    poison_clauses: dict | None = None
+    raw_analysis: dict | None = None
     model_used: str | None = None
+    analysis_status: str | None = None
     analyzed_at: datetime | None = None
-
-    class Config:
-        from_attributes = True
-
-
-class RiskFactorSchema(BaseModel):
-    """위험 요인 단건 스키마"""
-
-    id: int
-    risk_category: str
-    risk_level: str
-    clause_title: str | None = None
-    clause_original: str | None = None
-    clause_summary: str
-    page_no: int | None = None
-    mitigation_suggest: str | None = None
-    sort_order: int = 0
 
     class Config:
         from_attributes = True
@@ -215,7 +195,6 @@ class BidDetailResponse(BaseModel):
     collected_at: datetime | None
     attachments: list[AttachmentSchema] = []
     analysis_result: AnalysisResultSchema | None = None
-    risk_factors: list[RiskFactorSchema] = []
 
     class Config:
         from_attributes = True
@@ -544,5 +523,4 @@ async def get_bid_detail(
     response.is_expired = bool(notice.bid_clse_dt and notice.bid_clse_dt < datetime.now(KST))
     response.attachments = [AttachmentSchema.model_validate(a) for a in notice.attachments]
     response.analysis_result = AnalysisResultSchema.model_validate(notice.analysis_result) if notice.analysis_result else None
-    response.risk_factors = [RiskFactorSchema.model_validate(r) for r in notice.risk_factors]
     return response

@@ -59,54 +59,45 @@ CREATE TABLE attachments (
 
 CREATE INDEX idx_attachments_notice_id ON attachments (notice_id);
 
+-- AI 분석 결과. AI 파트(강현묵)의 Gemini 출력 구조에 맞춰 설계.
+-- 자주 필터/집계하는 필드는 정형 컬럼, 가변/리스트형은 JSONB.
+-- 독소조항(poison_clauses)은 항상 공고 단위 전체로 다뤄지므로 별도 테이블 대신 JSONB.
 CREATE TABLE analysis_results (
-    id                      SERIAL PRIMARY KEY,
-    notice_id               INTEGER         NOT NULL REFERENCES notices(id) ON DELETE CASCADE,
-    budget_amt              NUMERIC(18,2),
-    budget_raw              TEXT,
-    bid_qualify             TEXT,
-    exec_period_months      INTEGER,
-    exec_period_raw         TEXT,
-    manmonth_total          NUMERIC(8,2),
-    manmonth_detail         JSONB,
-    past_performance        TEXT,
-    eval_tech_score         NUMERIC(5,2),
-    eval_price_score        NUMERIC(5,2),
-    task_scope              TEXT,
-    joint_supply_yn         BOOLEAN,
-    joint_supply_detail     TEXT,
-    submit_deadline         TIMESTAMPTZ,
-    required_docs           JSONB,
-    exec_location           TEXT,
-    key_tech_spec           TEXT,
-    disqualify_reason       TEXT,
-    contact_person          JSONB,
-    confidence_score        NUMERIC(4,3),
-    model_used              VARCHAR(50),
-    prompt_version          VARCHAR(20),
-    analyzed_at             TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
-    updated_at              TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    id                  SERIAL PRIMARY KEY,
+    notice_id           INTEGER         NOT NULL REFERENCES notices(id) ON DELETE CASCADE,
+
+    -- 정형 (대시보드 필터/집계용)
+    project_type        VARCHAR(20),
+    estimated_price     BIGINT,
+    allocated_budget    BIGINT,
+    project_duration    VARCHAR(50),
+    contract_method     VARCHAR(100),
+    submit_deadline     TIMESTAMPTZ,
+    risk_level          VARCHAR(10)     CHECK (risk_level IN ('safe','warning','danger')),
+
+    -- 텍스트 / 반정형
+    issuing_org         TEXT,
+    project_summary     TEXT,
+    project_scope       TEXT,
+    qualification       TEXT,
+    eval_criteria       JSONB,
+    requirements        JSONB,
+    tech_requirements   JSONB,
+    poison_clauses      JSONB,
+
+    -- 메타
+    raw_analysis        JSONB,
+    model_used          VARCHAR(50),
+    prompt_version      VARCHAR(20),
+    analysis_status     VARCHAR(20)     NOT NULL DEFAULT 'pending'
+                            CHECK (analysis_status IN ('pending','processing','completed','failed')),
+    analyzed_at         TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
     UNIQUE (notice_id)
 );
 
 CREATE INDEX idx_analysis_notice_id ON analysis_results (notice_id);
-
-CREATE TABLE risk_factors (
-    id                      SERIAL PRIMARY KEY,
-    notice_id               INTEGER         NOT NULL REFERENCES notices(id) ON DELETE CASCADE,
-    risk_category           VARCHAR(50)     NOT NULL,
-    risk_level              VARCHAR(10)     NOT NULL DEFAULT 'medium' CHECK (risk_level IN ('high','medium','low')),
-    clause_title            VARCHAR(200),
-    clause_original         TEXT,
-    clause_summary          TEXT            NOT NULL,
-    page_no                 INTEGER,
-    mitigation_suggest      TEXT,
-    sort_order              INTEGER         NOT NULL DEFAULT 0,
-    created_at              TIMESTAMPTZ     NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_risk_factors_notice_id  ON risk_factors (notice_id);
-CREATE INDEX idx_risk_factors_risk_level ON risk_factors (risk_level);
+CREATE INDEX idx_analysis_risk_level ON analysis_results (risk_level);
 
 CREATE TABLE proposal_outlines (
     id                      SERIAL PRIMARY KEY,

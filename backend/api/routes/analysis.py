@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.db.crud import (
     get_analysis_by_notice_id,
     get_notice_detail,
-    get_risk_factors_by_notice,
     update_pipeline_status,
 )
 from backend.db.database import get_db
@@ -81,12 +80,10 @@ async def get_analysis(
         raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
 
     analysis = await get_analysis_by_notice_id(db, notice.id)
-    risk_factors = await get_risk_factors_by_notice(db, notice.id)
 
     return {
         "bid_ntce_no": bid_ntce_no,
         "pipeline_status": notice.pipeline_status,
         "analysis_result": analysis,
-        "risk_factors": risk_factors,
     }
 
