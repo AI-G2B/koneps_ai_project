@@ -73,7 +73,7 @@ CREATE TABLE analysis_results (
     project_duration    VARCHAR(50),
     contract_method     VARCHAR(100),
     submit_deadline     TIMESTAMPTZ,
-    risk_level          VARCHAR(10)     CHECK (risk_level IN ('safe','warning','danger')),
+    risk_level          VARCHAR(10)     CHECK (risk_level IN ('safe','caution','warning','danger')),
 
     -- 텍스트 / 반정형
     issuing_org         TEXT,

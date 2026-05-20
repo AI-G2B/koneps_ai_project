@@ -80,7 +80,7 @@ class AnalysisResult(Base):
     project_scope:     Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     qualification:     Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     eval_criteria:     Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
-    requirements:      Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    requirements:      Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     tech_requirements: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
     poison_clauses:    Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 

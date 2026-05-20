@@ -155,7 +155,7 @@ class AnalysisResultSchema(BaseModel):
     project_scope: str | None = None
     qualification: str | None = None
     eval_criteria: list | None = None
-    requirements: list | None = None
+    requirements: dict | None = None
     tech_requirements: list | None = None
     poison_clauses: dict | None = None
     raw_analysis: dict | None = None
