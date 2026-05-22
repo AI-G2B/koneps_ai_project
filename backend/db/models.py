@@ -139,6 +139,22 @@ class User(Base):
     role:       Mapped[str]                = mapped_column(String(20), nullable=False, default='manager')
     created_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
 
+    agency_settings: Mapped[list["AgencySetting"]] = relationship(
+        "AgencySetting", back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class AgencySetting(Base):
+    __tablename__ = "agency_settings"
+
+    id:           Mapped[int]            = mapped_column(primary_key=True)
+    user_id:      Mapped[int]            = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    agency_name:  Mapped[str]            = mapped_column(String(200), nullable=False)
+    setting_type: Mapped[str]            = mapped_column(String(10), nullable=False)  # 'preferred' | 'avoided'
+    created_at:   Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+
+    user: Mapped["User"] = relationship("User", back_populates="agency_settings")
+
 
 class NoticeMemo(Base):
     __tablename__ = "notice_memos"

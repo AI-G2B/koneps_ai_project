@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from .models import AnalysisResult, Attachment, Notice, NoticeMemo, ProposalOutline, RiskFactor, User
+from .models import AgencySetting, AnalysisResult, Attachment, Notice, NoticeMemo, ProposalOutline, RiskFactor, User
 
 KST = timezone(timedelta(hours=9))
 
@@ -330,6 +330,37 @@ async def get_active_outline(db: AsyncSession, notice_id: int):
         )
     )
     return result.scalar_one_or_none()
+
+
+# agency_settings
+async def get_agency_settings(db: AsyncSession, user_id: int) -> list[AgencySetting]:
+    """사용자의 선호/기피 기관 설정 목록을 반환한다."""
+    result = await db.execute(
+        select(AgencySetting).where(AgencySetting.user_id == user_id)
+    )
+    return list(result.scalars().all())
+
+
+async def save_agency_settings(
+    db: AsyncSession,
+    user_id: int,
+    preferred: list[str],
+    avoided: list[str],
+) -> list[AgencySetting]:
+    """선호/기피 기관 설정을 전체 교체 방식으로 저장한다."""
+    await db.execute(
+        delete(AgencySetting).where(AgencySetting.user_id == user_id)
+    )
+    new_settings = [
+        AgencySetting(user_id=user_id, agency_name=name, setting_type="preferred")
+        for name in preferred
+    ] + [
+        AgencySetting(user_id=user_id, agency_name=name, setting_type="avoided")
+        for name in avoided
+    ]
+    db.add_all(new_settings)
+    await db.commit()
+    return new_settings
 
 
 # users
