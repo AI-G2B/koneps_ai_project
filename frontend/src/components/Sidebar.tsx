@@ -112,7 +112,13 @@ export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 
   return (
     <div className="w-[220px] flex-shrink-0 flex flex-col h-full" style={{ backgroundColor: 'var(--dash-surface)', borderRight: '1px solid var(--dash-border)' }}>
       {/* Logo */}
-      <div className="h-14 flex items-center px-4 gap-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--dash-border)' }}>
+      <button
+        onClick={() => onNavigate('대시보드')}
+        className="h-14 flex items-center px-4 gap-3 flex-shrink-0 w-full text-left"
+        style={{ borderBottom: '1px solid var(--dash-border)', cursor: 'pointer', background: 'none', transition: 'opacity 0.15s' }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.75'; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+      >
         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: logoGradient }}>
           <Building2 style={{ width: '16px', height: '16px', color: 'white' }} />
         </div>
@@ -120,7 +126,7 @@ export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 
           <div style={{ fontSize: '10px', color: 'var(--dash-text-4)', lineHeight: 1 }}>나라장터</div>
           <div style={{ fontSize: '13px', color: 'var(--dash-text)', fontWeight: 600, lineHeight: 1.3 }}>AI 입찰 분석</div>
         </div>
-      </div>
+      </button>
 
       {/* Role badge */}
       {role !== 'manager' && (
