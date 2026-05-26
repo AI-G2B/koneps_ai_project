@@ -92,7 +92,22 @@ export default function App() {
     }
     setLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
   };
-  const [bids, setBids] = useState<Bid[]>([]);
+  const [bids, setBids] = useState<Bid[]>(() => {
+    try {
+      const cached = sessionStorage.getItem('koneps_bids');
+      const cachedTime = sessionStorage.getItem('koneps_bids_time');
+      if (cached && cachedTime) {
+        const age = Date.now() - Number(cachedTime);
+        // 30분 이내 캐시는 재사용
+        if (age < 30 * 60 * 1000) {
+          return JSON.parse(cached);
+        }
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
   const [isFetching, setIsFetching] = useState(false);
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -100,7 +115,14 @@ export default function App() {
     const saved = localStorage.getItem('koneps:activePage');
     return (saved as PageType) ?? '대시보드';
   });
-  const [bidFlags, setBidFlags] = useState<Record<string, BidFlags>>({});
+  const [bidFlags, setBidFlags] = useState<Record<string, BidFlags>>(() => {
+    try {
+      const cached = sessionStorage.getItem('koneps_bidflags');
+      return cached ? JSON.parse(cached) : {};
+    } catch {
+      return {};
+    }
+  });
   const [aiStatuses, setAiStatuses] = useState<Record<string, AiStatusType>>({});
   const [analysisLogsMap, setAnalysisLogsMap] = useState<Record<string, AnalysisLog[]>>({});
   const [outlinesMap, setOutlinesMap] = useState<Record<string, ProposalOutline>>({});
@@ -164,6 +186,43 @@ export default function App() {
       setIsFetching(false);
     }
   };
+
+  const loadBids = async () => {
+    setIsFetching(true);
+    try {
+      const [{ bids: fetchedBids, flags }, stats, types] = await Promise.all([
+        fetchBids(),
+        fetchDashboardStats(),
+        fetchTypeStats(),
+      ]);
+      setBids(fetchedBids);
+      sessionStorage.setItem('koneps_bids', JSON.stringify(fetchedBids));
+      sessionStorage.setItem('koneps_bids_time', String(Date.now()));
+      setBidFlags(prev => {
+        const merged = { ...prev };
+        Object.entries(flags).forEach(([id, flag]) => {
+          merged[id] = { bookmarked: flag.bookmarked, inProgress: flag.inProgress };
+        });
+        sessionStorage.setItem('koneps_bidflags', JSON.stringify(merged));
+        return merged;
+      });
+      setDashboardStats(stats);
+      setTypeStats(types);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  // 로그인 상태 변경 시 캐시 확인 후 자동 로딩
+  useEffect(() => {
+    if (!user) return;
+    const cachedTime = sessionStorage.getItem('koneps_bids_time');
+    const age = cachedTime ? Date.now() - Number(cachedTime) : Infinity;
+    // 캐시 없거나 30분 초과 시 새로 불러오기
+    if (age >= 30 * 60 * 1000) {
+      loadBids();
+    }
+  }, [user]);
 
   useEffect(() => {
     Promise.all([
@@ -508,6 +567,14 @@ const toggleBookmark = (bidId: string) => {
     }
   };
 
+  const handleLogout = () => {
+    sessionStorage.removeItem('koneps_user');
+    sessionStorage.removeItem('koneps_bids');
+    sessionStorage.removeItem('koneps_bids_time');
+    sessionStorage.removeItem('koneps_bidflags');
+    setUser(null);
+  };
+
   if (!user) {
     return <LoginPage onLogin={handleLogin} loginError={loginError} />;
   }
@@ -529,7 +596,7 @@ const toggleBookmark = (bidId: string) => {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <DashboardHeader
           user={user}
-          onLogout={() => { sessionStorage.removeItem('koneps_user'); setUser(null); }}
+          onLogout={handleLogout}
           notifications={notifications}
           onMarkAllAsRead={markAllAsRead}
           onMarkAsRead={markAsRead}
