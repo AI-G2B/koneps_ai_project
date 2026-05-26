@@ -31,6 +31,7 @@ interface BidSlideOverProps {
 export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false, analysisLogs, outlineStatus = 'none', onRequestOutline, onDownloadOutline }: BidSlideOverProps) {
   const { showToast } = useToast();
   const [showFileMenu, setShowFileMenu] = useState(false);
+  const [hoveredFileIndex, setHoveredFileIndex] = useState<number | null>(null);
   const fileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -199,16 +200,46 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                           첨부파일 {bid.attachments!.length}개
                         </div>
                         {bid.attachments!.map((file, i) => (
-                          <button
+                          <div
                             key={i}
-                            onClick={() => { window.open(file.fileUrl, '_blank'); setShowFileMenu(false); }}
-                            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', fontSize: '12px', color: 'var(--dash-text-2)', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-                            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-row-hover)'; }}
-                            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
+                            style={{ position: 'relative' }}
+                            onMouseEnter={() => setHoveredFileIndex(i)}
+                            onMouseLeave={() => setHoveredFileIndex(null)}
                           >
-                            <Download style={{ width: '12px', height: '12px', color: '#2563EB', flexShrink: 0 }} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.fileName}</span>
-                          </button>
+                            {/* 커스텀 툴팁 — 파일명 20자 이상일 때만 */}
+                            {file.fileName.length >= 20 && (
+                              <span style={{
+                                position: 'absolute',
+                                bottom: 'calc(100% + 6px)',
+                                left: 0,
+                                backgroundColor: '#1E293B',
+                                color: '#FFFFFF',
+                                fontSize: '11px',
+                                padding: '5px 8px',
+                                borderRadius: '6px',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-all',
+                                maxWidth: '320px',
+                                zIndex: 999,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                                pointerEvents: 'none',
+                                opacity: hoveredFileIndex === i ? 1 : 0,
+                                transition: 'opacity 0.15s',
+                              }}>
+                                {file.fileName}
+                              </span>
+                            )}
+                            <button
+                              onClick={() => { window.open(file.fileUrl, '_blank'); setShowFileMenu(false); }}
+                              title={file.fileName}
+                              style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', fontSize: '12px', color: 'var(--dash-text-2)', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+                              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-row-hover)'; }}
+                              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
+                            >
+                              <Download style={{ width: '12px', height: '12px', color: '#2563EB', flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.fileName}</span>
+                            </button>
+                          </div>
                         ))}
                       </div>
                     )}
