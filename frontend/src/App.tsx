@@ -536,6 +536,7 @@ const toggleBookmark = (bidId: string) => {
           onClearNotifications={clearNotifications}
           onSync={handleSync}
           isSyncing={isFetching}
+          onOpenAnalysisDetail={openAnalysisDetail}
         />
         {isFetching && (
           <div style={{ height: '2px', backgroundColor: 'var(--dash-border)', flexShrink: 0 }}>
