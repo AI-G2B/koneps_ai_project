@@ -351,6 +351,9 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
           {bid.title}
         </div>
         <div className="flex items-center gap-1" style={{ flexWrap: 'wrap', rowGap: '2px' }}>
+          {bid.type !== '기타' && (
+            <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA', flexShrink: 0 }}>{bid.type}</span>
+          )}
           {flags.bookmarked && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-blue-bg)', color: '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0 }}>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />찜
@@ -361,7 +364,6 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#5BC37E', flexShrink: 0, display: 'inline-block' }} />진행중
             </span>
           )}
-          <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA', flexShrink: 0 }}>{bid.type}</span>
         </div>
       </td>
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>
