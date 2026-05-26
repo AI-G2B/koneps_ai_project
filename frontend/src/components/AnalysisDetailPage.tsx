@@ -175,11 +175,16 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
     bid.aiStatus === 'analyzing' ? '분석중' :
     bid.aiStatus === 'pending' ? '대기' : '-';
 
+  const formatAmt = (amt: number | null): string => {
+    if (amt == null) return '-';
+    return formatBudget(amt);
+  };
+
   const infoGrid = [
     { label: '수요기관', value: bid.agency },
     { label: '마감일시', value: bid.deadline ? `${bid.deadline} ${isNaN(daysLeft) ? '(기간 미정)' : `(D${daysLeft >= 0 ? `-${daysLeft}` : `+${Math.abs(daysLeft)}`})`}` : '기간 미정', urgent: isUrgent },
-    { label: '추정가격', value: formatBudget(bid.budget) },
-    { label: '배정예산', value: detail?.budget ?? '-' },
+    { label: '추정가격', value: formatAmt(bid.presmptPrce) },
+    { label: '배정예산', value: formatAmt(bid.asignBdgtAmt) },
     { label: '공고번호', value: bid.number },
     { label: '상태', value: statusLabel },
   ];

@@ -162,7 +162,8 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
         <div className="grid grid-cols-2 gap-2">
           <InfoCell label="발주기관" value={bid.agency} />
           <InfoCell label="사업 유형" value={bid.type} />
-          <InfoCell label="예산" value={formatBudget(bid.budget)} valueStyle={{ fontSize: '14px', fontWeight: 700, color: '#F59E0B' }} />
+          <InfoCell label="추정가격" value={bid.presmptPrce != null ? formatBudget(bid.presmptPrce) : '-'} valueStyle={{ fontSize: '14px', fontWeight: 700, color: '#F59E0B' }} />
+          <InfoCell label="배정예산" value={bid.asignBdgtAmt != null ? formatBudget(bid.asignBdgtAmt) : '-'} valueStyle={{ fontSize: '14px', fontWeight: 700, color: '#F59E0B' }} />
           <InfoCell label="마감일" value={bid.deadline ? `${bid.deadline.substring(5)} ${isNaN(daysLeft) ? '(기간 미정)' : `(${daysLeft}일 후)`}` : '기간 미정'} valueStyle={{ color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }} />
         </div>
       </div>

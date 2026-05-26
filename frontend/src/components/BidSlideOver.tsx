@@ -239,8 +239,15 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
               <InfoCell label="발주기관" value={bid.agency} />
               <InfoCell label="사업 유형" value={bid.type} />
               <InfoCell
-                label="예산"
-                value={formatBudget(bid.budget)}
+                label="추정가격"
+                value={bid.presmptPrce != null ? formatBudget(bid.presmptPrce) : '-'}
+                valueStyle={ceoMode
+                  ? { fontSize: '16px', fontWeight: 700, color: '#F59E0B' }
+                  : { fontSize: '13px', fontWeight: 700, color: '#F59E0B' }}
+              />
+              <InfoCell
+                label="배정예산"
+                value={bid.asignBdgtAmt != null ? formatBudget(bid.asignBdgtAmt) : '-'}
                 valueStyle={ceoMode
                   ? { fontSize: '16px', fontWeight: 700, color: '#F59E0B' }
                   : { fontSize: '13px', fontWeight: 700, color: '#F59E0B' }}

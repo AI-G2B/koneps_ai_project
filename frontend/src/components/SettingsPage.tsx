@@ -92,6 +92,17 @@ export function SettingsPage({ settings, onSave }: SettingsPageProps) {
                     <Plus style={{ width: '11px', height: '11px' }} />{agency}
                   </button>
                 ))}
+                {preferSearch.trim().length > 0 &&
+                  !preferredAgencies.includes(preferSearch.trim()) &&
+                  !avoidedAgencies.includes(preferSearch.trim()) &&
+                  !SAMPLE_AGENCIES.includes(preferSearch.trim()) && (
+                  <button
+                    onClick={() => { addPreferred(preferSearch.trim()); setPreferSearch(''); }}
+                    style={{ padding: '3px 10px', fontSize: '12px', backgroundColor: 'transparent', color: '#2563EB', border: '1px dashed rgba(37,99,235,0.4)', borderRadius: '20px', cursor: 'pointer' }}
+                  >
+                    + "{preferSearch.trim()}" 직접 추가
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -136,6 +147,17 @@ export function SettingsPage({ settings, onSave }: SettingsPageProps) {
                     <Plus style={{ width: '11px', height: '11px' }} />{agency}
                   </button>
                 ))}
+                {avoidSearch.trim().length > 0 &&
+                  !avoidedAgencies.includes(avoidSearch.trim()) &&
+                  !preferredAgencies.includes(avoidSearch.trim()) &&
+                  !SAMPLE_AGENCIES.includes(avoidSearch.trim()) && (
+                  <button
+                    onClick={() => { addAvoided(avoidSearch.trim()); setAvoidSearch(''); }}
+                    style={{ padding: '3px 10px', fontSize: '12px', backgroundColor: 'transparent', color: '#EF4444', border: '1px dashed rgba(239,68,68,0.4)', borderRadius: '20px', cursor: 'pointer' }}
+                  >
+                    + "{avoidSearch.trim()}" 직접 추가
+                  </button>
+                )}
               </div>
             </div>
           </div>

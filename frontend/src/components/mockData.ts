@@ -62,6 +62,8 @@ export interface Bid {
   title: string;
   agency: string;
   budget: number;
+  presmptPrce: number | null;
+  asignBdgtAmt: number | null;
   deadline: string;
   risk: RiskLevel;
   aiStatus: AiStatusType;
