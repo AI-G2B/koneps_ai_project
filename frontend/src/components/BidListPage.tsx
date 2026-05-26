@@ -5,7 +5,6 @@ import {
   FileSearch, ListFilter,
 } from 'lucide-react';
 import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
-import { RiskBadge } from './BidTable';
 import { BidSlideOver } from './BidSlideOver';
 import { fetchBidById } from '../services/api';
 
@@ -255,9 +254,8 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
                 { label: '공고명', width: undefined },
                 { label: '발주기관', width: '96px' },
                 { label: '예산', width: '68px' },
-                { label: '마감일', width: '68px' },
-                { label: '위험도', width: '60px' },
-                { label: '액션', width: '80px' },
+                { label: '마감일', width: '82px' },
+                { label: '액션', width: '90px' },
               ].map((col) => (
                 <th
                   key={col.label}
@@ -282,7 +280,7 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
+                <td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
                   해당 기간에 수집된 공고가 없습니다
                 </td>
               </tr>
@@ -389,9 +387,6 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
             </span>
           </div>
         ) : null}
-      </td>
-      <td style={{ padding: '10px 12px' }}>
-        <RiskBadge risk={bid.risk} />
       </td>
       <td style={{ padding: '10px 12px' }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-1">
@@ -607,7 +602,6 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
     >
       {/* 배지 행 */}
       <div className="flex items-center gap-2" style={{ marginBottom: '5px' }}>
-        <RiskBadge risk={bid.risk} />
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: tab === 'inProgress' ? 'var(--badge-green-bg)' : 'var(--badge-blue-bg)', color: tab === 'inProgress' ? '#5BC37E' : '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0 }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: tab === 'inProgress' ? '#5BC37E' : '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />
           {tab === 'inProgress' ? '진행중' : '찜'}

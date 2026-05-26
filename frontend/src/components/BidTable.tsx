@@ -44,7 +44,7 @@ export function AiStatusIndicator({ status }: { status: AiStatusType }) {
   return                            <span style={badge('var(--badge-green-bg)',  '#5BC37E')}>{DOT('#5BC37E')}완료</span>;
 }
 
-type SortKey = 'budget' | 'deadline' | 'risk' | null;
+type SortKey = 'budget' | 'deadline' | null;
 type SortDir = 'asc' | 'desc';
 type DateFilter = 'today' | 'yesterday' | '3days' | '1week' | 'all';
 type StatusFilter = 'all' | 'urgent' | 'danger';
@@ -123,7 +123,7 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
         let cmp = 0;
         if (sortKey === 'budget') cmp = a.budget - b.budget;
         else if (sortKey === 'deadline') cmp = a.deadline.localeCompare(b.deadline);
-        else if (sortKey === 'risk') cmp = riskOrder[a.risk] - riskOrder[b.risk];
+
         return sortDir === 'asc' ? cmp : -cmp;
       });
 
@@ -201,9 +201,8 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
                 { label: '공고명', key: null, width: undefined },
                 { label: '발주기관', key: null, width: '85px' },
                 { label: '예산', key: 'budget' as SortKey, width: '80px' },
-                { label: '마감일', key: 'deadline' as SortKey, width: '80px' },
-                { label: '위험도', key: 'risk' as SortKey, width: '64px' },
-                { label: 'AI분석', key: null, width: '80px' },
+                { label: '마감일', key: 'deadline' as SortKey, width: '90px' },
+                { label: 'AI분석', key: null, width: '90px' },
                 { label: '액션', key: null, width: '70px' },
               ].map((col) => (
                 <th key={col.label} onClick={() => col.key && handleSort(col.key)}
@@ -215,14 +214,14 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={8}>
+              <tr><td colSpan={7}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '8px' }}>
                   <Loader2 className="animate-spin" style={{ width: '24px', height: '24px', color: '#2563EB' }} />
                   <span style={{ fontSize: '13px', color: 'var(--dash-text-3)' }}>공고를 불러오는 중입니다...</span>
                 </div>
               </td></tr>
             ) : sortedBids.length === 0 ? (
-              <tr><td colSpan={8} style={{ padding: '48px', textAlign: 'center' }}>
+              <tr><td colSpan={7} style={{ padding: '48px', textAlign: 'center' }}>
                 {ceoMode ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                     <Inbox style={{ width: '28px', height: '28px', color: 'var(--dash-text-4)' }} />
@@ -382,7 +381,6 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
           ) : null}
         </div>
       </td>
-      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}><RiskBadge risk={bid.risk} /></td>
       <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
         {aiStatus === 'none' ? (
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
