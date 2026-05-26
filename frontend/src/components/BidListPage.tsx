@@ -336,7 +336,7 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
         transition: 'background-color 0.15s, border-left-color 0.15s',
       }}
     >
-      <td style={{ padding: '10px 12px' }}>
+      <td style={{ padding: '12px', verticalAlign: 'top' }}>
         <div
           onMouseEnter={(e) => {
             const el = e.currentTarget;
@@ -346,7 +346,7 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
             }
           }}
           onMouseLeave={() => setTooltip(null)}
-          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', lineHeight: 1.45, marginBottom: '3px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', display: 'block', whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.5, marginBottom: '4px' }}
         >
           {bid.title}
         </div>
@@ -364,13 +364,13 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
           <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA', flexShrink: 0 }}>{bid.type}</span>
         </div>
       </td>
-      <td style={{ padding: '10px 12px' }}>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '96px' }}>{bid.agency}</span>
       </td>
-      <td style={{ padding: '10px 12px' }}>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <span style={{ fontSize: '13px', color: 'var(--dash-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>{formatBudget(bid.budget)}</span>
       </td>
-      <td style={{ padding: '10px 12px' }}>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <span style={{ fontSize: '12px', fontWeight: urgent ? 600 : 400, color: urgent ? '#EF4444' : 'var(--dash-text-2)', whiteSpace: 'nowrap' }}>
           {bid.deadline.substring(5)}
         </span>
@@ -388,7 +388,7 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
           </div>
         ) : null}
       </td>
-      <td style={{ padding: '10px 12px' }} onClick={(e) => e.stopPropagation()}>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-1">
           <button
             onClick={() => onToggleBookmark(bid.id)}
