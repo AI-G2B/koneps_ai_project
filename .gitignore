@@ -36,3 +36,11 @@ samples/**/*.docx
 
 # 수동 업로드 첨부 (사용자가 직접 올린 파일)
 downloads/manual/
+
+# 프론트 빌드 산출물 (도커 이미지 안에서만 생성)
+frontend/dist/
+
+# 환경변수 (.env.example만 추적)
+.env.local
+.env.production
+.env.*.local
