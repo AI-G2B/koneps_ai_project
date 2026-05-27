@@ -11,7 +11,7 @@ import { BookmarkPage } from './components/BookmarkPage';
 import { ProjectPage } from './components/ProjectPage';
 import { BidListPage } from './components/BidListPage';
 import { BottomWidgets } from './components/BottomWidgets';
-import { type Bid, type BidFlags, type AiStatusType, type AnalysisLog } from './types';
+import { type Bid, type BidFlags, type AiStatusType, getDaysUntilDeadline } from './types';
 import { useToast } from './components/ToastProvider';
 import { AnalysisDetailPage } from './components/AnalysisDetailPage';
 import { AnalysisListPage } from './components/AnalysisListPage';
@@ -582,6 +582,7 @@ const toggleBookmark = (bidId: string) => {
   const isCeo = user.role === 'ceo';
   const inProgressBids = bids.filter(b => bidFlags[b.id]?.inProgress ?? false);
   const analysisCompleteCount = Object.values(aiStatuses).filter(s => s === 'complete').length;
+  const activeBidCount = bids.filter(b => getDaysUntilDeadline(b.deadline) >= 0).length;
 
   return (
     <div
@@ -592,7 +593,7 @@ const toggleBookmark = (bidId: string) => {
         minWidth: '1200px',
       }}
     >
-      <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} analysisCompleteCount={analysisCompleteCount} totalBidCount={bids.length} />
+      <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} analysisCompleteCount={analysisCompleteCount} totalBidCount={activeBidCount} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <DashboardHeader
           user={user}
