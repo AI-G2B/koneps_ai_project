@@ -57,6 +57,7 @@ class Attachment(Base):
     local_path:   Mapped[Optional[str]]  = mapped_column(Text, nullable=True) # 다운로드 후 로컬 경로
     parse_status: Mapped[str]            = mapped_column(String(20), default="pending")  # pending / done / failed
     downloaded_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    is_rfp:       Mapped[bool]           = mapped_column(Boolean, default=False)  # 제안요청서 여부
 
     notice: Mapped["Notice"] = relationship("Notice", back_populates="attachments")
 

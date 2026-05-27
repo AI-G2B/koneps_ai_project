@@ -59,6 +59,7 @@ class AttachmentSchema(BaseModel):
     file_type: str
     local_path: str | None = None
     parse_status: str = "pending"
+    is_rfp: bool = False  # 제안요청서 여부 (제안요청정보 섹션 파일)
 
     class Config:
         from_attributes = True
