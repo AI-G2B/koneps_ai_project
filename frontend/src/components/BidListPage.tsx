@@ -346,7 +346,7 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
           <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{bid.number}</span>
         </td>
       )}
-      <td style={{ padding: '12px', verticalAlign: 'top' }}>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <div
           onMouseEnter={(e) => {
             const el = e.currentTarget;
