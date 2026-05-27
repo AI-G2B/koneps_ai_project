@@ -2,10 +2,13 @@ import {
   type Bid,
   type BidDetail,
   type RiskFactor,
+  type Severity,
   type RiskLevel,
   type BidType,
   type AiStatusType,
   type Attachment,
+  type AnalysisLog,
+  type RequirementItem,
 } from '../components/mockData';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
@@ -43,37 +46,40 @@ export interface ApiBidListItem {
   bid_ntce_dtl_url: string | null;
 }
 
-export interface ApiAnalysisResult {
-  budget_amt: number | null;
-  budget_raw: string | null;
-  bid_qualify: string | null;
-  exec_period_months: number | null;
-  exec_period_raw: string | null;
-  manmonth_total: number | null;
-  manmonth_detail: Record<string, unknown> | null;
-  eval_tech_score: number | null;
-  eval_price_score: number | null;
-  task_scope: string | null;
-  joint_supply_yn: boolean | null;
-  joint_supply_detail: string | null;
-  required_docs: Record<string, unknown> | null;
-  exec_location: string | null;
-  key_tech_spec: string | null;
-  disqualify_reason: string | null;
-  contact_person: Record<string, unknown> | null;
-  past_performance: string | null;
-  submit_deadline: string | null;
-  model_used: string | null;
-  analyzed_at: string | null;
-  confidence_score: number | null;
+export interface ApiPoisonItem {
+  category: string;   // S1~L4 또는 OTHER
+  clause: string;     // RFP 원문 조항
+  severity: string;   // caution | warning | danger
+  reason: string;     // 판단 근거
+  source: string;     // 출처
 }
 
-export interface ApiRiskFactor {
-  risk_category: string | null;
+export interface ApiPoisonClauses {
+  items: ApiPoisonItem[];
+  risk_level: string; // safe | caution | warning | danger
+  summary: string;
+}
+
+export interface ApiAnalysisResult {
+  project_type: string | null;
+  estimated_price: number | null;
+  allocated_budget: number | null;
+  project_duration: string | null;
+  contract_method: string | null;
+  submit_deadline: string | null;
   risk_level: string | null;
-  clause_title: string | null;
-  clause_summary: string | null;
-  mitigation_suggest: string | null;
+  issuing_org: string | null;
+  project_summary: string | null;
+  project_scope: string | null;
+  qualification: string | null;
+  eval_criteria: Array<Record<string, unknown>> | null;
+  requirements: Record<string, unknown> | null;
+  tech_requirements: string[] | null;
+  poison_clauses: ApiPoisonClauses | null;
+  raw_analysis: Record<string, unknown> | null;
+  model_used: string | null;
+  analysis_status: string | null;
+  analyzed_at: string | null;
 }
 
 export interface ApiBidDetailResponse extends ApiBidListItem {
@@ -84,7 +90,6 @@ export interface ApiBidDetailResponse extends ApiBidListItem {
   cntrct_cncls_mthd_nm: string | null;
   openg_dt: string | null;
   analysis_result: ApiAnalysisResult | null;
-  risk_factors: ApiRiskFactor[];
   attachments: AttachmentSchema[];
 }
 
@@ -97,16 +102,9 @@ export interface ApiBidListResponse {
 // Mapper: 백엔드 응답 → 프론트엔드 Bid 타입
 // ─────────────────────────────────────────────
 
-function mapRiskLevel(riskFactors: ApiRiskFactor[], overallRisk?: string): RiskLevel {
-  if (overallRisk) {
-    if (overallRisk === 'high' || overallRisk === 'danger') return 'danger';
-    if (overallRisk === 'medium' || overallRisk === 'caution') return 'caution';
-    if (overallRisk === 'low' || overallRisk === 'good') return 'good';
-  }
-  const hasHigh = riskFactors.some((r) => r.risk_level === 'high');
-  const hasMedium = riskFactors.some((r) => r.risk_level === 'medium');
-  if (hasHigh) return 'danger';
-  if (hasMedium) return 'caution';
+function mapRiskLevel(overallRisk?: string | null): RiskLevel {
+  if (overallRisk === 'danger') return 'danger';
+  if (overallRisk === 'warning' || overallRisk === 'caution') return 'caution';
   return 'good';
 }
 
@@ -129,77 +127,72 @@ function normalizeDate(dateStr: string | null | undefined): string {
   return dateStr ? dateStr.slice(0, 10) : '';
 }
 
-function mapApiRiskFactor(rf: ApiRiskFactor): RiskFactor {
+function mapPoisonItem(item: ApiPoisonItem): RiskFactor {
+  const sev = (item.severity ?? 'caution').toLowerCase();
+  const severity: Severity = sev === 'danger' ? 'danger' : sev === 'warning' ? 'warning' : 'caution';
   return {
-    title: rf.clause_title ?? '알 수 없는 조항',
-    desc: rf.clause_summary ?? rf.mitigation_suggest ?? '',
-    severity: rf.risk_level === 'high' ? 'high' : 'medium',
+    category: item.category ?? 'OTHER',
+    clause: item.clause ?? '',
+    severity,
+    reason: item.reason ?? '',
+    source: item.source ?? '',
   };
-}
-
-function formatContactPerson(contact: Record<string, unknown> | null): string {
-  if (!contact) return '미정';
-  const name = contact.name as string | undefined;
-  const tel = contact.tel as string | undefined;
-  const dept = contact.dept as string | undefined;
-  const email = contact.email as string | undefined;
-  const parts: string[] = [];
-  if (name) parts.push(name);
-  if (dept) parts.push(dept);
-  if (tel) parts.push(tel);
-  if (email) parts.push(email);
-  return parts.length > 0 ? parts.join(' / ') : '미정';
-}
-
-function formatRequiredDocs(docs: Record<string, unknown> | null): string {
-  if (!docs) return '미정';
-  if (Array.isArray(docs)) return (docs as string[]).join(', ');
-  if (typeof docs === 'string') return docs;
-  const values = Object.values(docs);
-  if (values.length > 0) {
-    if (Array.isArray(values[0])) return (values[0] as string[]).join(', ');
-    return values.filter((v) => typeof v === 'string').join(', ');
-  }
-  return '미정';
 }
 
 function mapAnalysisResultToBidDetail(
   analysis: ApiAnalysisResult,
   budget: number | null,
 ): BidDetail {
-  const budgetStr = analysis.budget_raw
-    ? analysis.budget_raw
-    : budget
-    ? budget >= 100_000_000
-      ? `${(budget / 100_000_000).toFixed(1).replace(/\.0$/, '')}억원 (부가세 포함)`
-      : `${(budget / 10_000).toFixed(0)}만원 (부가세 포함)`
+  const price = analysis.estimated_price ?? analysis.allocated_budget ?? budget;
+  const budgetStr = price
+    ? price >= 100_000_000
+      ? `${(price / 100_000_000).toFixed(1).replace(/\.0$/, '')}억원`
+      : `${(price / 10_000).toFixed(0)}만원`
     : '미공개';
 
-  const execPeriod = analysis.exec_period_raw
-    ? analysis.exec_period_raw
-    : analysis.exec_period_months
-    ? `${analysis.exec_period_months}개월`
-    : '미정';
-
-  const evalMethod =
-    analysis.eval_tech_score != null && analysis.eval_price_score != null
-      ? `기술 ${analysis.eval_tech_score} / 가격 ${analysis.eval_price_score}`
+  const techRequirement =
+    Array.isArray(analysis.tech_requirements) && analysis.tech_requirements.length > 0
+      ? analysis.tech_requirements.join(', ')
       : '미정';
 
+  const evalMethod =
+    Array.isArray(analysis.eval_criteria) && analysis.eval_criteria.length > 0
+      ? `${analysis.eval_criteria.length}개 평가항목`
+      : '미정';
+
+  // analysis.requirements는 {groups:[{group_name, items:[{id,name,description}]}]} 구조.
+  // BidDetail.requirements가 기대하는 RequirementItem[]로 평탄화.
+  const requirements: RequirementItem[] = [];
+  const reqObj = analysis.requirements as { groups?: Array<{ group_name?: string; items?: Array<{ id?: string; name?: string; description?: string }> }> } | null;
+  if (reqObj && Array.isArray(reqObj.groups)) {
+    for (const g of reqObj.groups) {
+      for (const item of (g.items ?? [])) {
+        requirements.push({
+          category: g.group_name ?? '',
+          code: item.id ?? '',
+          name: item.name ?? '',
+          definition: '',
+          detail: item.description ?? '',
+        });
+      }
+    }
+  }
+
   return {
-    purpose: analysis.task_scope ?? '미정',
-    execPeriod,
+    purpose: analysis.project_summary ?? analysis.project_scope ?? '미정',
+    execPeriod: analysis.project_duration ?? '미정',
     budget: budgetStr,
-    deliveryMethod: analysis.exec_location ?? '미정',
-    techRequirement: analysis.key_tech_spec ?? '미정',
-    bidMethod: analysis.bid_qualify ?? '미정',
+    deliveryMethod: '미정',
+    techRequirement,
+    bidMethod: analysis.contract_method ?? '미정',
     evalMethod,
-    securityRequirement: analysis.disqualify_reason ?? '해당 없음',
+    securityRequirement: analysis.qualification ?? '해당 없음',
     subcontractLimit: '미정',
     performanceBond: '미정',
-    requiredDocs: formatRequiredDocs(analysis.required_docs),
-    contactPerson: formatContactPerson(analysis.contact_person),
+    requiredDocs: '미정',
+    contactPerson: analysis.issuing_org ?? '미정',
     analysisModel: analysis.model_used ?? undefined,
+    requirements,
   };
 }
 
@@ -216,7 +209,7 @@ export function mapApiBidListItemToBid(item: ApiBidListItem): Bid {
     aiStatus: mapPipelineStatus(item.pipeline_status),
     type: mapBidType(item),
     dangerCount: 0,
-    collectedAt: normalizeDate(item.bid_ntce_dt),
+    collectedAt: normalizeDate(item.collected_at),
     is_bookmarked: item.is_bookmarked,
     is_in_progress: item.is_in_progress,
     is_expired: item.is_expired,
@@ -226,8 +219,9 @@ export function mapApiBidListItemToBid(item: ApiBidListItem): Bid {
 
 export function mapApiBidDetailToBid(res: ApiBidDetailResponse): Bid {
   const budget = res.asign_bdgt_amt ?? res.presmpt_prce ?? 0;
-  const riskFactors = (res.risk_factors ?? []).map(mapApiRiskFactor);
-  const risk = mapRiskLevel(res.risk_factors ?? []);
+  const poison = res.analysis_result?.poison_clauses ?? null;
+  const riskFactors = (poison?.items ?? []).map(mapPoisonItem);
+  const risk = mapRiskLevel(poison?.risk_level ?? res.analysis_result?.risk_level);
 
   return {
     id: res.bid_ntce_no,
@@ -239,8 +233,8 @@ export function mapApiBidDetailToBid(res: ApiBidDetailResponse): Bid {
     risk,
     aiStatus: mapPipelineStatus(res.pipeline_status),
     type: mapBidType(res),
-    dangerCount: riskFactors.filter((r) => r.severity === 'high').length,
-    collectedAt: normalizeDate(res.bid_ntce_dt),
+    dangerCount: riskFactors.filter((r) => r.severity === 'danger').length,
+    collectedAt: normalizeDate(res.collected_at),
     is_bookmarked: res.is_bookmarked,
     is_in_progress: res.is_in_progress,
     is_expired: res.is_expired,
@@ -547,6 +541,142 @@ export async function saveMemo(
   }
 }
 
+export interface AnalysisStatus {
+  pipelineStatus: string;
+  logs: AnalysisLog[];
+}
+
+export async function fetchAnalysisStatus(bid_ntce_no: string): Promise<AnalysisStatus> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/analysis/${encodeURIComponent(bid_ntce_no)}/status`,
+      { signal: AbortSignal.timeout(5_000) }
+    );
+    if (!res.ok) return { pipelineStatus: 'unknown', logs: [] };
+    const data = await res.json() as {
+      pipeline_status: string;
+      logs: Array<{ ts: string; level: string; message: string }>;
+    };
+    const logs: AnalysisLog[] = (data.logs ?? []).map((l) => ({
+      time: l.ts ? l.ts.slice(11, 19) : '',
+      message: l.message,
+      status: l.level === 'success' ? 'success'
+            : l.level === 'error' ? 'error'
+            : 'info',
+    }));
+    return { pipelineStatus: data.pipeline_status, logs };
+  } catch (err) {
+    console.warn('[api] fetchAnalysisStatus 실패:', err);
+    return { pipelineStatus: 'unknown', logs: [] };
+  }
+}
+
+// ─────────────────────────────────────────────
+// 제안목차
+// ─────────────────────────────────────────────
+
+export interface ProposalOutline {
+  sections: Record<string, unknown> | null;
+  guidelineBase: string;
+  modelUsed: string | null;
+  generatedAt: string | null;
+}
+
+export interface OutlineStatus {
+  exists: boolean;
+  logs: AnalysisLog[];
+}
+
+export async function requestOutlineApi(bid_ntce_no: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/outline/run/${encodeURIComponent(bid_ntce_no)}`,
+      { method: 'POST', signal: AbortSignal.timeout(10_000) },
+    );
+    return res.ok;
+  } catch (err) {
+    console.warn('[api] requestOutlineApi 실패:', err);
+    return false;
+  }
+}
+
+export async function fetchOutline(bid_ntce_no: string): Promise<ProposalOutline | null> {
+  try {
+    const res = await fetch(`${BASE_URL}/outline/${encodeURIComponent(bid_ntce_no)}`, { signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) return null;
+    const d = await res.json() as {
+      sections: Record<string, unknown> | null;
+      guideline_base: string;
+      model_used: string | null;
+      generated_at: string | null;
+    };
+    return {
+      sections: d.sections,
+      guidelineBase: d.guideline_base,
+      modelUsed: d.model_used,
+      generatedAt: d.generated_at,
+    };
+  } catch (err) {
+    console.warn('[api] fetchOutline 실패:', err);
+    return null;
+  }
+}
+
+export async function fetchOutlineStatus(bid_ntce_no: string): Promise<OutlineStatus> {
+  try {
+    const res = await fetch(`${BASE_URL}/outline/${encodeURIComponent(bid_ntce_no)}/status`, { signal: AbortSignal.timeout(5_000) });
+    if (!res.ok) return { exists: false, logs: [] };
+    const d = await res.json() as { exists: boolean; logs: Array<{ ts: string; level: string; message: string }> };
+    const logs: AnalysisLog[] = (d.logs ?? []).map((l) => ({
+      time: l.ts ? l.ts.slice(11, 19) : '',
+      message: l.message,
+      status: l.level === 'success' ? 'success'
+            : l.level === 'error' ? 'error'
+            : 'info',
+    }));
+    return { exists: d.exists, logs };
+  } catch (err) {
+    console.warn('[api] fetchOutlineStatus 실패:', err);
+    return { exists: false, logs: [] };
+  }
+}
+
+export async function downloadOutlineExcel(bid_ntce_no: string): Promise<void> {
+  // fetch → blob(same-origin) → <a download="명시적 파일명">로 다운로드 트리거.
+  // iframe/window.open 방식은 cross-origin 응답에서 Content-Disposition을 무시해
+  // 임의 UUID로 저장되는 문제가 있어 사용하지 않는다.
+  try {
+    const res = await fetch(`${BASE_URL}/outline/${encodeURIComponent(bid_ntce_no)}/excel`);
+    if (!res.ok) {
+      console.warn('[api] downloadOutlineExcel HTTP:', res.status);
+      return;
+    }
+    // 백엔드 Content-Disposition: filename*=UTF-8''...
+    const disposition = res.headers.get('Content-Disposition') ?? '';
+    let filename = `(제안목차) ${bid_ntce_no}.xlsx`;
+    const m = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+    if (m) {
+      try { filename = decodeURIComponent(m[1]); } catch { filename = m[1]; }
+    }
+    const blob = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objUrl;
+    a.download = filename;            // 파일명 강제
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    // click 완료 후 정리
+    setTimeout(() => {
+      if (a.parentNode) document.body.removeChild(a);
+      URL.revokeObjectURL(objUrl);
+    }, 200);
+  } catch (err) {
+    console.warn('[api] downloadOutlineExcel 실패:', err);
+  }
+}
+
 export async function requestAnalysisApi(bid_ntce_no: string): Promise<boolean> {
   try {
     const res = await fetch(
@@ -561,5 +691,54 @@ export async function requestAnalysisApi(bid_ntce_no: string): Promise<boolean> 
   } catch (err) {
     console.warn('[api] requestAnalysisApi 실패:', err);
     return false;
+  }
+}
+
+export interface UploadAttachmentResult {
+  ok: boolean;
+  file_name: string;
+  attachment_id: number;
+  reanalysis_started: boolean;
+  error?: string;
+}
+
+/** RFP 등 추가 자료를 직접 업로드하고 자동 재분석을 시작한다. */
+export async function uploadAttachmentApi(
+  bid_ntce_no: string,
+  file: File,
+): Promise<UploadAttachmentResult> {
+  try {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(
+      `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/attachments`,
+      { method: 'POST', body: form, signal: AbortSignal.timeout(60_000) },
+    );
+    if (!res.ok) {
+      let detail = `HTTP ${res.status}`;
+      try {
+        const j = await res.json();
+        if (j?.detail) detail = String(j.detail);
+      } catch {
+        /* ignore */
+      }
+      return { ok: false, file_name: file.name, attachment_id: 0, reanalysis_started: false, error: detail };
+    }
+    const j = await res.json();
+    return {
+      ok: true,
+      file_name: j.file_name ?? file.name,
+      attachment_id: j.attachment_id ?? 0,
+      reanalysis_started: Boolean(j.reanalysis_started),
+    };
+  } catch (err) {
+    console.warn('[api] uploadAttachmentApi 실패:', err);
+    return {
+      ok: false,
+      file_name: file.name,
+      attachment_id: 0,
+      reanalysis_started: false,
+      error: err instanceof Error ? err.message : '업로드 실패',
+    };
   }
 }

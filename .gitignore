@@ -25,3 +25,14 @@ downloads/
 *.pyo
 *.pyd
 .Python
+
+# Sample 원본 RFP/제안서 (저작권, 용량) — analysis.md만 git 추적
+samples/**/*.pdf
+samples/**/*.xlsx
+samples/**/*.hwp
+samples/**/*.hwpx
+samples/**/*.doc
+samples/**/*.docx
+
+# 수동 업로드 첨부 (사용자가 직접 올린 파일)
+downloads/manual/
