@@ -39,9 +39,10 @@ interface BidListPageProps {
   outlineStatusMap?: Record<string, 'none' | 'generating' | 'complete'>;
   onRequestOutline?: (bidId: string) => void;
   onDownloadOutline?: (bidId: string) => void;
+  showBidNumber?: boolean;
 }
 
-export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false, analysisLogsMap, outlineStatusMap, onRequestOutline, onDownloadOutline }: BidListPageProps) {
+export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false, analysisLogsMap, outlineStatusMap, onRequestOutline, onDownloadOutline, showBidNumber = false }: BidListPageProps) {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('bookmarked');
@@ -112,6 +113,7 @@ export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onTo
           onToggleInProgress={handleToggleInProgress}
           selectedBid={selectedBid}
           onOpenSlide={openSlide}
+          showBidNumber={showBidNumber}
         />
         {!hideTargetList && (
           <>
@@ -157,7 +159,7 @@ interface LeftPanelProps extends BidListPageProps {
   onOpenSlide: (bid: Bid) => void;
 }
 
-function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selectedBid, onOpenSlide }: LeftPanelProps) {
+function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selectedBid, onOpenSlide, showBidNumber = false }: LeftPanelProps) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [excludeExpired, setExcludeExpired] = useState(true);
@@ -251,7 +253,8 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
           <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
             <tr style={{ backgroundColor: 'var(--dash-card-deep)' }}>
               {[
-                { label: '공고명', width: undefined },
+                ...(showBidNumber ? [{ label: '공고번호', width: '130px' }] : []),
+                { label: '공고명', width: undefined as string | undefined },
                 { label: '발주기관', width: '96px' },
                 { label: '예산', width: '68px' },
                 { label: '마감일', width: '82px' },
@@ -280,7 +283,7 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
+                <td colSpan={showBidNumber ? 6 : 5} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
                   해당 기간에 수집된 공고가 없습니다
                 </td>
               </tr>
@@ -294,6 +297,7 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
                   onSelect={() => onOpenSlide(bid)}
                   onToggleBookmark={onToggleBookmark}
                   onToggleInProgress={onToggleInProgress}
+                  showBidNumber={showBidNumber}
                 />
               ))
             )}
@@ -308,13 +312,14 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
   );
 }
 
-function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleInProgress }: {
+function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleInProgress, showBidNumber = false }: {
   bid: Bid;
   isSelected: boolean;
   flags: BidFlags;
   onSelect: () => void;
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
+  showBidNumber?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const [tooltip, setTooltip] = useState<{ x: number; y: number } | null>(null);
@@ -336,6 +341,11 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
         transition: 'background-color 0.15s, border-left-color 0.15s',
       }}
     >
+      {showBidNumber && (
+        <td style={{ padding: '12px', verticalAlign: 'middle', width: '130px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{bid.number}</span>
+        </td>
+      )}
       <td style={{ padding: '12px', verticalAlign: 'top' }}>
         <div
           onMouseEnter={(e) => {
@@ -367,7 +377,7 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
         </div>
       </td>
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>
-        <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '96px' }}>{bid.agency}</span>
+        <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', display: 'block', wordBreak: 'keep-all', overflowWrap: 'break-word', maxWidth: '96px', lineHeight: 1.5 }}>{bid.agency}</span>
       </td>
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <span style={{ fontSize: '13px', color: 'var(--dash-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>{formatBudget(bid.budget)}</span>

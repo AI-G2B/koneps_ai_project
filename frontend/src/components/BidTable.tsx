@@ -82,9 +82,10 @@ interface BidTableProps {
   hideFilters?: boolean;
   ceoMode?: boolean;
   onRequestAnalysis?: (bidId: string) => void;
+  showBidNumber?: boolean;
 }
 
-export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, agencySettings, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, pursuedBids, onTogglePursued, hideFilters = false, ceoMode = false, onRequestAnalysis }: BidTableProps) {
+export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, agencySettings, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, pursuedBids, onTogglePursued: _onTogglePursued, hideFilters = false, ceoMode = false, onRequestAnalysis, showBidNumber = false }: BidTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -364,7 +365,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
         </div>
       </td>
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>
-        <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', maxWidth: '80px' }}>{bid.agency}</span>
+        <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', display: 'block', wordBreak: 'keep-all', overflowWrap: 'break-word', maxWidth: '80px', lineHeight: 1.5 }}>{bid.agency}</span>
       </td>
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <span style={{ fontSize: '13px', color: 'var(--dash-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>{formatBudget(bid.budget)}</span>
