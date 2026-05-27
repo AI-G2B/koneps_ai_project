@@ -5,7 +5,7 @@ import { useToast } from './ToastProvider';
 import { useTheme } from 'next-themes';
 import type { User } from './LoginPage';
 import type { NotificationItem } from '../App';
-import type { Bid } from './mockData';
+import type { Bid } from '../types';
 
 interface DashboardHeaderProps {
   user: User;

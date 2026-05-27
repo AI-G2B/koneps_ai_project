@@ -4,7 +4,7 @@ import {
   Circle, CheckCircle2, XCircle, Loader2, ScrollText,
   AlertTriangle, Upload,
 } from 'lucide-react';
-import { type Bid, type AiStatusType, formatBudget, getDaysUntilDeadline } from './mockData';
+import { type Bid, type AiStatusType, type AnalysisLog, formatBudget, getDaysUntilDeadline } from '../types';
 import { RiskBadge } from './BidTable';
 import { useToast } from './ToastProvider';
 
@@ -13,10 +13,10 @@ interface AnalysisDetailPageProps {
   onBack: () => void;
   aiStatus?: AiStatusType;
   onRequestAnalysis?: (bidId: string) => void;
-  analysisLogs?: import('./mockData').AnalysisLog[];
+  analysisLogs?: AnalysisLog[];
   outline?: import('../services/api').ProposalOutline | null;
   outlineStatus?: 'none' | 'generating' | 'complete';
-  outlineLogs?: import('./mockData').AnalysisLog[];
+  outlineLogs?: AnalysisLog[];
   onRequestOutline?: (bidId: string) => void;
   onRegenerateOutline?: (bidId: string) => void;
   onDownloadOutline?: (bidId: string) => void;

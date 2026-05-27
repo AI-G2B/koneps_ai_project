@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Inbox, Sparkles, RefreshCw } from 'lucide-react';
-import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from './mockData';
+import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from '../types';
 import type { AgencySettings } from '../App';
 
 const BADGE_FONT = 'Inter, Noto Sans KR, sans-serif';

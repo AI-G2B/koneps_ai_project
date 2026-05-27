@@ -1,6 +1,6 @@
 import { FileText, Clock, TrendingUp, TrendingDown, Loader2, Inbox, Briefcase, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
-import { type Bid, type AiStatusType, isDeadlineUrgent, TODAY } from './mockData';
+import { type Bid, type AiStatusType, isDeadlineUrgent, TODAY } from '../types';
 import { type ApiDashboardStats } from '../services/api';
 
 interface KpiCardsProps {

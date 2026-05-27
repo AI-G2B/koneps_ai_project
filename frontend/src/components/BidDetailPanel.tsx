@@ -5,7 +5,7 @@ import {
   Sparkles, ChevronRight, Phone, ScrollText, Loader2,
   ExternalLink, Download,
 } from 'lucide-react';
-import { type Bid, type AiStatusType, type RiskFactor, formatBudget, getDaysUntilDeadline } from './mockData';
+import { type Bid, type AiStatusType, type RiskFactor, type AnalysisLog, formatBudget, getDaysUntilDeadline } from '../types';
 import { RiskBadge } from './BidTable';
 import { useToast } from './ToastProvider';
 
@@ -18,7 +18,7 @@ interface BidDetailPanelProps {
   onRequestAnalysis?: (bidId: string) => void;
   ceoMode?: boolean;
   showFullDetail?: boolean;
-  analysisLogs?: import('./mockData').AnalysisLog[];
+  analysisLogs?: AnalysisLog[];
   outlineStatus?: 'none' | 'generating' | 'complete';
   onRequestOutline?: (bidId: string) => void;
   onDownloadOutline?: (bidId: string) => void;

@@ -4,7 +4,7 @@ import {
   Bookmark, BookmarkX, Play, Building2, Banknote, Calendar,
   FileSearch, ListFilter,
 } from 'lucide-react';
-import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
+import { type Bid, type BidFlags, type AiStatusType, type AnalysisLog, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from '../types';
 import { BidSlideOver } from './BidSlideOver';
 import { fetchBidById } from '../services/api';
 
@@ -35,7 +35,7 @@ interface BidListPageProps {
   onOpenAnalysisDetail?: (bid: Bid) => void;
   onRequestAnalysis?: (bidId: string) => void;
   hideTargetList?: boolean;
-  analysisLogsMap?: Record<string, import('./mockData').AnalysisLog[]>;
+  analysisLogsMap?: Record<string, AnalysisLog[]>;
   outlineStatusMap?: Record<string, 'none' | 'generating' | 'complete'>;
   onRequestOutline?: (bidId: string) => void;
   onDownloadOutline?: (bidId: string) => void;

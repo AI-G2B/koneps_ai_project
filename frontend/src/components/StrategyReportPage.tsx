@@ -1,5 +1,5 @@
 import { AlertTriangle, Briefcase, TrendingUp, Clock, DollarSign, Shield } from 'lucide-react';
-import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline } from './mockData';
+import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline } from '../types';
 import { RiskBadge, AiStatusIndicator } from './BidTable';
 
 interface StrategyReportPageProps {

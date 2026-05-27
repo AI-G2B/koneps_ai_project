@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { type Bid, type BidFlags, type AiStatusType, formatBudget, TODAY } from './mockData';
+import { type Bid, type BidFlags, type AiStatusType, formatBudget, TODAY } from '../types';
 import { type ApiTypeStatItem } from '../services/api';
 import { RiskBadge } from './BidTable';
 import { BidSlideOver } from './BidSlideOver';

@@ -11,7 +11,7 @@ import { BookmarkPage } from './components/BookmarkPage';
 import { ProjectPage } from './components/ProjectPage';
 import { BidListPage } from './components/BidListPage';
 import { BottomWidgets } from './components/BottomWidgets';
-import { type Bid, type BidFlags, type AiStatusType, type AnalysisLog } from './components/mockData';
+import { type Bid, type BidFlags, type AiStatusType, type AnalysisLog } from './types';
 import { useToast } from './components/ToastProvider';
 import { AnalysisDetailPage } from './components/AnalysisDetailPage';
 import { AnalysisListPage } from './components/AnalysisListPage';
@@ -366,7 +366,7 @@ export default function App() {
         // 이전 결과의 로그는 백엔드 progress_store.clear()로 비워졌으므로
         // logs는 항상 이번 실행분만 들어있다.
         const completed = exists && logs.some(
-          l => l.level === 'success' && (l.message || '').includes('DB 저장 완료'),
+          l => l.status === 'success' && (l.message || '').includes('DB 저장 완료'),
         );
         if (completed) {
           const outline = await fetchOutline(bidId);
@@ -380,7 +380,7 @@ export default function App() {
           }
         }
         // 실패 로그 감지
-        const failed = logs.some(l => l.level === 'error');
+        const failed = logs.some(l => l.status === 'error');
         if (failed) {
           const restoreTo = force ? 'complete' : 'none';
           outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: restoreTo };

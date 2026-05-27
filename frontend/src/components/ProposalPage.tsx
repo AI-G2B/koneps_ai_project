@@ -1,5 +1,5 @@
 import { BookOpen, Clock } from 'lucide-react';
-import { type Bid, type BidFlags } from './mockData';
+import { type Bid, type BidFlags } from '../types';
 
 interface ProposalPageProps {
   bids: Bid[];
