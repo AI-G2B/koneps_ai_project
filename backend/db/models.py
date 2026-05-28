@@ -56,6 +56,7 @@ class Attachment(Base):
     local_path:   Mapped[Optional[str]]  = mapped_column(Text, nullable=True) # 다운로드 후 로컬 경로
     parse_status: Mapped[str]            = mapped_column(String(20), default="pending")  # pending / done / failed
     downloaded_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    is_rfp:       Mapped[bool]           = mapped_column(Boolean, default=False)  # 제안요청서 여부
 
     notice: Mapped["Notice"] = relationship("Notice", back_populates="attachments")
 
@@ -122,6 +123,22 @@ class User(Base):
     name:       Mapped[str]                = mapped_column(String(50), nullable=False)
     role:       Mapped[str]                = mapped_column(String(20), nullable=False, default='manager')
     created_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+
+    agency_settings: Mapped[list["AgencySetting"]] = relationship(
+        "AgencySetting", back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class AgencySetting(Base):
+    __tablename__ = "agency_settings"
+
+    id:           Mapped[int]            = mapped_column(primary_key=True)
+    user_id:      Mapped[int]            = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    agency_name:  Mapped[str]            = mapped_column(String(200), nullable=False)
+    setting_type: Mapped[str]            = mapped_column(String(10), nullable=False)  # 'preferred' | 'avoided'
+    created_at:   Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), server_default=func.now())
+
+    user: Mapped["User"] = relationship("User", back_populates="agency_settings")
 
 
 class NoticeMemo(Base):
