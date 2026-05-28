@@ -4,7 +4,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from .models import AgencySetting, AnalysisResult, Attachment, Notice, NoticeMemo, ProposalOutline, RiskFactor, User
+from .models import AnalysisResult, Attachment, Notice, NoticeMemo, ProposalOutline, User
 
 KST = timezone(timedelta(hours=9))
 
@@ -22,7 +22,6 @@ async def get_notice_detail(db: AsyncSession, bid_ntce_no: str) -> Notice | None
         .options(
             selectinload(Notice.attachments),
             selectinload(Notice.analysis_result),
-            selectinload(Notice.risk_factors),
         )
         .where(Notice.bid_ntce_no == bid_ntce_no)
         .order_by(Notice.bid_ntce_ord.desc())
@@ -241,23 +240,6 @@ async def upsert_analysis(db: AsyncSession, notice_id: int, data: dict):
         db.add(existing)
     await db.commit()
     return existing
-
-
-# risk_factors
-async def get_risk_factors_by_notice(db: AsyncSession, notice_id: int):
-    result = await db.execute(
-        select(RiskFactor)
-        .where(RiskFactor.notice_id == notice_id)
-        .order_by(RiskFactor.sort_order)
-    )
-    return result.scalars().all()
-
-
-async def create_risk_factors(db: AsyncSession, notice_id: int, factors: list[dict]):
-    objs = [RiskFactor(notice_id=notice_id, **f) for f in factors]
-    db.add_all(objs)
-    await db.commit()
-    return objs
 
 
 async def get_type_stats(db: AsyncSession) -> list[dict]:

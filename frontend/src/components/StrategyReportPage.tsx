@@ -135,7 +135,7 @@ export function StrategyReportPage({ bids, bidFlags, aiStatuses }: StrategyRepor
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                     {bid.riskFactors.slice(0, 2).map((rf, i) => (
                       <div key={i} style={{ fontSize: '12px', color: 'var(--dash-text-3)' }}>
-                        <span style={{ color: '#EF4444', fontWeight: 600 }}>• </span>{rf.title}: {rf.desc}
+                        <span style={{ color: '#EF4444', fontWeight: 600 }}>• </span>{rf.category}: {rf.clause}
                       </div>
                     ))}
                     {bid.riskFactors.length > 2 && (

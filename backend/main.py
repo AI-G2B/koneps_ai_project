@@ -4,7 +4,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.api.routes import bids, analysis, search, auth
+from backend.api.routes import bids, analysis, search, auth, outline
 
 SCHEDULE_HOURS = [10, 13, 16, 20]
 
@@ -108,4 +108,5 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(bids.router, prefix="/bids", tags=["공고"])
 app.include_router(analysis.router, prefix="/analysis", tags=["분석"])
+app.include_router(outline.router, prefix="/outline", tags=["제안목차"])
 app.include_router(search.router, prefix="/search", tags=["검색"])

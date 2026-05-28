@@ -3,10 +3,10 @@ import {
   X, Bookmark, BookmarkX, Play,
   Target, Clock, Wallet, Truck, Code2, Gavel,
   BarChart2, Shield, GitBranch, Percent, AlertTriangle,
-  FileText, ArrowRight, Sparkles, ScrollText, Phone,
+  Sparkles, ScrollText, Phone,
   ExternalLink, Download, Loader2, ChevronRight,
 } from 'lucide-react';
-import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline } from './mockData';
+import { type Bid, type BidFlags, type AiStatusType, type RiskFactor, formatBudget, getDaysUntilDeadline } from './mockData';
 import { RiskBadge } from './BidTable';
 import { useToast } from './ToastProvider';
 
@@ -22,9 +22,13 @@ interface BidSlideOverProps {
   onRequestAnalysis?: (bidId: string) => void;
   ceoMode?: boolean;
   showFullDetail?: boolean;
+  analysisLogs?: import('./mockData').AnalysisLog[];
+  outlineStatus?: 'none' | 'generating' | 'complete';
+  onRequestOutline?: (bidId: string) => void;
+  onDownloadOutline?: (bidId: string) => void;
 }
 
-export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false }: BidSlideOverProps) {
+export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false, analysisLogs, outlineStatus = 'none', onRequestOutline, onDownloadOutline }: BidSlideOverProps) {
   const { showToast } = useToast();
   const [showFileMenu, setShowFileMenu] = useState(false);
   const fileMenuRef = useRef<HTMLDivElement>(null);
@@ -49,7 +53,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
 
   const daysLeft = bid ? getDaysUntilDeadline(bid.deadline) : 0;
   const isUrgent = daysLeft <= 3;
-  const aiStatus: AiStatusType = bid ? (aiStatuses?.[bid.id] ?? 'none') : 'none';
+  const aiStatus: AiStatusType = bid ? (aiStatuses?.[bid.id] ?? bid.aiStatus ?? 'none') : 'none';
   const isNoneOrPending = aiStatus === 'none' || aiStatus === 'pending';
   const isAnalyzing = aiStatus === 'analyzing';
   const detail = bid?.detail;
@@ -359,17 +363,26 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
 
             {/* AI 분석 중 안내 */}
             {isAnalyzing && (
-              <div
-                className="flex flex-col items-center justify-center"
-                style={{ padding: '40px 20px', borderBottom: '1px solid var(--dash-border)' }}
-              >
-                <Loader2 className="animate-spin" style={{ width: '28px', height: '28px', color: '#F59E0B', marginBottom: '12px' }} />
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '4px' }}>
-                  AI 분석이 진행 중입니다
+              <div style={{ padding: '20px', borderBottom: '1px solid var(--dash-border)' }}>
+                <div className="flex flex-col items-center justify-center mb-4">
+                  <Loader2 className="animate-spin" style={{ width: '28px', height: '28px', color: '#F59E0B', marginBottom: '12px' }} />
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '4px' }}>
+                    AI 분석이 진행 중입니다
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
+                    Gemini가 첨부 문서를 분석 중입니다 (30초~2분 소요).
+                  </div>
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
-                  공고 문서를 파싱하고 핵심 항목을<br />추출하고 있습니다. 잠시만 기다려주세요.
-                </div>
+                {analysisLogs && analysisLogs.length > 0 && (
+                  <div className="rounded-lg" style={{ padding: '10px 12px', backgroundColor: 'var(--dash-card-deep)', border: '1px solid var(--dash-border)', maxHeight: '240px', overflowY: 'auto' }}>
+                    {analysisLogs.map((log, i) => (
+                      <div key={i} className="flex items-start gap-2" style={{ fontSize: '11px', padding: '3px 0', lineHeight: 1.5 }}>
+                        <span style={{ color: 'var(--dash-text-5)', fontFamily: 'monospace', flexShrink: 0 }}>{log.time}</span>
+                        <span style={{ color: log.status === 'success' ? '#22C55E' : log.status === 'error' ? '#EF4444' : 'var(--dash-text-2)' }}>{log.message}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -473,8 +486,8 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-                    {riskFactors.map((w) => (
-                      <RiskCard key={w.title} title={w.title} desc={w.desc} severity={w.severity} ceoMode={ceoMode && !showFullDetail} />
+                    {riskFactors.map((w, i) => (
+                      <RiskCard key={i} {...w} ceoMode={ceoMode && !showFullDetail} />
                     ))}
                   </div>
                 )}
@@ -487,24 +500,65 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
             className="flex-shrink-0"
             style={{ padding: '12px 20px', borderTop: '1px solid var(--dash-border)' }}
           >
-            {!ceoMode && (
-              <button
-                onClick={() => showToast('info', '제안목차 자동 생성 기능은 현재 개발 중입니다.')}
-                className="w-full flex items-center justify-center gap-2 rounded-xl"
-                style={{
-                  padding: '11px 16px',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  color: 'var(--dash-text-3)',
-                  backgroundColor: 'var(--dash-card-deep)',
-                  border: '1px solid var(--dash-border-med)',
-                  cursor: 'default',
-                }}
-              >
-                <Clock style={{ width: '15px', height: '15px' }} />
-                제안목차 생성 (개발 중)
-              </button>
-            )}
+            {!ceoMode && bid && (() => {
+              const analysisDone = aiStatus === 'complete';
+              const supported = isProposalSupported;
+              const generating = outlineStatus === 'generating';
+              const complete = outlineStatus === 'complete';
+              const disabled = !analysisDone || !supported || generating;
+
+              const label = complete
+                ? '제안목차 Excel 다운로드'
+                : generating
+                ? '제안목차 생성 중...'
+                : !analysisDone
+                ? 'AI 분석 먼저 진행하세요'
+                : !supported
+                ? '제안목차 미지원 유형 (ISP/ISMP만)'
+                : '제안목차 자동 생성';
+
+              const bg = complete
+                ? '#2563EB'
+                : generating
+                ? 'var(--dash-card-deep)'
+                : disabled
+                ? 'var(--dash-card-deep)'
+                : '#2563EB';
+              const color = complete
+                ? '#fff'
+                : generating || disabled
+                ? 'var(--dash-text-4)'
+                : '#fff';
+
+              return (
+                <button
+                  onClick={() => {
+                    if (complete) onDownloadOutline?.(bid.id);
+                    else if (!disabled) onRequestOutline?.(bid.id);
+                  }}
+                  disabled={disabled && !complete}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl"
+                  style={{
+                    padding: '11px 16px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    color,
+                    backgroundColor: bg,
+                    border: '1px solid var(--dash-border-med)',
+                    cursor: disabled && !complete ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {generating ? (
+                    <Loader2 className="animate-spin" style={{ width: '15px', height: '15px' }} />
+                  ) : complete ? (
+                    <Download style={{ width: '15px', height: '15px' }} />
+                  ) : (
+                    <ScrollText style={{ width: '15px', height: '15px' }} />
+                  )}
+                  {label}
+                </button>
+              );
+            })()}
             <button
               className="w-full flex items-center justify-center gap-1.5 rounded-xl transition-colors"
               onClick={() => { if (bid) onOpenAnalysisDetail?.(bid); }}
@@ -561,31 +615,36 @@ function SlideOverSectionTitle({ icon: Icon, title, badge, accentColor, badgeBg,
   );
 }
 
-function RiskCard({ title, desc, severity, ceoMode = false }: { title: string; desc: string; severity: 'high' | 'medium'; ceoMode?: boolean }) {
-  const isHigh = severity === 'high';
-  const color = isHigh ? '#EF4444' : '#F97316';
-  const bg = isHigh ? 'rgba(239,68,68,0.07)' : 'rgba(249,115,22,0.07)';
-  const border = isHigh ? 'rgba(239,68,68,0.15)' : 'rgba(249,115,22,0.15)';
+const RISK_SEVERITY_CFG = {
+  danger:  { color: '#EF4444', bg: 'rgba(239,68,68,0.07)',  border: 'rgba(239,68,68,0.15)',  label: '위험' },
+  warning: { color: '#F97316', bg: 'rgba(249,115,22,0.07)', border: 'rgba(249,115,22,0.15)', label: '경고' },
+  caution: { color: '#EAB308', bg: 'rgba(234,179,8,0.07)',  border: 'rgba(234,179,8,0.15)',  label: '주의' },
+} as const;
+
+function RiskCard({ category, clause, severity, reason, source, ceoMode = false }: RiskFactor & { ceoMode?: boolean }) {
+  const cfg = RISK_SEVERITY_CFG[severity] ?? RISK_SEVERITY_CFG.caution;
 
   return (
     <div
       className="rounded-lg"
       style={{
         padding: '10px 12px',
-        backgroundColor: bg,
-        border: `1px solid ${border}`,
-        borderLeft: `3px solid ${color}`,
+        backgroundColor: cfg.bg,
+        border: `1px solid ${cfg.border}`,
+        borderLeft: `3px solid ${cfg.color}`,
       }}
     >
       <div className="flex items-center gap-1.5" style={{ marginBottom: ceoMode ? 0 : '6px' }}>
-        <AlertTriangle style={{ width: '12px', height: '12px', color, flexShrink: 0 }} />
-        <span style={{ fontSize: '11px', fontWeight: 600, color }}>
-          {isHigh ? '고위험' : '중위험'}
-        </span>
-        <span style={{ fontSize: '11px', color: 'var(--dash-text)', fontWeight: 500 }}>— {title}</span>
+        <AlertTriangle style={{ width: '12px', height: '12px', color: cfg.color, flexShrink: 0 }} />
+        <span style={{ fontSize: '11px', fontWeight: 600, color: cfg.color }}>{cfg.label}</span>
+        <span style={{ fontSize: '11px', color: 'var(--dash-text)', fontWeight: 500 }}>— {category}</span>
       </div>
       {!ceoMode && (
-        <p style={{ fontSize: '11px', color: 'var(--dash-text-2)', lineHeight: 1.6, marginBottom: '0' }}>{desc}</p>
+        <>
+          <p style={{ fontSize: '11px', color: 'var(--dash-text)', lineHeight: 1.6, marginBottom: '4px' }}>{clause}</p>
+          {reason && <p style={{ fontSize: '11px', color: 'var(--dash-text-2)', lineHeight: 1.6, marginBottom: source ? '2px' : 0 }}>판단근거: {reason}</p>}
+          {source && <p style={{ fontSize: '10px', color: 'var(--dash-text-4)', margin: 0 }}>출처: {source}</p>}
+        </>
       )}
     </div>
   );

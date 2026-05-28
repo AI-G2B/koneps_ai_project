@@ -7,10 +7,14 @@ export interface BidFlags {
   inProgress: boolean;
 }
 
+export type Severity = 'caution' | 'warning' | 'danger';
+
 export interface RiskFactor {
-  title: string;
-  desc: string;
-  severity: 'high' | 'medium';
+  category: string;   // S1~L4 또는 OTHER
+  clause: string;     // RFP 원문 조항
+  severity: Severity; // caution | warning | danger
+  reason: string;     // 판단 근거
+  source: string;     // 출처 (절/조항/페이지)
 }
 
 export interface RequirementItem {

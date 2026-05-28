@@ -11,7 +11,7 @@ import { BookmarkPage } from './components/BookmarkPage';
 import { ProjectPage } from './components/ProjectPage';
 import { BidListPage } from './components/BidListPage';
 import { BottomWidgets } from './components/BottomWidgets';
-import { type Bid, type BidFlags, type AiStatusType } from './components/mockData';
+import { type Bid, type BidFlags, type AiStatusType, type AnalysisLog } from './components/mockData';
 import { useToast } from './components/ToastProvider';
 import { AnalysisDetailPage } from './components/AnalysisDetailPage';
 import { AnalysisListPage } from './components/AnalysisListPage';
@@ -23,6 +23,13 @@ import {
   toggleBookmarkApi,
   toggleInProgressApi,
   requestAnalysisApi,
+  fetchAnalysisStatus,
+  uploadAttachmentApi,
+  requestOutlineApi,
+  fetchOutline,
+  fetchOutlineStatus,
+  downloadOutlineExcel,
+  type ProposalOutline,
   fetchDashboardStats,
   fetchTypeStats,
   collectBidsApi,
@@ -89,9 +96,18 @@ export default function App() {
   const [isFetching, setIsFetching] = useState(false);
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [activePage, setActivePage] = useState<PageType>('대시보드');
+  const [activePage, setActivePage] = useState<PageType>(() => {
+    const saved = localStorage.getItem('koneps:activePage');
+    return (saved as PageType) ?? '대시보드';
+  });
   const [bidFlags, setBidFlags] = useState<Record<string, BidFlags>>({});
   const [aiStatuses, setAiStatuses] = useState<Record<string, AiStatusType>>({});
+  const [analysisLogsMap, setAnalysisLogsMap] = useState<Record<string, AnalysisLog[]>>({});
+  const [outlinesMap, setOutlinesMap] = useState<Record<string, ProposalOutline>>({});
+  const [outlineLogsMap, setOutlineLogsMap] = useState<Record<string, AnalysisLog[]>>({});
+  const [outlineStatusMap, setOutlineStatusMap] = useState<Record<string, 'none' | 'generating' | 'complete'>>({});
+  const outlineStatusRef = useRef<Record<string, 'none' | 'generating' | 'complete'>>({});
+  const outlineTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [dashboardStats, setDashboardStats] = useState<ApiDashboardStats | null>(null);
   const [typeStats, setTypeStats] = useState<ApiTypeStatItem[]>([]);
@@ -129,6 +145,7 @@ export default function App() {
         fetchTypeStats(),
       ]);
       setBids(fetchedBids);
+      syncAiStatusesFromList(fetchedBids);
       setBidFlags(prev => {
         const merged = { ...prev };
         Object.entries(flags).forEach(([id, flag]) => {
@@ -150,22 +167,34 @@ export default function App() {
 
   useEffect(() => {
     Promise.all([
+      fetchBids().then(({ bids: fetchedBids, flags }) => {
+        setBids(fetchedBids);
+        syncAiStatusesFromList(fetchedBids);
+        setBidFlags(prev => {
+          const merged = { ...prev };
+          Object.entries(flags).forEach(([id, flag]) => {
+            merged[id] = { bookmarked: flag.bookmarked, inProgress: flag.inProgress };
+          });
+          return merged;
+        });
+      }),
       fetchDashboardStats().then(setDashboardStats),
       fetchTypeStats().then(setTypeStats),
     ]);
   }, []);
 
-  const requestAnalysis = async (bidId: string) => {
+  const requestAnalysis = async (bidId: string, opts?: { force?: boolean }) => {
+    const force = opts?.force === true;
     const current = aiStatusesRef.current[bidId] ?? 'none';
-    if (current === 'analyzing' || current === 'complete') return;
+    if (!force && (current === 'analyzing' || current === 'complete')) return;
     if (analysisTimers.current[bidId]) return;
 
     aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'analyzing' };
     setAiStatuses(prev => ({ ...prev, [bidId]: 'analyzing' }));
+    setAnalysisLogsMap(prev => ({ ...prev, [bidId]: [] }));
 
-    const success = await requestAnalysisApi(bidId);
-
-    delete analysisTimers.current[bidId];
+    // force 모드(업로드 후 재분석)는 백엔드에서 이미 트리거되었으므로 호출 생략.
+    const success = force ? true : await requestAnalysisApi(bidId);
 
     if (!success) {
       aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'none' };
@@ -175,14 +204,166 @@ export default function App() {
       return;
     }
 
-    if ((aiStatusesRef.current[bidId] ?? 'none') !== 'analyzing') return;
-    aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'complete' };
-    setAiStatuses(prev => ({ ...prev, [bidId]: 'complete' }));
-    const bid = bids.find(b => b.id === bidId);
-    if (bid) {
-      showToast('success', `AI 분석이 완료되었습니다 — ${bid.title}`);
-      addNotification({ type: 'analysis_complete', title: 'AI 분석 완료', message: `${bid.title} 분석이 완료되었습니다` });
+    // 백엔드 분석은 BackgroundTasks(비동기)로 수십 초 ~ 수 분 소요.
+    // 폴링으로 pipeline_status가 'analyzed'(=aiStatus 'complete')가 될 때까지 대기 후 detail 갱신.
+    const startTime = Date.now();
+    const MAX_MS = 5 * 60 * 1000;
+    const POLL_MS = 3000;
+
+    const poll = async () => {
+      if ((aiStatusesRef.current[bidId] ?? 'none') !== 'analyzing') {
+        delete analysisTimers.current[bidId];
+        return;
+      }
+      if (Date.now() - startTime > MAX_MS) {
+        aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'none' };
+        setAiStatuses(prev => ({ ...prev, [bidId]: 'none' }));
+        showToast('warning', 'AI 분석이 시간 초과되었습니다');
+        delete analysisTimers.current[bidId];
+        return;
+      }
+      try {
+        const { pipelineStatus, logs } = await fetchAnalysisStatus(bidId);
+        setAnalysisLogsMap(prev => ({ ...prev, [bidId]: logs }));
+        if (pipelineStatus === 'analyzed') {
+          const detailed = await fetchBidById(bidId);
+          aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'complete' };
+          setAiStatuses(prev => ({ ...prev, [bidId]: 'complete' }));
+          setBids(prev => prev.map(b => b.id === bidId ? { ...b, ...detailed } : b));
+          setSelectedBid(prev => (prev && prev.id === bidId) ? detailed : prev);
+          setAnalysisDetailBid(prev => (prev && prev.id === bidId) ? detailed : prev);
+          showToast('success', `AI 분석이 완료되었습니다 — ${detailed.title}`);
+          addNotification({ type: 'analysis_complete', title: 'AI 분석 완료', message: `${detailed.title} 분석이 완료되었습니다` });
+          delete analysisTimers.current[bidId];
+          return;
+        }
+        if (pipelineStatus === 'failed') {
+          aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'none' };
+          setAiStatuses(prev => ({ ...prev, [bidId]: 'none' }));
+          showToast('warning', `AI 분석이 실패했습니다 — ${bids.find(b => b.id === bidId)?.title ?? bidId}`);
+          delete analysisTimers.current[bidId];
+          return;
+        }
+      } catch {
+        // 일시 오류는 다음 폴링에서 재시도
+      }
+      analysisTimers.current[bidId] = setTimeout(poll, POLL_MS);
+    };
+    analysisTimers.current[bidId] = setTimeout(poll, POLL_MS);
+  };
+
+  const requestOutline = async (bidId: string, opts?: { force?: boolean }) => {
+    const force = opts?.force === true;
+    const current = outlineStatusRef.current[bidId] ?? 'none';
+    if (current === 'generating') return;          // 중복 클릭 차단
+    if (!force && current === 'complete') return;  // 이미 있음 — 재생성은 force 필요
+
+    // 진행 중 타이머 정리 (재생성 경로)
+    if (outlineTimers.current[bidId]) {
+      clearTimeout(outlineTimers.current[bidId]);
+      delete outlineTimers.current[bidId];
     }
+
+    outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: 'generating' };
+    setOutlineStatusMap(prev => ({ ...prev, [bidId]: 'generating' }));
+    setOutlineLogsMap(prev => ({ ...prev, [bidId]: [] }));
+
+    const success = await requestOutlineApi(bidId);
+    if (!success) {
+      // 재생성이면 기존 상태로 복귀, 첫 생성이면 none
+      const restoreTo = force ? 'complete' : 'none';
+      outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: restoreTo };
+      setOutlineStatusMap(prev => ({ ...prev, [bidId]: restoreTo }));
+      showToast('warning', '제안목차 생성 요청 실패');
+      return;
+    }
+
+    if (force) {
+      showToast('info', '제안목차 재생성을 시작합니다');
+    }
+
+    const startTime = Date.now();
+    const MAX_MS = 5 * 60 * 1000;
+    const POLL_MS = 3000;
+
+    const poll = async () => {
+      if ((outlineStatusRef.current[bidId] ?? 'none') !== 'generating') {
+        delete outlineTimers.current[bidId];
+        return;
+      }
+      if (Date.now() - startTime > MAX_MS) {
+        // 시간 초과: force면 기존 outline 유지, 아니면 none
+        const restoreTo = force ? 'complete' : 'none';
+        outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: restoreTo };
+        setOutlineStatusMap(prev => ({ ...prev, [bidId]: restoreTo }));
+        showToast('warning', '제안목차 생성 시간 초과');
+        delete outlineTimers.current[bidId];
+        return;
+      }
+      try {
+        const { exists, logs } = await fetchOutlineStatus(bidId);
+        setOutlineLogsMap(prev => ({ ...prev, [bidId]: logs }));
+        // 완료 판정: "DB 저장 완료" success 로그 + exists.
+        // 이전 결과의 로그는 백엔드 progress_store.clear()로 비워졌으므로
+        // logs는 항상 이번 실행분만 들어있다.
+        const completed = exists && logs.some(
+          l => l.level === 'success' && (l.message || '').includes('DB 저장 완료'),
+        );
+        if (completed) {
+          const outline = await fetchOutline(bidId);
+          if (outline) {
+            setOutlinesMap(prev => ({ ...prev, [bidId]: outline }));
+            outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: 'complete' };
+            setOutlineStatusMap(prev => ({ ...prev, [bidId]: 'complete' }));
+            showToast('success', force ? '제안목차 재생성 완료' : '제안목차 생성 완료');
+            delete outlineTimers.current[bidId];
+            return;
+          }
+        }
+        // 실패 로그 감지
+        const failed = logs.some(l => l.level === 'error');
+        if (failed) {
+          const restoreTo = force ? 'complete' : 'none';
+          outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: restoreTo };
+          setOutlineStatusMap(prev => ({ ...prev, [bidId]: restoreTo }));
+          showToast('warning', '제안목차 생성 실패 — 로그를 확인하세요');
+          delete outlineTimers.current[bidId];
+          return;
+        }
+      } catch {
+        // 일시 오류 → 다음 폴링 재시도
+      }
+      outlineTimers.current[bidId] = setTimeout(poll, POLL_MS);
+    };
+    outlineTimers.current[bidId] = setTimeout(poll, POLL_MS);
+  };
+
+  /** 재생성 헬퍼 — UI 컴포넌트가 단순 callback으로 호출하도록 */
+  const regenerateOutline = (bidId: string) => requestOutline(bidId, { force: true });
+
+  /** 사용자가 RFP/과업지시서 등을 직접 업로드 → 백엔드가 자동 재분석 시작.
+   *  여기서는 상태를 'analyzing'으로 되돌리고 폴링을 다시 켠다. */
+  const uploadAttachment = async (bidId: string, file: File): Promise<boolean> => {
+    const res = await uploadAttachmentApi(bidId, file);
+    if (!res.ok) {
+      showToast('warning', res.error ?? '업로드 실패');
+      return false;
+    }
+    // 진행 중 폴링이 있다면 종료하고 force 모드로 재시작
+    if (analysisTimers.current[bidId]) {
+      clearTimeout(analysisTimers.current[bidId]);
+      delete analysisTimers.current[bidId];
+    }
+    aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'none' };
+    setAiStatuses(prev => ({ ...prev, [bidId]: 'none' }));
+    // 백엔드가 BackgroundTasks로 트리거했으므로 force=true (재호출 방지)
+    requestAnalysis(bidId, { force: true });
+    addNotification({
+      type: 'analysis_fail',
+      title: '자료 업로드 완료',
+      message: `${res.file_name} 업로드 — AI 재분석을 시작합니다.`,
+    });
+    return true;
   };
 
   const resetAnalysis = (bidId: string) => {
@@ -228,12 +409,60 @@ const toggleBookmark = (bidId: string) => {
   };
 
   const [analysisDetailBid, setAnalysisDetailBid] = useState<Bid | null>(null);
-  const [showAnalysisDetail, setShowAnalysisDetail] = useState(false);
+  const [showAnalysisDetail, setShowAnalysisDetail] = useState<boolean>(
+    () => localStorage.getItem('koneps:showAnalysisDetail') === 'true'
+  );
 
   const openAnalysisDetail = (bid: Bid) => {
     setAnalysisDetailBid(bid);
     setShowAnalysisDetail(true);
+    // 이미 서버에서 'complete'으로 내려왔다면 런타임 aiStatuses에도 즉시 반영
+    syncAiStatus(bid);
+    // 분석은 완료됐지만 detail이 비어있으면(리스트에서 바로 진입) 상세를 가져온다.
+    if (bid.aiStatus === 'complete' && !bid.detail) {
+      fetchBidById(bid.id)
+        .then((detailed) => {
+          setAnalysisDetailBid(detailed);
+          syncAiStatus(detailed);
+          setBids(prev => prev.map(b => b.id === bid.id ? { ...b, ...detailed } : b));
+        })
+        .catch(() => {});
+    }
   };
+
+  // 새로고침해도 페이지/AI 분석 화면이 유지되도록 localStorage에 persist
+  useEffect(() => {
+    localStorage.setItem('koneps:activePage', activePage);
+  }, [activePage]);
+
+  useEffect(() => {
+    localStorage.setItem('koneps:showAnalysisDetail', String(showAnalysisDetail));
+  }, [showAnalysisDetail]);
+
+  // analysisDetailBid이 set될 때만 저장. mount 시 null이라고 지우지 않음 (그러면 새로고침마다 자기파괴).
+  useEffect(() => {
+    if (analysisDetailBid) {
+      localStorage.setItem('koneps:analysisDetailBidId', analysisDetailBid.id);
+    }
+  }, [analysisDetailBid]);
+
+  // 새로고침 후 AI 분석 페이지를 보고 있었다면 상세를 다시 가져와 복원
+  useEffect(() => {
+    if (!user) return;
+    if (analysisDetailBid) return;
+    if (!showAnalysisDetail) return;  // 닫혀있던 페이지는 굳이 복원하지 않음
+    const savedId = localStorage.getItem('koneps:analysisDetailBidId');
+    if (!savedId) return;
+    fetchBidById(savedId)
+      .then((b) => {
+        setAnalysisDetailBid(b);
+        if (b.aiStatus === 'complete') {
+          aiStatusesRef.current = { ...aiStatusesRef.current, [b.id]: 'complete' };
+          setAiStatuses(prev => ({ ...prev, [b.id]: 'complete' }));
+        }
+      })
+      .catch(() => {});
+  }, [user, showAnalysisDetail]);
 
   const [agencySettings, setAgencySettings] = useState<AgencySettings>({
     preferred: ['행정안전부', '국토교통부'],
@@ -245,13 +474,35 @@ const toggleBookmark = (bidId: string) => {
     if (!CEO_ALLOWED_PAGES.includes(activePage)) setActivePage('대시보드');
   }, [user, activePage]);
 
+  const syncAiStatus = (bid: Bid) => {
+    // 서버 분석 상태(pipeline_status 기반 bid.aiStatus)를 런타임 aiStatuses에 반영.
+    // 이미 분석된 공고를 목록/검색에서 열었을 때 분석 결과가 보이도록 한다.
+    if (bid.aiStatus === 'complete') {
+      setAiStatuses(prev => ({ ...prev, [bid.id]: 'complete' }));
+      aiStatusesRef.current = { ...aiStatusesRef.current, [bid.id]: 'complete' };
+    }
+  };
+
+  /** 목록 응답에 'complete'으로 내려온 공고들을 런타임 aiStatuses에 일괄 반영. */
+  const syncAiStatusesFromList = (list: Bid[]) => {
+    const completed: Record<string, AiStatusType> = {};
+    for (const b of list) {
+      if (b.aiStatus === 'complete') completed[b.id] = 'complete';
+    }
+    if (Object.keys(completed).length === 0) return;
+    setAiStatuses(prev => ({ ...prev, ...completed }));
+    aiStatusesRef.current = { ...aiStatusesRef.current, ...completed };
+  };
+
   const handleSelectBid = async (bid: Bid) => {
     setSelectedBid(bid);
+    syncAiStatus(bid);
     if (bid.detail) return;
     setDetailLoading(true);
     try {
       const detailed = await fetchBidById(bid.id);
       setSelectedBid(detailed);
+      syncAiStatus(detailed);
     } finally {
       setDetailLoading(false);
     }
@@ -319,6 +570,10 @@ const toggleBookmark = (bidId: string) => {
               onToggleInProgress={toggleInProgress}
               onOpenAnalysisDetail={openAnalysisDetail}
               onRequestAnalysis={requestAnalysis}
+              analysisLogsMap={analysisLogsMap}
+              outlineStatusMap={outlineStatusMap}
+              onRequestOutline={requestOutline}
+              onDownloadOutline={downloadOutlineExcel}
             />
           ) : activePage === 'AI 분석' ? (
             <AnalysisListPage
@@ -377,7 +632,7 @@ const toggleBookmark = (bidId: string) => {
                   ceoMode={true}
                   onRequestAnalysis={requestAnalysis}
                 />
-                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} ceoMode={true} />
+                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} ceoMode={true} analysisLogs={selectedBid ? analysisLogsMap[selectedBid.id] : undefined} outlineStatus={selectedBid ? outlineStatusMap[selectedBid.id] : 'none'} onRequestOutline={requestOutline} onDownloadOutline={downloadOutlineExcel} />
               </div>
               <BottomWidgets
                 bids={inProgressBids}
@@ -404,6 +659,10 @@ const toggleBookmark = (bidId: string) => {
                   onOpenAnalysisDetail={openAnalysisDetail}
                   onRequestAnalysis={requestAnalysis}
                   hideTargetList={true}
+                  analysisLogsMap={analysisLogsMap}
+                  outlineStatusMap={outlineStatusMap}
+                  onRequestOutline={requestOutline}
+                  onDownloadOutline={downloadOutlineExcel}
                 />
               </div>
               <BottomWidgets
@@ -426,8 +685,16 @@ const toggleBookmark = (bidId: string) => {
           <AnalysisDetailPage
             bid={analysisDetailBid}
             onBack={() => setShowAnalysisDetail(false)}
-            aiStatus={aiStatuses[analysisDetailBid.id] ?? 'none'}
+            aiStatus={aiStatuses[analysisDetailBid.id] ?? analysisDetailBid.aiStatus ?? 'none'}
             onRequestAnalysis={requestAnalysis}
+            analysisLogs={analysisLogsMap[analysisDetailBid.id]}
+            outline={outlinesMap[analysisDetailBid.id]}
+            outlineStatus={outlineStatusMap[analysisDetailBid.id] ?? 'none'}
+            outlineLogs={outlineLogsMap[analysisDetailBid.id]}
+            onRequestOutline={requestOutline}
+            onRegenerateOutline={regenerateOutline}
+            onDownloadOutline={downloadOutlineExcel}
+            onUploadAttachment={uploadAttachment}
           />
         </div>
       )}

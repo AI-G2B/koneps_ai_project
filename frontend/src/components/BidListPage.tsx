@@ -36,9 +36,13 @@ interface BidListPageProps {
   onOpenAnalysisDetail?: (bid: Bid) => void;
   onRequestAnalysis?: (bidId: string) => void;
   hideTargetList?: boolean;
+  analysisLogsMap?: Record<string, import('./mockData').AnalysisLog[]>;
+  outlineStatusMap?: Record<string, 'none' | 'generating' | 'complete'>;
+  onRequestOutline?: (bidId: string) => void;
+  onDownloadOutline?: (bidId: string) => void;
 }
 
-export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false }: BidListPageProps) {
+export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false, analysisLogsMap, outlineStatusMap, onRequestOutline, onDownloadOutline }: BidListPageProps) {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('bookmarked');
@@ -138,6 +142,10 @@ export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onTo
         onToggleInProgress={handleToggleInProgress}
         onOpenAnalysisDetail={onOpenAnalysisDetail}
         onRequestAnalysis={onRequestAnalysis}
+        analysisLogs={selectedBid && analysisLogsMap ? analysisLogsMap[selectedBid.id] : undefined}
+        outlineStatus={selectedBid && outlineStatusMap ? outlineStatusMap[selectedBid.id] : 'none'}
+        onRequestOutline={onRequestOutline}
+        onDownloadOutline={onDownloadOutline}
       />
     </>
   );
@@ -151,7 +159,7 @@ interface LeftPanelProps extends BidListPageProps {
 }
 
 function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selectedBid, onOpenSlide }: LeftPanelProps) {
-  const [dateFilter, setDateFilter] = useState<DateFilter>('today');
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [excludeExpired, setExcludeExpired] = useState(true);
 

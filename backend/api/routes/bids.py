@@ -20,7 +20,15 @@ from datetime import date, datetime, timedelta, timezone
 
 KST = timezone(timedelta(hours=9))
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    UploadFile,
+)
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,7 +47,7 @@ from backend.db.crud import (
     set_in_progress,
     upsert_memo,
 )
-from backend.db.models import Notice
+from backend.db.models import Attachment, Notice
 from backend.db.database import get_db
 
 router = APIRouter()
@@ -144,47 +152,27 @@ class BidListResponse(BaseModel):
 
 
 class AnalysisResultSchema(BaseModel):
-    """AI 분석 결과 스키마"""
+    """AI 분석 결과 스키마. 독소조항은 poison_clauses(JSONB)에 포함."""
 
-    budget_amt: float | None = None
-    budget_raw: str | None = None
-    bid_qualify: str | None = None
-    exec_period_months: int | None = None
-    exec_period_raw: str | None = None
-    manmonth_total: float | None = None
-    manmonth_detail: dict | None = None
-    past_performance: str | None = None
-    eval_tech_score: float | None = None
-    eval_price_score: float | None = None
-    task_scope: str | None = None
-    joint_supply_yn: bool | None = None
-    joint_supply_detail: str | None = None
+    project_type: str | None = None
+    estimated_price: int | None = None
+    allocated_budget: int | None = None
+    project_duration: str | None = None
+    contract_method: str | None = None
     submit_deadline: datetime | None = None
-    required_docs: dict | None = None
-    exec_location: str | None = None
-    key_tech_spec: str | None = None
-    disqualify_reason: str | None = None
-    contact_person: dict | None = None
-    confidence_score: float | None = None
+    risk_level: str | None = None
+    issuing_org: str | None = None
+    project_summary: str | None = None
+    project_scope: str | None = None
+    qualification: str | None = None
+    eval_criteria: list | None = None
+    requirements: dict | None = None
+    tech_requirements: list | None = None
+    poison_clauses: dict | None = None
+    raw_analysis: dict | None = None
     model_used: str | None = None
+    analysis_status: str | None = None
     analyzed_at: datetime | None = None
-
-    class Config:
-        from_attributes = True
-
-
-class RiskFactorSchema(BaseModel):
-    """위험 요인 단건 스키마"""
-
-    id: int
-    risk_category: str
-    risk_level: str
-    clause_title: str | None = None
-    clause_original: str | None = None
-    clause_summary: str
-    page_no: int | None = None
-    mitigation_suggest: str | None = None
-    sort_order: int = 0
 
     class Config:
         from_attributes = True
@@ -218,7 +206,6 @@ class BidDetailResponse(BaseModel):
     collected_at: datetime | None
     attachments: list[AttachmentSchema] = []
     analysis_result: AnalysisResultSchema | None = None
-    risk_factors: list[RiskFactorSchema] = []
 
     class Config:
         from_attributes = True
@@ -593,5 +580,84 @@ async def get_bid_detail(
     response.is_expired = bool(notice.bid_clse_dt and notice.bid_clse_dt < datetime.now(KST))
     response.attachments = [AttachmentSchema.model_validate(a) for a in notice.attachments]
     response.analysis_result = AnalysisResultSchema.model_validate(notice.analysis_result) if notice.analysis_result else None
-    response.risk_factors = [RiskFactorSchema.model_validate(r) for r in notice.risk_factors]
     return response
+
+
+class UploadResponse(BaseModel):
+    ok: bool
+    file_name: str
+    attachment_id: int
+    reanalysis_started: bool
+
+
+_ALLOWED_UPLOAD_EXT = {"pdf", "hwp", "hwpx", "doc", "docx"}
+_UPLOAD_DIR = "downloads/manual"
+_MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50MB
+
+
+@router.post(
+    "/{bid_ntce_no}/attachments",
+    summary="RFP 수동 업로드 (자동 재분석)",
+    response_model=UploadResponse,
+)
+async def upload_bid_attachment(
+    bid_ntce_no: str,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+) -> UploadResponse:
+    """사용자가 직접 제공한 RFP/과업지시서를 첨부에 추가하고 자동 재분석을 시작한다."""
+    import os
+    from datetime import datetime as _dt
+
+    notice = await get_notice_detail(db, bid_ntce_no)
+    if not notice:
+        raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
+
+    filename = (file.filename or "").strip()
+    if not filename:
+        raise HTTPException(status_code=400, detail="파일 이름이 없습니다.")
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in _ALLOWED_UPLOAD_EXT:
+        raise HTTPException(
+            status_code=400,
+            detail=f"지원하지 않는 형식입니다. ({', '.join(sorted(_ALLOWED_UPLOAD_EXT))})",
+        )
+
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="빈 파일은 업로드할 수 없습니다.")
+    if len(data) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="파일 크기는 50MB 이하여야 합니다.")
+
+    os.makedirs(_UPLOAD_DIR, exist_ok=True)
+    safe_name = filename.replace("/", "_").replace("\\", "_")
+    ts = _dt.now().strftime("%Y%m%d%H%M%S")
+    local_path = os.path.join(_UPLOAD_DIR, f"{bid_ntce_no}_{ts}_{safe_name}")
+    with open(local_path, "wb") as f:
+        f.write(data)
+
+    attachment = Attachment(
+        notice_id=notice.id,
+        file_name=safe_name,
+        file_url="local-upload",
+        file_type=ext,
+        local_path=local_path,
+        parse_status="pending",
+        downloaded_at=datetime.now(KST),
+    )
+    db.add(attachment)
+    await db.commit()
+    await db.refresh(attachment)
+
+    # 자동 재분석 트리거 (analyze_rfp는 upsert 이므로 기존 결과 덮어쓰기됨)
+    from backend.api.routes.analysis import _run_analysis_task
+
+    background_tasks.add_task(_run_analysis_task, notice.id)
+
+    return UploadResponse(
+        ok=True,
+        file_name=safe_name,
+        attachment_id=attachment.id,
+        reanalysis_started=True,
+    )

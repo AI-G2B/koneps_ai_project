@@ -1,0 +1,65 @@
+# koneps_ai_project 프로덕션 스택
+# 사용:  docker compose up -d --build
+# 첫 실행 시 postgres가 db/schema.sql을 자동 적용한다.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-koneps}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 가 .env에 설정되어야 합니다}
+      POSTGRES_DB: ${POSTGRES_DB:-koneps}
+      TZ: Asia/Seoul
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-koneps} -d ${POSTGRES_DB:-koneps}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # 외부엔 노출하지 않음 (컨테이너 네트워크 내부에서만 접근)
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-koneps}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-koneps}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY 가 .env에 설정되어야 합니다}
+      G2B_API_KEY: ${G2B_API_KEY:?G2B_API_KEY 가 .env에 설정되어야 합니다}
+      LIBREAI_API_KEY: ${LIBREAI_API_KEY:?LIBREAI_API_KEY 가 .env에 설정되어야 합니다}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:?GEMINI_API_KEY 가 .env에 설정되어야 합니다}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.1-pro-preview}
+      GEMINI_FALLBACK_MODEL: ${GEMINI_FALLBACK_MODEL:-gemini-2.5-pro}
+      LIBREAI_API_URL: ${LIBREAI_API_URL:-https://convert.liberoai.net/api}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      TZ: Asia/Seoul
+    volumes:
+      # 사용자 업로드 파일 + G2B 다운로드 캐시 (호스트 보존)
+      - ./downloads:/app/downloads
+      # 학습 샘플 (수정 시 즉시 반영)
+      - ./samples:/app/samples:ro
+    # 외부엔 노출 안 함 (nginx web 컨테이너만 통해 접근)
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # 같은 호스트의 nginx가 /api → backend:8000 으로 프록시.
+        # 서버 IP나 도메인이 바뀌어도 프런트 재빌드 불필요.
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${WEB_PORT:-80}:80"
+
+volumes:
+  pgdata:
