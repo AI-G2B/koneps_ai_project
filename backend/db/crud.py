@@ -4,7 +4,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from .models import AnalysisResult, Attachment, Notice, NoticeMemo, ProposalOutline, User
+from .models import AgencySetting, AnalysisResult, Attachment, Notice, NoticeMemo, ProposalOutline, User
 
 KST = timezone(timedelta(hours=9))
 
