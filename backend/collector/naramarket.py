@@ -20,6 +20,12 @@ BID_LIST_URL = (
     "https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServc"
 )
 
+# E발주(전자입찰) 첨부파일 조회 — 20번 API
+EORDER_ATCH_FILE_URL = (
+    "https://apis.data.go.kr/1230000/ad/BidPublicInfoService"
+    "/getBidPblancListInfoEorderAtchFileInfo"
+)
+
 # 단독 키워드 — 공고명에 있으면 바로 포함 (업종코드 무관)
 STANDALONE_KEYWORDS = [
     "ISP", "ISMP", "BPR",
@@ -41,6 +47,9 @@ ISP_KEYWORDS = ["ISP", "정보화전략", "정보화계획"]
 
 # 분류용 — BPR/PI 판별
 BPR_PI_KEYWORDS = ["BPR", "PI"]
+
+# 제안요청서 파일명 판별 키워드
+_RFP_FILENAME_KEYWORDS = ["제안요청서", "RFP", "제안요청"]
 
 
 # ──────────────────────────────────────
@@ -146,22 +155,104 @@ def parse_bid(item: dict) -> dict:
 
 
 def parse_attachments(item: dict) -> list[dict]:
-    """API 응답에서 첨부파일 URL·이름을 파싱한다 (최대 5개)."""
+    """API 응답에서 첨부파일 URL·이름을 파싱한다 (최대 10개)."""
     attachments = []
-    for i in range(1, 6):
+    for i in range(1, 11):
         url = item.get(f"ntceSpecDocUrl{i}", "")
         name = item.get(f"ntceSpecFileNm{i}", "")
         if url and name:
             ext = name.rsplit(".", 1)[-1].lower() if "." in name else "unknown"
+            is_rfp = any(kw in name for kw in _RFP_FILENAME_KEYWORDS)
             attachments.append(
                 {
                     "file_name": name,
                     "file_url": url,
                     "file_type": ext,
+                    "is_rfp": is_rfp,
                     "parse_status": "pending",
                 }
             )
     return attachments
+
+
+def fetch_eorder_attachments(bid_ntce_no: str, bid_ntce_dt: str) -> list[dict]:
+    """E발주 20번 API로 제안요청서 등 전자입찰 첨부파일을 조회한다.
+
+    20번 API(getBidPblancListInfoEorderAtchFileInfo)는 bidNtceNo 직접 조회를
+    지원하지 않으므로 공고일 기준 전체 조회 후 공고번호로 매칭한다.
+
+    Args:
+        bid_ntce_no: 입찰공고번호 (예: "20260501001")
+        bid_ntce_dt: 공고 등록일시 문자열 (예: "2026-05-01 09:00:00")
+
+    Returns:
+        [{"file_name": ..., "file_url": ..., "file_type": ..., "is_rfp": True, ...}]
+    """
+    if not API_KEY or not bid_ntce_dt:
+        return []
+
+    # "2026-05-01 09:00:00" 또는 "202605010900" → YYYYMMDD 8자리 추출
+    clean = bid_ntce_dt.replace("-", "").replace(" ", "").replace(":", "")
+    date_ymd = clean[:8]
+    if len(date_ymd) < 8 or not date_ymd.isdigit():
+        return []
+
+    base_params = {
+        "serviceKey": API_KEY,
+        "numOfRows": 100,
+        "inqryDiv": 1,
+        "inqryBgnDt": date_ymd + "0000",
+        "inqryEndDt": date_ymd + "2359",
+        "type": "json",
+    }
+
+    results: list[dict] = []
+    page = 1
+
+    while True:
+        try:
+            resp = requests.get(
+                EORDER_ATCH_FILE_URL,
+                params={**base_params, "pageNo": page},
+                timeout=15,
+            )
+            resp.raise_for_status()
+        except requests.RequestException:
+            break
+
+        body = resp.json().get("response", {}).get("body", {})
+        total_count = int(body.get("totalCount", 0) or 0)
+        items = body.get("items", [])
+
+        if isinstance(items, dict):
+            items = [items]
+        if not items:
+            break
+
+        for item in items:
+            if item.get("bidNtceNo", "") != bid_ntce_no:
+                continue
+            url = item.get("eorderAtchFileUrl", "")
+            name = item.get("eorderAtchFileNm", "")
+            if url and name:
+                ext = name.rsplit(".", 1)[-1].lower() if "." in name else "unknown"
+                # eorderDocDivNm이 "제안요청서"인 경우만 is_rfp=True
+                is_rfp = item.get("eorderDocDivNm", "") == "제안요청서"
+                results.append(
+                    {
+                        "file_name": name,
+                        "file_url": url,
+                        "file_type": ext,
+                        "is_rfp": is_rfp,
+                        "parse_status": "pending",
+                    }
+                )
+
+        if page * 100 >= total_count:
+            break
+        page += 1
+
+    return results
 
 
 # ──────────────────────────────────────

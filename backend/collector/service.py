@@ -19,7 +19,7 @@ KST = timezone(timedelta(hours=9))
 logger = logging.getLogger(__name__)
 
 from backend.collector.file_downloader import download_attachments
-from backend.collector.naramarket import fetch_bids
+from backend.collector.naramarket import fetch_bids, fetch_eorder_attachments
 from backend.db.crud import create_attachments, create_notice, get_notice_by_bid_no
 from backend.db.models import Notice
 
@@ -62,7 +62,11 @@ async def save_bids(
             skipped += 1
             continue
 
-        downloaded = download_attachments(r["attachments"]) if download else r["attachments"]
+        # E발주 20번 API로 제안요청서 등 전자입찰 첨부파일 추가 조회
+        eorder = fetch_eorder_attachments(bid["bid_ntce_no"], bid.get("bid_ntce_dt", ""))
+        all_attachments = r["attachments"] + eorder
+
+        downloaded = download_attachments(all_attachments) if download else all_attachments
 
         try:
             notice = Notice(
@@ -96,6 +100,7 @@ async def save_bids(
                     "file_type": a["file_type"],
                     "local_path": a.get("local_path"),
                     "parse_status": "pending",
+                    "is_rfp": a.get("is_rfp", False),
                     "downloaded_at": now if a.get("local_path") else None,
                 }
                 for a in downloaded
