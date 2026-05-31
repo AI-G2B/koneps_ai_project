@@ -186,7 +186,8 @@ function BidTypeChart({ bids, ceoMode, typeStats }: { bids: Bid[]; ceoMode: bool
 
 interface PopupState {
   dateStr: string;
-  top: number;
+  top?: number;
+  bottom?: number;
   left: number;
 }
 
@@ -244,9 +245,15 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
     }
     const rect = e.currentTarget.getBoundingClientRect();
     const popupWidth = 288;
+    const popupHeight = 300;
     const left = rect.left + rect.width / 2 - popupWidth / 2;
     const clampedLeft = Math.max(8, Math.min(left, window.innerWidth - popupWidth - 8));
-    setPopup({ dateStr, top: rect.bottom + 8, left: clampedLeft });
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < popupHeight) {
+      setPopup({ dateStr, bottom: window.innerHeight - rect.top + 8, left: clampedLeft });
+    } else {
+      setPopup({ dateStr, top: rect.bottom + 8, left: clampedLeft });
+    }
   };
 
   const todayStr = TODAY.toISOString().slice(0, 10);
@@ -401,9 +408,12 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
           style={{
             position: 'fixed',
             top: popup.top,
+            bottom: popup.bottom,
             left: popup.left,
-            zIndex: 9000,
+            zIndex: 1000,
             width: '288px',
+            maxHeight: '300px',
+            overflowY: 'auto',
             backgroundColor: 'var(--dash-card)',
             border: '1px solid var(--dash-border-strong)',
             borderRadius: '10px',
