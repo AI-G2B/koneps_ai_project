@@ -42,28 +42,42 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: any[] 
   return null;
 }
 
-function BidTypeChart({ bids, ceoMode, typeStats }: { bids: Bid[]; ceoMode: boolean; typeStats?: ApiTypeStatItem[] }) {
+function BidTypeChart({ bids, ceoMode }: { bids: Bid[]; ceoMode: boolean; typeStats?: ApiTypeStatItem[] }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [typeFilter, setTypeFilter] = useState<'today' | 'yesterday' | '3days' | 'week' | 'all'>('all');
 
-  const total = bids.length;
-  const typeCount: Record<string, number> = {};
-  bids.forEach((b) => { typeCount[b.type] = (typeCount[b.type] || 0) + 1; });
+  const TYPE_FILTERS: { key: typeof typeFilter; label: string }[] = [
+    { key: 'today',     label: '오늘' },
+    { key: 'yesterday', label: '어제' },
+    { key: '3days',     label: '3일' },
+    { key: 'week',      label: '1주일' },
+    { key: 'all',       label: '전체' },
+  ];
 
-  const chartData = typeStats && typeStats.length > 0
-    ? typeStats.map((item) => ({
-        name: item.type,
-        value: Math.round(item.ratio * 100),
-        count: item.count,
-        color: TYPE_COLORS[item.type] ?? '#8B5CF6',
-      }))
-    : total > 0
-    ? Object.entries(typeCount).map(([name, count]) => ({
-        name,
-        value: Math.round((count / total) * 100),
-        count,
-        color: TYPE_COLORS[name] ?? '#8B5CF6',
-      }))
-    : BID_TYPE_DATA;
+  const now = new Date();
+  const filteredBids = bids.filter((bid) => {
+    const d = new Date(bid.collectedAt ?? bid.deadline ?? '');
+    const diffDays = (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
+    switch (typeFilter) {
+      case 'today':     return diffDays < 1;
+      case 'yesterday': return diffDays >= 1 && diffDays < 2;
+      case '3days':     return diffDays < 3;
+      case 'week':      return diffDays < 7;
+      default:          return true;
+    }
+  });
+
+  const total = filteredBids.length;
+
+  const chartData = total > 0
+    ? [
+        { name: 'ISP',  value: filteredBids.filter(b => b.type === 'ISP').length,  color: '#2563EB' },
+        { name: 'ISMP', value: filteredBids.filter(b => b.type === 'ISMP').length, color: '#7C3AED' },
+        { name: '기타', value: filteredBids.filter(b => b.type === '기타').length, color: '#94A3B8' },
+      ]
+        .filter(d => d.value > 0)
+        .map(d => ({ ...d, count: d.value, value: Math.round((d.value / total) * 100) }))
+    : [];
 
   return (
     <div
@@ -88,10 +102,36 @@ function BidTypeChart({ bids, ceoMode, typeStats }: { bids: Bid[]; ceoMode: bool
           {ceoMode ? '진행중 사업 유형 분포' : '공고 유형 분석'}
         </h3>
         <span style={{ fontSize: '11px', color: 'var(--dash-text-5)', marginLeft: 'auto' }}>
-          {ceoMode ? `진행중 ${total}건 기준` : `총 ${total > 0 ? total : 47}건 기준`}
+          {ceoMode ? `진행중 ${total}건 기준` : `${total}건 기준`}
         </span>
       </div>
+      {!ceoMode && (
+        <div className="flex gap-1 mb-2">
+          {TYPE_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setTypeFilter(f.key)}
+              style={{
+                fontSize: '11px',
+                padding: '3px 10px',
+                borderRadius: '6px',
+                border: '1px solid var(--dash-border-btn)',
+                backgroundColor: typeFilter === f.key ? '#2563EB' : 'var(--dash-item-bg)',
+                color: typeFilter === f.key ? '#ffffff' : 'var(--dash-text-2)',
+                cursor: 'pointer',
+              }}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
 
+      {chartData.length === 0 ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '120px', color: 'var(--dash-text-4)', fontSize: '12px' }}>
+          해당 기간에 수집된 공고가 없습니다
+        </div>
+      ) : (
       <div className="flex items-center gap-4">
         <div style={{ width: '120px', height: '120px', flexShrink: 0 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -158,6 +198,7 @@ function BidTypeChart({ bids, ceoMode, typeStats }: { bids: Bid[]; ceoMode: bool
           ))}
         </div>
       </div>
+      )}
 
       <div
         className="grid grid-cols-4 gap-3 mt-3 pt-3"
