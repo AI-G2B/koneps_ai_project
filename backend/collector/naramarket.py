@@ -28,15 +28,36 @@ EORDER_ATCH_FILE_URL = (
 
 # 단독 키워드 — 공고명에 있으면 바로 포함 (업종코드 무관)
 STANDALONE_KEYWORDS = [
-    "ISP", "ISMP", "BPR",
-    "정보화전략", "정보화계획", "디지털전환", "마스터플랜", "IT 컨설팅",
+    "ISP",
+    "ISMP",
+    "BPR",
+    "IT governance",
+    "정보화전략",
+    "정보화계획",
+    "디지털전환",
+    "마스터플랜",
+    "IT 컨설팅",
+    "IT 거버넌스",
+    "PMO 컨설팅",
+    "데이터 품질",
 ]
 
 # 트리거 단어와 함께 있어야 걸리는 IT 키워드
 CONSULTING_KEYWORDS = [
-    "IT", "ICT", "SW", "AI", "인공지능",
-    "정보", "디지털", "클라우드", "보안", "사이버",
-    "시스템", "ERP", "데이터", "DX",
+    "IT",
+    "ICT",
+    "SW",
+    "AI",
+    "인공지능",
+    "정보",
+    "디지털",
+    "클라우드",
+    "보안",
+    "사이버",
+    "시스템",
+    "ERP",
+    "데이터",
+    "DX",
 ]
 
 # 분류용 — ISMP 판별 (ISP보다 먼저 검사 — "ISMP"에 "ISP"가 포함됨)
@@ -81,9 +102,7 @@ def _is_it_consulting(item: dict) -> bool:
 
     # 2단계: 트리거 단어 + IT 키워드 조합
     trigger = (
-        "컨설팅" in name_lower
-        or "계획 수립" in name_lower
-        or "기본계획" in name_lower
+        "컨설팅" in name_lower or "계획 수립" in name_lower or "기본계획" in name_lower
     )
     if trigger and any(kw.lower() in name_lower for kw in CONSULTING_KEYWORDS):
         return True
