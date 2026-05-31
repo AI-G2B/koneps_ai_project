@@ -1,8 +1,8 @@
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useRef, useState, useEffect, type ChangeEvent } from 'react';
 import {
   ArrowLeft, Sparkles, Trash2, RefreshCw, Download,
   Circle, CheckCircle2, XCircle, Loader2, ScrollText,
-  AlertTriangle, Upload,
+  AlertTriangle, Upload, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import { type Bid, type AiStatusType, type AnalysisLog, formatBudget, getDaysUntilDeadline } from '../types';
 import { RiskBadge } from './BidTable';
@@ -126,6 +126,7 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState<DetailTab>('analysis');
   const [uploading, setUploading] = useState(false);
+  const [logsExpanded, setLogsExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const aiStatus: AiStatusType = aiStatusProp ?? bid.aiStatus ?? 'none';
@@ -167,6 +168,10 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
     ? analysisLogsProp
     : (detail?.analysisLogs ?? []);
   const analysisModel = detail?.analysisModel;
+
+  useEffect(() => {
+    if (analysisLogs.length > 0) setLogsExpanded(true);
+  }, [analysisLogs.length]);
   const daysLeft = getDaysUntilDeadline(bid.deadline);
   const isUrgent = daysLeft <= 3;
 
@@ -303,27 +308,40 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
       {/* 4. 분석 로그 */}
       {analysisLogs.length > 0 && (
         <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '20px 24px' }}>
-          <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', margin: '0 0 16px' }}>분석 로그</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-            {analysisLogs.map((log, i) => (
-              <div key={i} style={{ display: 'flex', gap: '12px', position: 'relative' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                  <div style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
-                    {log.status === 'success' && <CheckCircle2 style={{ width: '16px', height: '16px', color: '#22C55E' }} />}
-                    {log.status === 'error' && <XCircle style={{ width: '16px', height: '16px', color: '#EF4444' }} />}
-                    {log.status === 'info' && <Circle style={{ width: '16px', height: '16px', color: '#60A5FA' }} />}
-                  </div>
-                  {i < analysisLogs.length - 1 && (
-                    <div style={{ flex: 1, width: '2px', backgroundColor: 'var(--dash-border)', minHeight: '20px' }} />
-                  )}
-                </div>
-                <div style={{ paddingBottom: i < analysisLogs.length - 1 ? '12px' : '0', paddingTop: '2px' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--dash-text-4)', marginRight: '8px' }}>{log.time}</span>
-                  <span style={{ fontSize: '14px', color: 'var(--dash-text)' }}>{log.message}</span>
-                </div>
-              </div>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: logsExpanded ? '16px' : '0' }}>
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', margin: 0 }}>분석 로그</h2>
+            <button
+              onClick={() => setLogsExpanded(v => !v)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: 'var(--dash-text-3)', padding: '2px 0' }}
+            >
+              {logsExpanded
+                ? <><ChevronUp style={{ width: '14px', height: '14px' }} />접기</>
+                : <><ChevronDown style={{ width: '14px', height: '14px' }} />펼치기 ({analysisLogs.length}건)</>
+              }
+            </button>
           </div>
+          {logsExpanded && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+              {analysisLogs.map((log, i) => (
+                <div key={i} style={{ display: 'flex', gap: '12px', position: 'relative' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                    <div style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+                      {log.status === 'success' && <CheckCircle2 style={{ width: '16px', height: '16px', color: '#22C55E' }} />}
+                      {log.status === 'error' && <XCircle style={{ width: '16px', height: '16px', color: '#EF4444' }} />}
+                      {log.status === 'info' && <Circle style={{ width: '16px', height: '16px', color: '#60A5FA' }} />}
+                    </div>
+                    {i < analysisLogs.length - 1 && (
+                      <div style={{ flex: 1, width: '2px', backgroundColor: 'var(--dash-border)', minHeight: '20px' }} />
+                    )}
+                  </div>
+                  <div style={{ paddingBottom: i < analysisLogs.length - 1 ? '12px' : '0', paddingTop: '2px' }}>
+                    <span style={{ fontSize: '12px', color: 'var(--dash-text-4)', marginRight: '8px' }}>{log.time}</span>
+                    <span style={{ fontSize: '14px', color: 'var(--dash-text)' }}>{log.message}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

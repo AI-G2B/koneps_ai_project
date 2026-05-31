@@ -124,7 +124,14 @@ export default function App() {
     }
   });
   const [aiStatuses, setAiStatuses] = useState<Record<string, AiStatusType>>({});
-  const [analysisLogsMap, setAnalysisLogsMap] = useState<Record<string, AnalysisLog[]>>({});
+  const [analysisLogsMap, setAnalysisLogsMap] = useState<Record<string, AnalysisLog[]>>(() => {
+    try {
+      const cached = sessionStorage.getItem('koneps_analysis_logs');
+      return cached ? JSON.parse(cached) : {};
+    } catch {
+      return {};
+    }
+  });
   const [outlinesMap, setOutlinesMap] = useState<Record<string, ProposalOutline>>({});
   const [outlineLogsMap, setOutlineLogsMap] = useState<Record<string, AnalysisLog[]>>({});
   const [outlineStatusMap, setOutlineStatusMap] = useState<Record<string, 'none' | 'generating' | 'complete'>>({});
@@ -489,6 +496,12 @@ const toggleBookmark = (bidId: string) => {
     }
   };
 
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('koneps_analysis_logs', JSON.stringify(analysisLogsMap));
+    } catch {}
+  }, [analysisLogsMap]);
+
   // 새로고침해도 페이지/AI 분석 화면이 유지되도록 localStorage에 persist
   useEffect(() => {
     localStorage.setItem('koneps:activePage', activePage);
@@ -597,7 +610,7 @@ const toggleBookmark = (bidId: string) => {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <DashboardHeader
           user={user}
-          onLogout={handleLogout}
+          onLogout={() => { sessionStorage.removeItem('koneps_user'); sessionStorage.removeItem('koneps_analysis_logs'); setUser(null); }}
           notifications={notifications}
           onMarkAllAsRead={markAllAsRead}
           onMarkAsRead={markAsRead}
@@ -700,6 +713,7 @@ const toggleBookmark = (bidId: string) => {
                   aiStatuses={aiStatuses}
                   ceoMode={true}
                   onRequestAnalysis={requestAnalysis}
+                  showBidNumber={true}
                 />
                 <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} ceoMode={true} analysisLogs={selectedBid ? analysisLogsMap[selectedBid.id] : undefined} outlineStatus={selectedBid ? outlineStatusMap[selectedBid.id] : 'none'} onRequestOutline={requestOutline} onDownloadOutline={downloadOutlineExcel} />
               </div>
@@ -728,6 +742,7 @@ const toggleBookmark = (bidId: string) => {
                   onOpenAnalysisDetail={openAnalysisDetail}
                   onRequestAnalysis={requestAnalysis}
                   hideTargetList={true}
+                  showBidNumber={true}
                   analysisLogsMap={analysisLogsMap}
                   outlineStatusMap={outlineStatusMap}
                   onRequestOutline={requestOutline}

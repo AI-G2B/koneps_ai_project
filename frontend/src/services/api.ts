@@ -562,7 +562,11 @@ export async function fetchAnalysisStatus(bid_ntce_no: string): Promise<Analysis
       logs: Array<{ ts: string; level: string; message: string }>;
     };
     const logs: AnalysisLog[] = (data.logs ?? []).map((l) => ({
-      time: l.ts ? l.ts.slice(11, 19) : '',
+      time: l.ts ? (() => {
+        const d = new Date(l.ts);
+        const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+        return kst.toISOString().slice(11, 19);
+      })() : '',
       message: l.message,
       status: l.level === 'success' ? 'success'
             : l.level === 'error' ? 'error'
@@ -632,7 +636,11 @@ export async function fetchOutlineStatus(bid_ntce_no: string): Promise<OutlineSt
     if (!res.ok) return { exists: false, logs: [] };
     const d = await res.json() as { exists: boolean; logs: Array<{ ts: string; level: string; message: string }> };
     const logs: AnalysisLog[] = (d.logs ?? []).map((l) => ({
-      time: l.ts ? l.ts.slice(11, 19) : '',
+      time: l.ts ? (() => {
+        const d = new Date(l.ts);
+        const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+        return kst.toISOString().slice(11, 19);
+      })() : '',
       message: l.message,
       status: l.level === 'success' ? 'success'
             : l.level === 'error' ? 'error'
