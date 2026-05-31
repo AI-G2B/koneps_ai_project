@@ -46,6 +46,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
   const { showToast } = useToast();
   const [showFileMenu, setShowFileMenu] = useState(false);
   const [hoveredFileIndex, setHoveredFileIndex] = useState<number | null>(null);
+  const [hoveredCardIndex, setHoveredCardIndex] = useState<number | null>(null);
   const fileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -488,19 +489,43 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                   <>
                     {/* 상단 하이라이트 카드 (3개) */}
                     <div className="flex gap-2" style={{ marginTop: '12px' }}>
-                      {AI_HIGHLIGHT_ITEMS.map((item) => (
+                      {AI_HIGHLIGHT_ITEMS.map((item, index) => (
                         <div
                           key={item.label}
                           className="flex flex-col rounded-lg"
-                          style={{ flex: 1, padding: '10px 12px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
+                          style={{ flex: 1, padding: '10px 12px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)', alignItems: 'center', justifyContent: 'center', textAlign: 'center', position: 'relative' }}
+                          onMouseEnter={() => setHoveredCardIndex(index)}
+                          onMouseLeave={() => setHoveredCardIndex(null)}
                         >
                           <div className="flex items-center justify-center gap-1" style={{ marginBottom: '6px' }}>
                             <item.icon style={{ width: '11px', height: '11px', color: '#2563EB', flexShrink: 0 }} />
                             <div style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>{item.label}</div>
                           </div>
-                          <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--dash-text)', lineHeight: 1.3, textAlign: 'center' }} title={item.value}>
+                          <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--dash-text)', lineHeight: 1.3, textAlign: 'center' }}>
                             {item.value}
                           </div>
+                          {hoveredCardIndex === index && item.value && item.value.length >= 10 && (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 'calc(100% + 6px)',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              backgroundColor: '#1E293B',
+                              color: '#FFFFFF',
+                              fontSize: '11px',
+                              padding: '6px 10px',
+                              borderRadius: '6px',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-all',
+                              maxWidth: '200px',
+                              zIndex: 999,
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                              pointerEvents: 'none',
+                              textAlign: 'left',
+                            }}>
+                              {item.value}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
