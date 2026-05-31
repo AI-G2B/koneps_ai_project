@@ -292,6 +292,9 @@ export default function App() {
         const { pipelineStatus, logs } = await fetchAnalysisStatus(bidId);
         setAnalysisLogsMap(prev => ({ ...prev, [bidId]: logs }));
         if (pipelineStatus === 'analyzed') {
+          if (logs && logs.length > 0) {
+            setAnalysisLogsMap(prev => ({ ...prev, [bidId]: logs }));
+          }
           const detailed = await fetchBidById(bidId);
           aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'complete' };
           setAiStatuses(prev => ({ ...prev, [bidId]: 'complete' }));

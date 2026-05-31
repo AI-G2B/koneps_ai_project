@@ -567,7 +567,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
           >
             {!ceoMode && bid && (() => {
               const analysisDone = aiStatus === 'complete';
-              const supported = isProposalSupported;
+              const supported = bid.type === 'ISP' || bid.type === 'ISMP';
               const generating = outlineStatus === 'generating';
               const complete = outlineStatus === 'complete';
               const disabled = !analysisDone || !supported || generating;

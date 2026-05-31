@@ -170,8 +170,13 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
   const analysisModel = detail?.analysisModel;
 
   useEffect(() => {
-    if (analysisLogs.length > 0) setLogsExpanded(true);
-  }, [analysisLogs.length]);
+    if (analysisLogs.length > 0 && aiStatus === 'analyzing') {
+      setLogsExpanded(true);
+    }
+    if (aiStatus === 'complete' || aiStatus === 'none') {
+      setLogsExpanded(false);
+    }
+  }, [analysisLogs.length, aiStatus]);
   const daysLeft = getDaysUntilDeadline(bid.deadline);
   const isUrgent = daysLeft <= 3;
 
@@ -309,14 +314,16 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
       {analysisLogs.length > 0 && (
         <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '20px 24px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: logsExpanded ? '16px' : '0' }}>
-            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', margin: 0 }}>분석 로그</h2>
+            <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', margin: 0 }}>
+              {logsExpanded ? '분석 로그' : `분석 로그 (${analysisLogs.length}건)`}
+            </h2>
             <button
               onClick={() => setLogsExpanded(v => !v)}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: 'var(--dash-text-3)', padding: '2px 0' }}
             >
               {logsExpanded
                 ? <><ChevronUp style={{ width: '14px', height: '14px' }} />접기</>
-                : <><ChevronDown style={{ width: '14px', height: '14px' }} />펼치기 ({analysisLogs.length}건)</>
+                : <><ChevronDown style={{ width: '14px', height: '14px' }} />펼치기</>
               }
             </button>
           </div>
