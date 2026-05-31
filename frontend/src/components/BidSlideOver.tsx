@@ -492,13 +492,13 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                         <div
                           key={item.label}
                           className="flex flex-col rounded-lg"
-                          style={{ flex: 1, padding: '10px 12px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)' }}
+                          style={{ flex: 1, padding: '10px 12px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}
                         >
-                          <div className="flex items-center gap-1" style={{ marginBottom: '6px' }}>
+                          <div className="flex items-center justify-center gap-1" style={{ marginBottom: '6px' }}>
                             <item.icon style={{ width: '11px', height: '11px', color: '#2563EB', flexShrink: 0 }} />
                             <div style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>{item.label}</div>
                           </div>
-                          <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--dash-text)', lineHeight: 1.3 }} title={item.value}>
+                          <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--dash-text)', lineHeight: 1.3, textAlign: 'center' }} title={item.value}>
                             {item.value}
                           </div>
                         </div>
