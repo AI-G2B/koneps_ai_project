@@ -4,8 +4,7 @@ import {
   Bookmark, BookmarkX, Play, Building2, Banknote, Calendar,
   FileSearch, ListFilter,
 } from 'lucide-react';
-import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
-import { RiskBadge } from './BidTable';
+import { type Bid, type BidFlags, type AiStatusType, type AnalysisLog, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from '../types';
 import { BidSlideOver } from './BidSlideOver';
 import { fetchBidById } from '../services/api';
 
@@ -36,13 +35,14 @@ interface BidListPageProps {
   onOpenAnalysisDetail?: (bid: Bid) => void;
   onRequestAnalysis?: (bidId: string) => void;
   hideTargetList?: boolean;
-  analysisLogsMap?: Record<string, import('./mockData').AnalysisLog[]>;
+  analysisLogsMap?: Record<string, AnalysisLog[]>;
   outlineStatusMap?: Record<string, 'none' | 'generating' | 'complete'>;
   onRequestOutline?: (bidId: string) => void;
   onDownloadOutline?: (bidId: string) => void;
+  showBidNumber?: boolean;
 }
 
-export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false, analysisLogsMap, outlineStatusMap, onRequestOutline, onDownloadOutline }: BidListPageProps) {
+export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false, analysisLogsMap, outlineStatusMap, onRequestOutline, onDownloadOutline, showBidNumber = false }: BidListPageProps) {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('bookmarked');
@@ -113,6 +113,7 @@ export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onTo
           onToggleInProgress={handleToggleInProgress}
           selectedBid={selectedBid}
           onOpenSlide={openSlide}
+          showBidNumber={showBidNumber}
         />
         {!hideTargetList && (
           <>
@@ -158,7 +159,7 @@ interface LeftPanelProps extends BidListPageProps {
   onOpenSlide: (bid: Bid) => void;
 }
 
-function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selectedBid, onOpenSlide }: LeftPanelProps) {
+function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selectedBid, onOpenSlide, showBidNumber = false }: LeftPanelProps) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [excludeExpired, setExcludeExpired] = useState(true);
@@ -176,7 +177,7 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
     if (excludeExpired && getDaysUntilDeadline(bid.deadline) < 0) return false;
     const fromDate = getFromDate(dateFilter);
     if (fromDate && new Date(bid.collectedAt) < fromDate) return false;
-    if (statusFilter === 'urgent') return isDeadlineUrgent(bid.deadline);
+    if (statusFilter === 'urgent') return getDaysUntilDeadline(bid.deadline) >= 0 && isDeadlineUrgent(bid.deadline);
     if (statusFilter === 'danger') return bid.risk === 'danger';
     return true;
   });
@@ -252,12 +253,12 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
           <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
             <tr style={{ backgroundColor: 'var(--dash-card-deep)' }}>
               {[
-                { label: '공고명', width: undefined },
+                ...(showBidNumber ? [{ label: '공고번호', width: '130px' }] : []),
+                { label: '공고명', width: undefined as string | undefined },
                 { label: '발주기관', width: '96px' },
                 { label: '예산', width: '68px' },
-                { label: '마감일', width: '68px' },
-                { label: '위험도', width: '60px' },
-                { label: '액션', width: '80px' },
+                { label: '마감일', width: '82px' },
+                { label: '액션', width: '90px' },
               ].map((col) => (
                 <th
                   key={col.label}
@@ -282,7 +283,7 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
+                <td colSpan={showBidNumber ? 6 : 5} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
                   해당 기간에 수집된 공고가 없습니다
                 </td>
               </tr>
@@ -296,6 +297,7 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
                   onSelect={() => onOpenSlide(bid)}
                   onToggleBookmark={onToggleBookmark}
                   onToggleInProgress={onToggleInProgress}
+                  showBidNumber={showBidNumber}
                 />
               ))
             )}
@@ -310,13 +312,14 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
   );
 }
 
-function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleInProgress }: {
+function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleInProgress, showBidNumber = false }: {
   bid: Bid;
   isSelected: boolean;
   flags: BidFlags;
   onSelect: () => void;
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
+  showBidNumber?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const [tooltip, setTooltip] = useState<{ x: number; y: number } | null>(null);
@@ -338,7 +341,12 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
         transition: 'background-color 0.15s, border-left-color 0.15s',
       }}
     >
-      <td style={{ padding: '10px 12px' }}>
+      {showBidNumber && (
+        <td style={{ padding: '12px', verticalAlign: 'middle', width: '130px' }}>
+          <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{bid.number}</span>
+        </td>
+      )}
+      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <div
           onMouseEnter={(e) => {
             const el = e.currentTarget;
@@ -348,11 +356,14 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
             }
           }}
           onMouseLeave={() => setTooltip(null)}
-          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', lineHeight: 1.45, marginBottom: '3px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', display: 'block', whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.5, marginBottom: '4px' }}
         >
           {bid.title}
         </div>
         <div className="flex items-center gap-1" style={{ flexWrap: 'wrap', rowGap: '2px' }}>
+          {bid.type !== '기타' && (
+            <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA', flexShrink: 0 }}>{bid.type}</span>
+          )}
           {flags.bookmarked && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-blue-bg)', color: '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0 }}>
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />찜
@@ -363,16 +374,15 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
               <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#5BC37E', flexShrink: 0, display: 'inline-block' }} />진행중
             </span>
           )}
-          <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA', flexShrink: 0 }}>{bid.type}</span>
         </div>
       </td>
-      <td style={{ padding: '10px 12px' }}>
-        <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '96px' }}>{bid.agency}</span>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
+        <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', display: 'block', wordBreak: 'keep-all', overflowWrap: 'break-word', maxWidth: '96px', lineHeight: 1.5 }}>{bid.agency}</span>
       </td>
-      <td style={{ padding: '10px 12px' }}>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <span style={{ fontSize: '13px', color: 'var(--dash-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>{formatBudget(bid.budget)}</span>
       </td>
-      <td style={{ padding: '10px 12px' }}>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <span style={{ fontSize: '12px', fontWeight: urgent ? 600 : 400, color: urgent ? '#EF4444' : 'var(--dash-text-2)', whiteSpace: 'nowrap' }}>
           {bid.deadline.substring(5)}
         </span>
@@ -390,10 +400,7 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
           </div>
         ) : null}
       </td>
-      <td style={{ padding: '10px 12px' }}>
-        <RiskBadge risk={bid.risk} />
-      </td>
-      <td style={{ padding: '10px 12px' }} onClick={(e) => e.stopPropagation()}>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-1">
           <button
             onClick={() => onToggleBookmark(bid.id)}
@@ -607,7 +614,6 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
     >
       {/* 배지 행 */}
       <div className="flex items-center gap-2" style={{ marginBottom: '5px' }}>
-        <RiskBadge risk={bid.risk} />
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: tab === 'inProgress' ? 'var(--badge-green-bg)' : 'var(--badge-blue-bg)', color: tab === 'inProgress' ? '#5BC37E' : '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0 }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: tab === 'inProgress' ? '#5BC37E' : '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />
           {tab === 'inProgress' ? '진행중' : '찜'}

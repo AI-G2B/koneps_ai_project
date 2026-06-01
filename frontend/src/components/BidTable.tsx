@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Inbox, Sparkles, RefreshCw } from 'lucide-react';
-import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from './mockData';
+import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from '../types';
 import type { AgencySettings } from '../App';
 
 const BADGE_FONT = 'Inter, Noto Sans KR, sans-serif';
@@ -44,7 +44,7 @@ export function AiStatusIndicator({ status }: { status: AiStatusType }) {
   return                            <span style={badge('var(--badge-green-bg)',  '#5BC37E')}>{DOT('#5BC37E')}완료</span>;
 }
 
-type SortKey = 'budget' | 'deadline' | 'risk' | null;
+type SortKey = 'budget' | 'deadline' | null;
 type SortDir = 'asc' | 'desc';
 type DateFilter = 'today' | 'yesterday' | '3days' | '1week' | 'all';
 type StatusFilter = 'all' | 'urgent' | 'danger';
@@ -82,9 +82,10 @@ interface BidTableProps {
   hideFilters?: boolean;
   ceoMode?: boolean;
   onRequestAnalysis?: (bidId: string) => void;
+  showBidNumber?: boolean;
 }
 
-export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, agencySettings, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, pursuedBids, hideFilters = false, ceoMode = false, onRequestAnalysis }: BidTableProps) {
+export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, agencySettings, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, pursuedBids, onTogglePursued: _onTogglePursued, hideFilters = false, ceoMode = false, onRequestAnalysis, showBidNumber = false }: BidTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -123,7 +124,7 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
         let cmp = 0;
         if (sortKey === 'budget') cmp = a.budget - b.budget;
         else if (sortKey === 'deadline') cmp = a.deadline.localeCompare(b.deadline);
-        else if (sortKey === 'risk') cmp = riskOrder[a.risk] - riskOrder[b.risk];
+
         return sortDir === 'asc' ? cmp : -cmp;
       });
 
@@ -197,14 +198,13 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
           <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
             <tr style={{ backgroundColor: 'var(--dash-card-deep)' }}>
               {[
-                { label: '공고번호', key: null, width: '115px' },
-                { label: '공고명', key: null, width: undefined },
-                { label: '발주기관', key: null, width: '85px' },
+                ...(showBidNumber ? [{ label: '공고번호', key: null as SortKey, width: '130px' }] : []),
+                { label: '공고명', key: null as SortKey, width: undefined as string | undefined },
+                { label: '발주기관', key: null as SortKey, width: '85px' },
                 { label: '예산', key: 'budget' as SortKey, width: '80px' },
-                { label: '마감일', key: 'deadline' as SortKey, width: '80px' },
-                { label: '위험도', key: 'risk' as SortKey, width: '64px' },
-                { label: 'AI분석', key: null, width: '80px' },
-                { label: '액션', key: null, width: '70px' },
+                { label: '마감일', key: 'deadline' as SortKey, width: '90px' },
+                { label: 'AI분석', key: null as SortKey, width: '90px' },
+                { label: '액션', key: null as SortKey, width: '70px' },
               ].map((col) => (
                 <th key={col.label} onClick={() => col.key && handleSort(col.key)}
                   style={{ padding: '8px 12px', textAlign: 'left', fontSize: '11px', color: 'var(--dash-text-4)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500, whiteSpace: 'nowrap', width: col.width, cursor: col.key ? 'pointer' : 'default', borderBottom: '1px solid var(--dash-border)', userSelect: 'none' }}>
@@ -215,14 +215,14 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={8}>
+              <tr><td colSpan={showBidNumber ? 7 : 6}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '8px' }}>
                   <Loader2 className="animate-spin" style={{ width: '24px', height: '24px', color: '#2563EB' }} />
                   <span style={{ fontSize: '13px', color: 'var(--dash-text-3)' }}>공고를 불러오는 중입니다...</span>
                 </div>
               </td></tr>
             ) : sortedBids.length === 0 ? (
-              <tr><td colSpan={8} style={{ padding: '48px', textAlign: 'center' }}>
+              <tr><td colSpan={showBidNumber ? 7 : 6} style={{ padding: '48px', textAlign: 'center' }}>
                 {ceoMode ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                     <Inbox style={{ width: '28px', height: '28px', color: 'var(--dash-text-4)' }} />
@@ -260,6 +260,7 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
                   isPursued={pursuedBids?.has(bid.id) ?? false}
                   ceoMode={ceoMode}
                   onRequestAnalysis={onRequestAnalysis}
+                  showBidNumber={showBidNumber}
                 />
               ))
             )}
@@ -306,7 +307,7 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
   );
 }
 
-function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, flags, aiStatus, onToggleBookmark, onToggleInProgress, isPursued, ceoMode = false, onRequestAnalysis }: {
+function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, flags, aiStatus, onToggleBookmark, onToggleInProgress, isPursued, ceoMode = false, onRequestAnalysis, showBidNumber = false }: {
   bid: Bid; isSelected: boolean; urgent: boolean; daysLeft: number; onSelect: () => void;
   isPreferred: boolean; isAvoided: boolean;
   flags: BidFlags;
@@ -316,6 +317,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
   isPursued: boolean;
   ceoMode?: boolean;
   onRequestAnalysis?: (bidId: string) => void;
+  showBidNumber?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const [titleTooltip, setTitleTooltip] = useState<{ x: number; y: number } | null>(null);
@@ -325,10 +327,12 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
     <>
     <tr onClick={onSelect} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       style={{ backgroundColor: rowBg, borderBottom: '1px solid var(--dash-border-faint)', borderLeft: `2px solid ${isSelected ? '#2563EB' : isPursued ? '#8B5CF6' : isAvoided ? '#EF4444' : isPreferred ? '#2563EB' : 'transparent'}`, cursor: 'pointer', transition: 'background-color 0.15s, border-left-color 0.15s' }}>
-      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
-        <span style={{ fontSize: '11px', color: 'var(--dash-text-4)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: '100px' }}>{bid.number.split('-').slice(-1)[0]}</span>
-      </td>
-      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
+      {showBidNumber && (
+        <td style={{ padding: '12px', verticalAlign: 'middle' }}>
+          <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{bid.number}</span>
+        </td>
+      )}
+      <td style={{ padding: '12px', verticalAlign: 'top' }}>
         <div
           onMouseEnter={(e) => {
             const el = e.currentTarget;
@@ -338,10 +342,19 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
             }
           }}
           onMouseLeave={() => setTitleTooltip(null)}
-          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', whiteSpace: 'normal', lineHeight: 1.4, wordBreak: 'keep-all', marginBottom: '4px' }}>
+          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', display: 'block', whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.5, marginBottom: '4px' }}>
           {bid.title}
         </div>
         <div className="flex items-center gap-1" style={{ flexWrap: 'wrap', rowGap: '2px' }}>
+          {bid.type !== '기타' && (
+            <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA', flexShrink: 0 }}>{bid.type}</span>
+          )}
+          {flags.bookmarked && (
+            <span style={badge('var(--badge-blue-bg)', '#4A7FD4', 'sm')}>{DOT('#4A7FD4')}찜</span>
+          )}
+          {flags.inProgress && (
+            <span style={badge('var(--badge-green-bg)', '#5BC37E', 'sm')}>{DOT('#5BC37E')}진행중</span>
+          )}
           {isPreferred && (
             <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#2563EB', flexShrink: 0 }}>
               <Star style={{ width: '9px', height: '9px' }} />선호
@@ -352,23 +365,16 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
               <Ban style={{ width: '9px', height: '9px' }} />기피
             </span>
           )}
-          {flags.bookmarked && (
-            <span style={badge('var(--badge-blue-bg)', '#4A7FD4', 'sm')}>{DOT('#4A7FD4')}찜</span>
-          )}
-          {flags.inProgress && (
-            <span style={badge('var(--badge-green-bg)', '#5BC37E', 'sm')}>{DOT('#5BC37E')}진행중</span>
-          )}
-          <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA', flexShrink: 0 }}>{bid.type}</span>
           <span style={{ fontSize: '10px', color: 'var(--dash-text-5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bid.number}</span>
         </div>
       </td>
-      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
-        <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', maxWidth: '80px' }}>{bid.agency}</span>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
+        <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', display: 'block', wordBreak: 'keep-all', overflowWrap: 'break-word', maxWidth: '80px', lineHeight: 1.5 }}>{bid.agency}</span>
       </td>
-      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <span style={{ fontSize: '13px', color: 'var(--dash-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>{formatBudget(bid.budget)}</span>
       </td>
-      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <div>
           <span style={{ fontSize: '12px', fontWeight: urgent ? 600 : 400, color: urgent ? '#EF4444' : 'var(--dash-text-2)', whiteSpace: 'nowrap' }}>{bid.deadline.substring(5)}</span>
           {daysLeft < 0 ? (
@@ -382,8 +388,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
           ) : null}
         </div>
       </td>
-      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}><RiskBadge risk={bid.risk} /></td>
-      <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
+      <td style={{ padding: '12px', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
         {aiStatus === 'none' ? (
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
             <AiStatusIndicator status={aiStatus} />
@@ -401,7 +406,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
           <AiStatusIndicator status={aiStatus} />
         )}
       </td>
-      <td style={{ padding: '10px 12px', verticalAlign: 'top' }}>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <div className="flex items-center gap-1">
           <button onClick={(e) => { e.stopPropagation(); onSelect(); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: 'var(--dash-text-3)', backgroundColor: 'transparent' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; }}

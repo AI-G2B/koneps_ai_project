@@ -9,7 +9,7 @@ import {
   type Attachment,
   type AnalysisLog,
   type RequirementItem,
-} from '../components/mockData';
+} from '../types';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
@@ -235,6 +235,8 @@ export function mapApiBidListItemToBid(item: ApiBidListItem): Bid {
     title: item.bid_ntce_nm,
     agency: item.ntce_instt_nm ?? '',
     budget,
+    presmptPrce: item.presmpt_prce ?? null,
+    asignBdgtAmt: item.asign_bdgt_amt ?? null,
     deadline: normalizeDate(item.bid_clse_dt),
     risk: 'good' as RiskLevel,
     aiStatus: mapPipelineStatus(item.pipeline_status),
@@ -260,6 +262,8 @@ export function mapApiBidDetailToBid(res: ApiBidDetailResponse): Bid {
     title: res.bid_ntce_nm,
     agency: res.ntce_instt_nm ?? '',
     budget,
+    presmptPrce: res.presmpt_prce ?? null,
+    asignBdgtAmt: res.asign_bdgt_amt ?? null,
     deadline: normalizeDate(res.bid_clse_dt),
     risk,
     aiStatus: mapPipelineStatus(res.pipeline_status),
@@ -596,7 +600,11 @@ export async function fetchAnalysisStatus(bid_ntce_no: string): Promise<Analysis
       logs: Array<{ ts: string; level: string; message: string }>;
     };
     const logs: AnalysisLog[] = (data.logs ?? []).map((l) => ({
-      time: l.ts ? l.ts.slice(11, 19) : '',
+      time: l.ts ? (() => {
+        const d = new Date(l.ts);
+        const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+        return kst.toISOString().slice(11, 19);
+      })() : '',
       message: l.message,
       status: l.level === 'success' ? 'success'
             : l.level === 'error' ? 'error'
@@ -666,7 +674,11 @@ export async function fetchOutlineStatus(bid_ntce_no: string): Promise<OutlineSt
     if (!res.ok) return { exists: false, logs: [] };
     const d = await res.json() as { exists: boolean; logs: Array<{ ts: string; level: string; message: string }> };
     const logs: AnalysisLog[] = (d.logs ?? []).map((l) => ({
-      time: l.ts ? l.ts.slice(11, 19) : '',
+      time: l.ts ? (() => {
+        const d = new Date(l.ts);
+        const kst = new Date(d.getTime() + 9 * 60 * 60 * 1000);
+        return kst.toISOString().slice(11, 19);
+      })() : '',
       message: l.message,
       status: l.level === 'success' ? 'success'
             : l.level === 'error' ? 'error'
@@ -792,5 +804,38 @@ export async function uploadAttachmentApi(
       reanalysis_started: false,
       error: err instanceof Error ? err.message : '업로드 실패',
     };
+  }
+}
+
+export async function fetchAgencySettings(user_id: number): Promise<{ preferred: string[]; avoided: string[] }> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/auth/agency-settings?user_id=${user_id}`,
+      { signal: AbortSignal.timeout(10_000) }
+    );
+    if (!res.ok) return { preferred: [], avoided: [] };
+    return await res.json();
+  } catch (err) {
+    console.warn('[api] fetchAgencySettings 실패:', err);
+    return { preferred: [], avoided: [] };
+  }
+}
+
+export async function saveAgencySettings(
+  user_id: number,
+  preferred: string[],
+  avoided: string[]
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/agency-settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id, preferred, avoided }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('[api] saveAgencySettings 실패:', err);
+    return false;
   }
 }

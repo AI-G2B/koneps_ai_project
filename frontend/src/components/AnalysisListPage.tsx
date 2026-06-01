@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Sparkles, FileText, Bookmark, BookmarkX, Play } from 'lucide-react';
-import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent } from './mockData';
+import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent } from '../types';
 import { RiskBadge, AiStatusIndicator } from './BidTable';
 
 type TabType = 'complete' | 'analyzing' | 'pending';
