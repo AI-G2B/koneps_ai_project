@@ -242,6 +242,15 @@ async def upsert_analysis(db: AsyncSession, notice_id: int, data: dict):
     return existing
 
 
+async def delete_analysis_by_notice_id(db: AsyncSession, notice_id: int) -> bool:
+    existing = await get_analysis_by_notice_id(db, notice_id)
+    if not existing:
+        return False
+    await db.delete(existing)
+    await db.commit()
+    return True
+
+
 async def get_type_stats(db: AsyncSession) -> list[dict]:
     """공고 유형별 건수와 비율을 반환한다. (도넛 차트용)"""
     total = await db.scalar(select(func.count()).select_from(Notice)) or 0

@@ -33,20 +33,15 @@ import {
   type ProposalOutline,
   fetchDashboardStats,
   fetchTypeStats,
+  deleteAnalysisApi,
   collectBidsApi,
   loginApi,
+  setAuthToken,
   fetchAgencySettings,
   saveAgencySettings,
   type ApiDashboardStats,
   type ApiTypeStatItem,
 } from './services/api';
-
-const FALLBACK_ACCOUNTS = [
-  { id: 0, username: 'manager01', password: '1234', name: '홍길동 PM',  role: 'manager' as const },
-  { id: 0, username: 'manager02', password: '1234', name: '김철수 PM',  role: 'manager' as const },
-  { id: 0, username: 'manager03', password: '1234', name: '이영희 PM',  role: 'manager' as const },
-  { id: 0, username: 'ceo01',     password: '1234', name: '대표이사',   role: 'ceo'     as const },
-];
 
 const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정'];
 
@@ -82,13 +77,7 @@ export default function App() {
     const apiUser = await loginApi(username, password);
     if (apiUser) {
       const userInfo: User = { id: apiUser.id, username: apiUser.username, name: apiUser.name, role: apiUser.role as User['role'] };
-      sessionStorage.setItem('koneps_user', JSON.stringify(userInfo));
-      setUser(userInfo);
-      return;
-    }
-    const fallback = FALLBACK_ACCOUNTS.find(a => a.username === username && a.password === password);
-    if (fallback) {
-      const userInfo: User = { id: fallback.id, username: fallback.username, name: fallback.name, role: fallback.role };
+      setAuthToken(apiUser.access_token);
       sessionStorage.setItem('koneps_user', JSON.stringify(userInfo));
       setUser(userInfo);
       return;
@@ -242,6 +231,8 @@ export default function App() {
   }, [user]);
 
   useEffect(() => {
+    // 로그인 전에는 보호 API를 부르지 않는다 (401 + 리로드 루프 방지).
+    if (!user) return;
     Promise.all([
       fetchBids().then(({ bids: fetchedBids, flags }) => {
         setBids(fetchedBids);
@@ -257,12 +248,16 @@ export default function App() {
       fetchDashboardStats().then(setDashboardStats),
       fetchTypeStats().then(setTypeStats),
     ]);
-  }, []);
+  }, [user]);
 
-  const requestAnalysis = async (bidId: string, opts?: { force?: boolean }) => {
+  const requestAnalysis = async (bidId: string, opts?: { force?: boolean; rerun?: boolean }) => {
+    // force: 백엔드 호출 생략 (업로드 흐름 — 이미 트리거됨)
+    // rerun: 완료 상태도 무시하고 다시 실행 (사용자가 "AI 재분석" 버튼 누름)
     const force = opts?.force === true;
+    const rerun = opts?.rerun === true;
     const current = aiStatusesRef.current[bidId] ?? 'none';
-    if (!force && (current === 'analyzing' || current === 'complete')) return;
+    if (current === 'analyzing') return; // 진행 중엔 항상 무시 (중복 트리거 방지)
+    if (!force && !rerun && current === 'complete') return; // 완료된 건 rerun/force 없으면 스킵
     if (analysisTimers.current[bidId]) return;
 
     aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'analyzing' };
@@ -329,6 +324,31 @@ export default function App() {
       analysisTimers.current[bidId] = setTimeout(poll, POLL_MS);
     };
     analysisTimers.current[bidId] = setTimeout(poll, POLL_MS);
+  };
+
+  /** 분석 결과 삭제 — 백엔드에서 analysis_result 행 제거 + pipeline_status='collected' 되돌림. */
+  const deleteAnalysis = async (bidId: string): Promise<boolean> => {
+    // 분석 중이면 백엔드가 409 → 그냥 false 반환
+    if ((aiStatusesRef.current[bidId] ?? 'none') === 'analyzing') return false;
+
+    const ok = await deleteAnalysisApi(bidId);
+    if (!ok) return false;
+
+    // 로컬 상태 초기화
+    aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'none' };
+    setAiStatuses(prev => ({ ...prev, [bidId]: 'none' }));
+    setAnalysisLogsMap(prev => ({ ...prev, [bidId]: [] }));
+
+    // bids/selected/detail 의 analysis 관련 필드도 갱신 (재조회)
+    try {
+      const refreshed = await fetchBidById(bidId);
+      setBids(prev => prev.map(b => b.id === bidId ? { ...b, ...refreshed } : b));
+      setSelectedBid(prev => (prev && prev.id === bidId) ? refreshed : prev);
+      setAnalysisDetailBid(prev => (prev && prev.id === bidId) ? refreshed : prev);
+    } catch {
+      // 재조회 실패해도 위 상태 리셋은 유효
+    }
+    return true;
   };
 
   const requestOutline = async (bidId: string, opts?: { force?: boolean }) => {
@@ -637,7 +657,7 @@ const toggleBookmark = (bidId: string) => {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <DashboardHeader
           user={user}
-          onLogout={() => { sessionStorage.removeItem('koneps_user'); sessionStorage.removeItem('koneps_analysis_logs'); setUser(null); }}
+          onLogout={() => { setAuthToken(null); sessionStorage.removeItem('koneps_user'); sessionStorage.removeItem('koneps_analysis_logs'); setUser(null); }}
           notifications={notifications}
           onMarkAllAsRead={markAllAsRead}
           onMarkAsRead={markAsRead}
@@ -832,6 +852,7 @@ const toggleBookmark = (bidId: string) => {
             onBack={() => setShowAnalysisDetail(false)}
             aiStatus={aiStatuses[analysisDetailBid.id] ?? analysisDetailBid.aiStatus ?? 'none'}
             onRequestAnalysis={requestAnalysis}
+            onDeleteAnalysis={deleteAnalysis}
             analysisLogs={analysisLogsMap[analysisDetailBid.id]}
             outline={outlinesMap[analysisDetailBid.id]}
             outlineStatus={outlineStatusMap[analysisDetailBid.id] ?? 'none'}
