@@ -34,6 +34,8 @@ import {
   fetchTypeStats,
   collectBidsApi,
   loginApi,
+  fetchAgencySettings,
+  saveAgencySettings,
   type ApiDashboardStats,
   type ApiTypeStatItem,
 } from './services/api';
@@ -545,6 +547,14 @@ const toggleBookmark = (bidId: string) => {
   });
 
   useEffect(() => {
+    if (!user) return;
+    if (user.id === 0) return;
+    fetchAgencySettings(user.id).then(settings => {
+      setAgencySettings(settings);
+    });
+  }, [user?.id]);
+
+  useEffect(() => {
     if (!user || user.role !== 'ceo') return;
     if (!CEO_ALLOWED_PAGES.includes(activePage)) setActivePage('대시보드');
   }, [user, activePage]);
@@ -645,7 +655,23 @@ const toggleBookmark = (bidId: string) => {
           }}
         >
           {activePage === '설정' ? (
-            <SettingsPage settings={agencySettings} onSave={setAgencySettings} />
+            <SettingsPage
+              settings={agencySettings}
+              onSave={async (newSettings) => {
+                setAgencySettings(newSettings);
+                if (user && user.id !== 0) {
+                  const ok = await saveAgencySettings(user.id, newSettings.preferred, newSettings.avoided);
+                  if (ok) {
+                    showToast('success', '설정이 저장되었습니다');
+                  } else {
+                    showToast('warning', '설정 저장에 실패했습니다');
+                  }
+                } else {
+                  showToast('success', '설정이 저장되었습니다');
+                }
+              }}
+              agencyList={[...new Set(bids.map(b => b.agency).filter(Boolean))].sort()}
+            />
           ) : activePage === '공고 목록' ? (
             <BidListPage
               bids={bids}

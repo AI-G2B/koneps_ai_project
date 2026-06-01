@@ -11,9 +11,11 @@ const SAMPLE_AGENCIES = [
 interface SettingsPageProps {
   settings: AgencySettings;
   onSave: (settings: AgencySettings) => void;
+  agencyList?: string[];
 }
 
-export function SettingsPage({ settings, onSave }: SettingsPageProps) {
+export function SettingsPage({ settings, onSave, agencyList }: SettingsPageProps) {
+  const agencies = agencyList && agencyList.length > 0 ? agencyList : SAMPLE_AGENCIES;
   const [preferredAgencies, setPreferredAgencies] = useState<string[]>(settings.preferred);
   const [avoidedAgencies, setAvoidedAgencies] = useState<string[]>(settings.avoided);
   const [preferSearch, setPreferSearch] = useState('');
@@ -38,15 +40,15 @@ export function SettingsPage({ settings, onSave }: SettingsPageProps) {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const filteredPrefer = SAMPLE_AGENCIES.filter(
+  const filteredPrefer = agencies.filter(
     (a) => a.includes(preferSearch) && !preferredAgencies.includes(a) && !avoidedAgencies.includes(a)
   );
-  const filteredAvoid = SAMPLE_AGENCIES.filter(
+  const filteredAvoid = agencies.filter(
     (a) => a.includes(avoidSearch) && !avoidedAgencies.includes(a) && !preferredAgencies.includes(a)
   );
 
   return (
-    <div style={{ maxWidth: '800px' }}>
+    <div style={{ width: '100%' }}>
       <div style={{ marginBottom: '24px' }}>
         <h1 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--dash-text)', marginBottom: '4px' }}>설정</h1>
         <p style={{ fontSize: '13px', color: 'var(--dash-text-3)' }}>선호 및 기피 발주기관을 설정하여 공고 목록에서 빠르게 파악하세요.</p>
@@ -95,7 +97,7 @@ export function SettingsPage({ settings, onSave }: SettingsPageProps) {
                 {preferSearch.trim().length > 0 &&
                   !preferredAgencies.includes(preferSearch.trim()) &&
                   !avoidedAgencies.includes(preferSearch.trim()) &&
-                  !SAMPLE_AGENCIES.includes(preferSearch.trim()) && (
+                  !agencies.includes(preferSearch.trim()) && (
                   <button
                     onClick={() => { addPreferred(preferSearch.trim()); setPreferSearch(''); }}
                     style={{ padding: '3px 10px', fontSize: '12px', backgroundColor: 'transparent', color: '#2563EB', border: '1px dashed rgba(37,99,235,0.4)', borderRadius: '20px', cursor: 'pointer' }}
@@ -150,7 +152,7 @@ export function SettingsPage({ settings, onSave }: SettingsPageProps) {
                 {avoidSearch.trim().length > 0 &&
                   !avoidedAgencies.includes(avoidSearch.trim()) &&
                   !preferredAgencies.includes(avoidSearch.trim()) &&
-                  !SAMPLE_AGENCIES.includes(avoidSearch.trim()) && (
+                  !agencies.includes(avoidSearch.trim()) && (
                   <button
                     onClick={() => { addAvoided(avoidSearch.trim()); setAvoidSearch(''); }}
                     style={{ padding: '3px 10px', fontSize: '12px', backgroundColor: 'transparent', color: '#EF4444', border: '1px dashed rgba(239,68,68,0.4)', borderRadius: '20px', cursor: 'pointer' }}

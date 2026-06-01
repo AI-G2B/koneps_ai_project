@@ -754,3 +754,36 @@ export async function uploadAttachmentApi(
     };
   }
 }
+
+export async function fetchAgencySettings(user_id: number): Promise<{ preferred: string[]; avoided: string[] }> {
+  try {
+    const res = await fetch(
+      `${BASE_URL}/auth/agency-settings?user_id=${user_id}`,
+      { signal: AbortSignal.timeout(10_000) }
+    );
+    if (!res.ok) return { preferred: [], avoided: [] };
+    return await res.json();
+  } catch (err) {
+    console.warn('[api] fetchAgencySettings 실패:', err);
+    return { preferred: [], avoided: [] };
+  }
+}
+
+export async function saveAgencySettings(
+  user_id: number,
+  preferred: string[],
+  avoided: string[]
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/agency-settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id, preferred, avoided }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('[api] saveAgencySettings 실패:', err);
+    return false;
+  }
+}
