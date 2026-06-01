@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Briefcase, Building2, Banknote, Calendar, ChevronLeft, ChevronRight, X, FileText } from 'lucide-react';
-import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from './mockData';
+import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from '../types';
 import { RiskBadge, AiStatusIndicator } from './BidTable';
 import { BidDetailPanel } from './BidDetailPanel';
 import { BidSlideOver } from './BidSlideOver';

@@ -5,6 +5,7 @@ import { useToast } from './ToastProvider';
 import { useTheme } from 'next-themes';
 import type { User } from './LoginPage';
 import type { NotificationItem } from '../App';
+import type { Bid } from '../types';
 
 interface DashboardHeaderProps {
   user: User;
@@ -15,6 +16,7 @@ interface DashboardHeaderProps {
   onClearNotifications: () => void;
   onSync?: () => Promise<void>;
   isSyncing?: boolean;
+  onOpenAnalysisDetail?: (bid: Bid) => void;
 }
 
 const getTimeAgo = (date: Date): string => {
@@ -46,7 +48,7 @@ const NOTIF_ICON: Record<NotificationItem['type'], { icon: React.ElementType; co
   inprogress:        { icon: Play,      color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
 };
 
-export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead, onMarkAsRead, onClearNotifications, onSync, isSyncing = false }: DashboardHeaderProps) {
+export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead, onMarkAsRead, onClearNotifications, onSync, isSyncing = false, onOpenAnalysisDetail }: DashboardHeaderProps) {
   const { showToast, dismissToast } = useToast();
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
@@ -214,7 +216,7 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
                 {searchResult.results.map((bid) => (
                   <div
                     key={bid.id}
-                    onClick={() => setShowSearchDrop(false)}
+                    onClick={() => { onOpenAnalysisDetail?.(bid as Bid); setSearchQuery(''); setShowSearchDrop(false); }}
                     style={{
                       padding: '10px 12px',
                       borderBottom: '1px solid var(--dash-border-faint)',

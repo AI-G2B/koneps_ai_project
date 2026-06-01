@@ -6,9 +6,23 @@ import {
   Sparkles, ScrollText, Phone,
   ExternalLink, Download, Loader2, ChevronRight,
 } from 'lucide-react';
-import { type Bid, type BidFlags, type AiStatusType, type RiskFactor, formatBudget, getDaysUntilDeadline } from './mockData';
+import { type Bid, type BidFlags, type AiStatusType, type RiskFactor, type AnalysisLog, formatBudget, getDaysUntilDeadline } from '../types';
 import { RiskBadge } from './BidTable';
 import { useToast } from './ToastProvider';
+
+const isRfpFile = (fileName: string): boolean => {
+  const rfpKeywords = ['제안요청서', 'RFP', '제안요청', '과업지시서', '제안서'];
+  return rfpKeywords.some(keyword => fileName.includes(keyword));
+};
+
+const getRfpBadgeText = (fileName: string): string => {
+  if (fileName.includes('과업지시서')) return '과업지시서';
+  if (fileName.includes('RFP')) return 'RFP';
+  if (fileName.includes('제안요청서')) return '제안요청서';
+  if (fileName.includes('제안요청')) return '제안요청서';
+  if (fileName.includes('제안서')) return '제안서';
+  return '제안요청서';
+};
 
 interface BidSlideOverProps {
   bid: Bid | null;
@@ -22,7 +36,7 @@ interface BidSlideOverProps {
   onRequestAnalysis?: (bidId: string) => void;
   ceoMode?: boolean;
   showFullDetail?: boolean;
-  analysisLogs?: import('./mockData').AnalysisLog[];
+  analysisLogs?: AnalysisLog[];
   outlineStatus?: 'none' | 'generating' | 'complete';
   onRequestOutline?: (bidId: string) => void;
   onDownloadOutline?: (bidId: string) => void;
@@ -31,6 +45,8 @@ interface BidSlideOverProps {
 export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false, analysisLogs, outlineStatus = 'none', onRequestOutline, onDownloadOutline }: BidSlideOverProps) {
   const { showToast } = useToast();
   const [showFileMenu, setShowFileMenu] = useState(false);
+  const [hoveredFileIndex, setHoveredFileIndex] = useState<number | null>(null);
+  const [hoveredCardIndex, setHoveredCardIndex] = useState<number | null>(null);
   const fileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,7 +75,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
   const detail = bid?.detail;
   const riskFactors = bid?.riskFactors ?? [];
   const flags = bid ? (bidFlags[bid.id] ?? { bookmarked: false, inProgress: false }) : { bookmarked: false, inProgress: false };
-  const isProposalSupported = bid?.type === 'ISP' || bid?.type === 'ISMP';
+
 
   const AI_HIGHLIGHT_ITEMS = detail ? [
     { icon: Wallet,    label: '예산규모', value: detail.budget },
@@ -111,7 +127,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
           top: 0,
           right: 0,
           height: '100vh',
-          width: '480px',
+          width: '560px',
           zIndex: 50,
           transform: isOpen ? 'translateX(0)' : 'translateX(100%)',
           transition: isOpen ? 'transform 250ms ease-out' : 'transform 200ms ease-in',
@@ -194,21 +210,64 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                       <Download style={{ width: '12px', height: '12px' }} />
                     </button>
                     {showFileMenu && (bid.attachments?.length ?? 0) > 1 && (
-                      <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, minWidth: '220px', maxWidth: '320px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 50, overflow: 'hidden' }}>
+                      <div style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, minWidth: '260px', maxWidth: '400px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 50, overflow: 'hidden' }}>
                         <div style={{ padding: '6px 10px', fontSize: '11px', color: 'var(--dash-text-4)', borderBottom: '1px solid var(--dash-border-faint)' }}>
                           첨부파일 {bid.attachments!.length}개
                         </div>
                         {bid.attachments!.map((file, i) => (
-                          <button
+                          <div
                             key={i}
-                            onClick={() => { window.open(file.fileUrl, '_blank'); setShowFileMenu(false); }}
-                            style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', fontSize: '12px', color: 'var(--dash-text-2)', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-                            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-row-hover)'; }}
-                            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
+                            style={{ position: 'relative' }}
+                            onMouseEnter={() => setHoveredFileIndex(i)}
+                            onMouseLeave={() => setHoveredFileIndex(null)}
                           >
-                            <Download style={{ width: '12px', height: '12px', color: '#2563EB', flexShrink: 0 }} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.fileName}</span>
-                          </button>
+                            {/* 커스텀 툴팁 — 파일명 20자 이상일 때만 */}
+                            {file.fileName.length >= 20 && (
+                              <span style={{
+                                position: 'absolute',
+                                bottom: 'calc(100% + 6px)',
+                                left: 0,
+                                backgroundColor: '#1E293B',
+                                color: '#FFFFFF',
+                                fontSize: '11px',
+                                padding: '5px 8px',
+                                borderRadius: '6px',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-all',
+                                maxWidth: '320px',
+                                zIndex: 999,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                                pointerEvents: 'none',
+                                opacity: hoveredFileIndex === i ? 1 : 0,
+                                transition: 'opacity 0.15s',
+                              }}>
+                                {file.fileName}
+                              </span>
+                            )}
+                            <button
+                              onClick={() => { window.open(file.fileUrl, '_blank'); setShowFileMenu(false); }}
+                              title={file.fileName}
+                              style={{
+                                width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', fontSize: '12px',
+                                color: 'var(--dash-text)',
+                                backgroundColor: isRfpFile(file.fileName)
+                                  ? (hoveredFileIndex === i ? 'rgba(245,158,11,0.08)' : 'var(--dash-card)')
+                                  : (hoveredFileIndex === i ? 'var(--dash-row-hover)' : 'transparent'),
+                                border: '1px solid transparent',
+                                borderRadius: isRfpFile(file.fileName) ? '4px' : '0',
+                                cursor: 'pointer', textAlign: 'left',
+                                transition: 'background-color 0.12s, border-color 0.12s',
+                              }}
+                            >
+                              <Download style={{ width: '12px', height: '12px', color: isRfpFile(file.fileName) ? '#D97706' : 'var(--dash-text-3)', flexShrink: 0 }} />
+                              <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.fileName}</span>
+                              {isRfpFile(file.fileName) && (
+                                <span style={{ backgroundColor: 'rgba(245,158,11,0.12)', color: '#D97706', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '4px', fontSize: '10px', padding: '2px 6px', fontWeight: 500, flexShrink: 0 }}>
+                                  {getRfpBadgeText(file.fileName)}
+                                </span>
+                              )}
+                            </button>
+                          </div>
                         ))}
                       </div>
                     )}
@@ -239,8 +298,15 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
               <InfoCell label="발주기관" value={bid.agency} />
               <InfoCell label="사업 유형" value={bid.type} />
               <InfoCell
-                label="예산"
-                value={formatBudget(bid.budget)}
+                label="추정가격"
+                value={bid.presmptPrce != null ? formatBudget(bid.presmptPrce) : '-'}
+                valueStyle={ceoMode
+                  ? { fontSize: '16px', fontWeight: 700, color: '#F59E0B' }
+                  : { fontSize: '13px', fontWeight: 700, color: '#F59E0B' }}
+              />
+              <InfoCell
+                label="배정예산"
+                value={bid.asignBdgtAmt != null ? formatBudget(bid.asignBdgtAmt) : '-'}
                 valueStyle={ceoMode
                   ? { fontSize: '16px', fontWeight: 700, color: '#F59E0B' }
                   : { fontSize: '13px', fontWeight: 700, color: '#F59E0B' }}
@@ -423,19 +489,43 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                   <>
                     {/* 상단 하이라이트 카드 (3개) */}
                     <div className="flex gap-2" style={{ marginTop: '12px' }}>
-                      {AI_HIGHLIGHT_ITEMS.map((item) => (
+                      {AI_HIGHLIGHT_ITEMS.map((item, index) => (
                         <div
                           key={item.label}
                           className="flex flex-col rounded-lg"
-                          style={{ flex: 1, padding: '10px 12px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)' }}
+                          style={{ flex: 1, padding: '10px 12px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)', alignItems: 'center', justifyContent: 'center', textAlign: 'center', position: 'relative' }}
+                          onMouseEnter={() => setHoveredCardIndex(index)}
+                          onMouseLeave={() => setHoveredCardIndex(null)}
                         >
-                          <div className="flex items-center gap-1" style={{ marginBottom: '6px' }}>
+                          <div className="flex items-center justify-center gap-1" style={{ marginBottom: '6px' }}>
                             <item.icon style={{ width: '11px', height: '11px', color: '#2563EB', flexShrink: 0 }} />
                             <div style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>{item.label}</div>
                           </div>
-                          <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--dash-text)', lineHeight: 1.3 }} title={item.value}>
+                          <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--dash-text)', lineHeight: 1.3, textAlign: 'center' }}>
                             {item.value}
                           </div>
+                          {hoveredCardIndex === index && item.value && item.value.length >= 10 && (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 'calc(100% + 6px)',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              backgroundColor: '#1E293B',
+                              color: '#FFFFFF',
+                              fontSize: '11px',
+                              padding: '6px 10px',
+                              borderRadius: '6px',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-all',
+                              maxWidth: '200px',
+                              zIndex: 999,
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                              pointerEvents: 'none',
+                              textAlign: 'left',
+                            }}>
+                              {item.value}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -502,7 +592,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
           >
             {!ceoMode && bid && (() => {
               const analysisDone = aiStatus === 'complete';
-              const supported = isProposalSupported;
+              const supported = bid.type === 'ISP' || bid.type === 'ISMP';
               const generating = outlineStatus === 'generating';
               const complete = outlineStatus === 'complete';
               const disabled = !analysisDone || !supported || generating;

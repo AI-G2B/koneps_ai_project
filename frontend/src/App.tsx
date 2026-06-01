@@ -11,12 +11,13 @@ import { BookmarkPage } from './components/BookmarkPage';
 import { ProjectPage } from './components/ProjectPage';
 import { BidListPage } from './components/BidListPage';
 import { BottomWidgets } from './components/BottomWidgets';
-import { type Bid, type BidFlags, type AiStatusType, type AnalysisLog } from './components/mockData';
+import { type Bid, type BidFlags, type AiStatusType, getDaysUntilDeadline } from './types';
 import { useToast } from './components/ToastProvider';
 import { AnalysisDetailPage } from './components/AnalysisDetailPage';
 import { AnalysisListPage } from './components/AnalysisListPage';
 import { StrategyReportPage } from './components/StrategyReportPage';
 import { ProposalPage } from './components/ProposalPage';
+import { ProposalOutlinePage } from './components/ProposalOutlinePage';
 import {
   fetchBids,
   fetchBidById,
@@ -34,6 +35,8 @@ import {
   fetchTypeStats,
   collectBidsApi,
   loginApi,
+  fetchAgencySettings,
+  saveAgencySettings,
   type ApiDashboardStats,
   type ApiTypeStatItem,
 } from './services/api';
@@ -45,9 +48,9 @@ const FALLBACK_ACCOUNTS = [
   { id: 0, username: 'ceo01',     password: '1234', name: '대표이사',   role: 'ceo'     as const },
 ];
 
-const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정', '도움말'];
+const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정'];
 
-export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '현황 요약' | '전략 리포트' | '설정' | '도움말';
+export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '목차 현황' | '현황 요약' | '전략 리포트' | '설정';
 
 export interface AgencySettings {
   preferred: string[];
@@ -92,17 +95,50 @@ export default function App() {
     }
     setLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
   };
-  const [bids, setBids] = useState<Bid[]>([]);
+  const [bids, setBids] = useState<Bid[]>(() => {
+    try {
+      const cached = sessionStorage.getItem('koneps_bids');
+      const cachedTime = sessionStorage.getItem('koneps_bids_time');
+      if (cached && cachedTime) {
+        const age = Date.now() - Number(cachedTime);
+        // 30분 이내 캐시는 재사용
+        if (age < 30 * 60 * 1000) {
+          return JSON.parse(cached);
+        }
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
   const [isFetching, setIsFetching] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(() => {
+    const t = sessionStorage.getItem('koneps_bids_time');
+    return t ? new Date(Number(t)) : null;
+  });
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [activePage, setActivePage] = useState<PageType>(() => {
     const saved = localStorage.getItem('koneps:activePage');
     return (saved as PageType) ?? '대시보드';
   });
-  const [bidFlags, setBidFlags] = useState<Record<string, BidFlags>>({});
+  const [bidFlags, setBidFlags] = useState<Record<string, BidFlags>>(() => {
+    try {
+      const cached = sessionStorage.getItem('koneps_bidflags');
+      return cached ? JSON.parse(cached) : {};
+    } catch {
+      return {};
+    }
+  });
   const [aiStatuses, setAiStatuses] = useState<Record<string, AiStatusType>>({});
-  const [analysisLogsMap, setAnalysisLogsMap] = useState<Record<string, AnalysisLog[]>>({});
+  const [analysisLogsMap, setAnalysisLogsMap] = useState<Record<string, AnalysisLog[]>>(() => {
+    try {
+      const cached = sessionStorage.getItem('koneps_analysis_logs');
+      return cached ? JSON.parse(cached) : {};
+    } catch {
+      return {};
+    }
+  });
   const [outlinesMap, setOutlinesMap] = useState<Record<string, ProposalOutline>>({});
   const [outlineLogsMap, setOutlineLogsMap] = useState<Record<string, AnalysisLog[]>>({});
   const [outlineStatusMap, setOutlineStatusMap] = useState<Record<string, 'none' | 'generating' | 'complete'>>({});
@@ -155,6 +191,7 @@ export default function App() {
       });
       setDashboardStats(stats);
       setTypeStats(types);
+      setLastSyncTime(new Date());
       addNotification({
         type: 'sync',
         title: '동기화 완료',
@@ -164,6 +201,45 @@ export default function App() {
       setIsFetching(false);
     }
   };
+
+  const loadBids = async () => {
+    setIsFetching(true);
+    try {
+      const [{ bids: fetchedBids, flags }, stats, types] = await Promise.all([
+        fetchBids(),
+        fetchDashboardStats(),
+        fetchTypeStats(),
+      ]);
+      setBids(fetchedBids);
+      sessionStorage.setItem('koneps_bids', JSON.stringify(fetchedBids));
+      const now = Date.now();
+      sessionStorage.setItem('koneps_bids_time', String(now));
+      setLastSyncTime(new Date(now));
+      setBidFlags(prev => {
+        const merged = { ...prev };
+        Object.entries(flags).forEach(([id, flag]) => {
+          merged[id] = { bookmarked: flag.bookmarked, inProgress: flag.inProgress };
+        });
+        sessionStorage.setItem('koneps_bidflags', JSON.stringify(merged));
+        return merged;
+      });
+      setDashboardStats(stats);
+      setTypeStats(types);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  // 로그인 상태 변경 시 캐시 확인 후 자동 로딩
+  useEffect(() => {
+    if (!user) return;
+    const cachedTime = sessionStorage.getItem('koneps_bids_time');
+    const age = cachedTime ? Date.now() - Number(cachedTime) : Infinity;
+    // 캐시 없거나 30분 초과 시 새로 불러오기
+    if (age >= 30 * 60 * 1000) {
+      loadBids();
+    }
+  }, [user]);
 
   useEffect(() => {
     Promise.all([
@@ -226,6 +302,9 @@ export default function App() {
         const { pipelineStatus, logs } = await fetchAnalysisStatus(bidId);
         setAnalysisLogsMap(prev => ({ ...prev, [bidId]: logs }));
         if (pipelineStatus === 'analyzed') {
+          if (logs && logs.length > 0) {
+            setAnalysisLogsMap(prev => ({ ...prev, [bidId]: logs }));
+          }
           const detailed = await fetchBidById(bidId);
           aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'complete' };
           setAiStatuses(prev => ({ ...prev, [bidId]: 'complete' }));
@@ -268,7 +347,13 @@ export default function App() {
     setOutlineStatusMap(prev => ({ ...prev, [bidId]: 'generating' }));
     setOutlineLogsMap(prev => ({ ...prev, [bidId]: [] }));
 
-    const success = await requestOutlineApi(bidId);
+    const bid = bids.find(b => b.id === bidId);
+    if (!bid) {
+      outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: 'none' };
+      setOutlineStatusMap(prev => ({ ...prev, [bidId]: 'none' }));
+      return;
+    }
+    const success = await requestOutlineApi(bid.number);
     if (!success) {
       // 재생성이면 기존 상태로 복귀, 첫 생성이면 none
       const restoreTo = force ? 'complete' : 'none';
@@ -301,16 +386,16 @@ export default function App() {
         return;
       }
       try {
-        const { exists, logs } = await fetchOutlineStatus(bidId);
+        const { exists, logs } = await fetchOutlineStatus(bid.number);
         setOutlineLogsMap(prev => ({ ...prev, [bidId]: logs }));
         // 완료 판정: "DB 저장 완료" success 로그 + exists.
         // 이전 결과의 로그는 백엔드 progress_store.clear()로 비워졌으므로
         // logs는 항상 이번 실행분만 들어있다.
         const completed = exists && logs.some(
-          l => l.level === 'success' && (l.message || '').includes('DB 저장 완료'),
+          l => l.status === 'success' && (l.message || '').includes('DB 저장 완료'),
         );
         if (completed) {
-          const outline = await fetchOutline(bidId);
+          const outline = await fetchOutline(bid.number);
           if (outline) {
             setOutlinesMap(prev => ({ ...prev, [bidId]: outline }));
             outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: 'complete' };
@@ -321,7 +406,7 @@ export default function App() {
           }
         }
         // 실패 로그 감지
-        const failed = logs.some(l => l.level === 'error');
+        const failed = logs.some(l => l.status === 'error');
         if (failed) {
           const restoreTo = force ? 'complete' : 'none';
           outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: restoreTo };
@@ -430,6 +515,12 @@ const toggleBookmark = (bidId: string) => {
     }
   };
 
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('koneps_analysis_logs', JSON.stringify(analysisLogsMap));
+    } catch {}
+  }, [analysisLogsMap]);
+
   // 새로고침해도 페이지/AI 분석 화면이 유지되도록 localStorage에 persist
   useEffect(() => {
     localStorage.setItem('koneps:activePage', activePage);
@@ -470,6 +561,14 @@ const toggleBookmark = (bidId: string) => {
   });
 
   useEffect(() => {
+    if (!user) return;
+    if (user.id === 0) return;
+    fetchAgencySettings(user.id).then(settings => {
+      setAgencySettings(settings);
+    });
+  }, [user?.id]);
+
+  useEffect(() => {
     if (!user || user.role !== 'ceo') return;
     if (!CEO_ALLOWED_PAGES.includes(activePage)) setActivePage('대시보드');
   }, [user, activePage]);
@@ -508,6 +607,14 @@ const toggleBookmark = (bidId: string) => {
     }
   };
 
+  const handleLogout = () => {
+    sessionStorage.removeItem('koneps_user');
+    sessionStorage.removeItem('koneps_bids');
+    sessionStorage.removeItem('koneps_bids_time');
+    sessionStorage.removeItem('koneps_bidflags');
+    setUser(null);
+  };
+
   if (!user) {
     return <LoginPage onLogin={handleLogin} loginError={loginError} />;
   }
@@ -515,6 +622,7 @@ const toggleBookmark = (bidId: string) => {
   const isCeo = user.role === 'ceo';
   const inProgressBids = bids.filter(b => bidFlags[b.id]?.inProgress ?? false);
   const analysisCompleteCount = Object.values(aiStatuses).filter(s => s === 'complete').length;
+  const activeBidCount = bids.filter(b => getDaysUntilDeadline(b.deadline) >= 0).length;
 
   return (
     <div
@@ -525,17 +633,18 @@ const toggleBookmark = (bidId: string) => {
         minWidth: '1200px',
       }}
     >
-      <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} analysisCompleteCount={analysisCompleteCount} totalBidCount={bids.length} />
+      <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} analysisCompleteCount={analysisCompleteCount} totalBidCount={activeBidCount} lastSyncTime={lastSyncTime} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <DashboardHeader
           user={user}
-          onLogout={() => { sessionStorage.removeItem('koneps_user'); setUser(null); }}
+          onLogout={() => { sessionStorage.removeItem('koneps_user'); sessionStorage.removeItem('koneps_analysis_logs'); setUser(null); }}
           notifications={notifications}
           onMarkAllAsRead={markAllAsRead}
           onMarkAsRead={markAsRead}
           onClearNotifications={clearNotifications}
           onSync={handleSync}
           isSyncing={isFetching}
+          onOpenAnalysisDetail={openAnalysisDetail}
         />
         {isFetching && (
           <div style={{ height: '2px', backgroundColor: 'var(--dash-border)', flexShrink: 0 }}>
@@ -560,7 +669,23 @@ const toggleBookmark = (bidId: string) => {
           }}
         >
           {activePage === '설정' ? (
-            <SettingsPage settings={agencySettings} onSave={setAgencySettings} />
+            <SettingsPage
+              settings={agencySettings}
+              onSave={async (newSettings) => {
+                setAgencySettings(newSettings);
+                if (user && user.id !== 0) {
+                  const ok = await saveAgencySettings(user.id, newSettings.preferred, newSettings.avoided);
+                  if (ok) {
+                    showToast('success', '설정이 저장되었습니다');
+                  } else {
+                    showToast('warning', '설정 저장에 실패했습니다');
+                  }
+                } else {
+                  showToast('success', '설정이 저장되었습니다');
+                }
+              }}
+              agencyList={[...new Set(bids.map(b => b.agency).filter(Boolean))].sort()}
+            />
           ) : activePage === '공고 목록' ? (
             <BidListPage
               bids={bids}
@@ -594,7 +719,25 @@ const toggleBookmark = (bidId: string) => {
               selectedBid={selectedBid}
             />
           ) : activePage === '제안목차' ? (
-            <ProposalPage bids={bids} bidFlags={bidFlags} />
+            <ProposalPage
+              bids={bids}
+              bidFlags={bidFlags}
+              outlinesMap={outlinesMap}
+              outlineStatusMap={outlineStatusMap}
+              aiStatuses={aiStatuses}
+              onOpenAnalysisDetail={openAnalysisDetail}
+              onRequestOutline={requestOutline}
+            />
+          ) : activePage === '목차 현황' ? (
+            <ProposalOutlinePage
+              bids={bids}
+              bidFlags={bidFlags}
+              outlinesMap={outlinesMap}
+              outlineStatusMap={outlineStatusMap}
+              onOpenAnalysisDetail={openAnalysisDetail}
+              onRequestOutline={requestOutline}
+              onDownloadOutline={downloadOutlineExcel}
+            />
           ) : activePage === '전략 리포트' ? (
             <StrategyReportPage bids={bids} bidFlags={bidFlags} aiStatuses={aiStatuses} />
           ) : activePage === '진행 프로젝트' ? (
@@ -631,6 +774,7 @@ const toggleBookmark = (bidId: string) => {
                   aiStatuses={aiStatuses}
                   ceoMode={true}
                   onRequestAnalysis={requestAnalysis}
+                  showBidNumber={true}
                 />
                 <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} ceoMode={true} analysisLogs={selectedBid ? analysisLogsMap[selectedBid.id] : undefined} outlineStatus={selectedBid ? outlineStatusMap[selectedBid.id] : 'none'} onRequestOutline={requestOutline} onDownloadOutline={downloadOutlineExcel} />
               </div>
@@ -659,6 +803,7 @@ const toggleBookmark = (bidId: string) => {
                   onOpenAnalysisDetail={openAnalysisDetail}
                   onRequestAnalysis={requestAnalysis}
                   hideTargetList={true}
+                  showBidNumber={true}
                   analysisLogsMap={analysisLogsMap}
                   outlineStatusMap={outlineStatusMap}
                   onRequestOutline={requestOutline}

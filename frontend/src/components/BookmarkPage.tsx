@@ -1,5 +1,5 @@
 import { Bookmark, BookmarkX, Play, Building2, Banknote, Calendar } from 'lucide-react';
-import { type Bid, type BidFlags, formatBudget, getDaysUntilDeadline, isDeadlineUrgent } from './mockData';
+import { type Bid, type BidFlags, formatBudget, getDaysUntilDeadline, isDeadlineUrgent } from '../types';
 import { RiskBadge, AiStatusIndicator } from './BidTable';
 import { BidDetailPanel } from './BidDetailPanel';
 

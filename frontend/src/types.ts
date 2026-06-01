@@ -62,6 +62,8 @@ export interface Bid {
   title: string;
   agency: string;
   budget: number;
+  presmptPrce: number | null;
+  asignBdgtAmt: number | null;
   deadline: string;
   risk: RiskLevel;
   aiStatus: AiStatusType;
@@ -87,11 +89,13 @@ export const formatBudget = (amount: number): string => {
   return `${(amount / 10000).toFixed(0)}만원`;
 };
 
-export const getDaysUntilDeadline = (deadline: string): number => {
+export const getDaysUntilDeadline = (deadline: string | null | undefined): number => {
+  if (!deadline) return 9999; // 마감일 없는 공고는 유효한 공고로 처리
   const deadlineDate = new Date(deadline);
+  if (isNaN(deadlineDate.getTime())) return 9999;
   return Math.ceil((deadlineDate.getTime() - TODAY.getTime()) / (1000 * 60 * 60 * 24));
 };
 
-export const isDeadlineUrgent = (deadline: string): boolean => {
+export const isDeadlineUrgent = (deadline: string | null | undefined): boolean => {
   return getDaysUntilDeadline(deadline) <= 3;
 };

@@ -1,6 +1,6 @@
 import {
-  LayoutDashboard, FileText, Sparkles, BookOpen,
-  Settings, Building2, ChevronRight, HelpCircle, TrendingUp,
+  LayoutDashboard, FileText, Sparkles, BookOpen, List,
+  Settings, Building2, ChevronRight, TrendingUp,
   Bookmark, Briefcase,
 } from 'lucide-react';
 import type { UserRole } from './LoginPage';
@@ -26,6 +26,7 @@ const MANAGER_SECTIONS: NavSection[] = [
     items: [
       { icon: Sparkles, label: 'AI 분석', badge: '3' },
       { icon: BookOpen, label: '제안목차' },
+      { icon: List, label: '목차 현황' },
     ],
   },
 ];
@@ -49,6 +50,7 @@ const PROPOSAL_SECTIONS: NavSection[] = [
     label: '분석',
     items: [
       { icon: BookOpen, label: '제안목차' },
+      { icon: List, label: '목차 현황' },
       { icon: Sparkles, label: 'AI 분석' },
     ],
   },
@@ -56,7 +58,6 @@ const PROPOSAL_SECTIONS: NavSection[] = [
 
 const SYSTEM_ITEMS: NavItem[] = [
   { icon: Settings, label: '설정' },
-  { icon: HelpCircle, label: '도움말' },
 ];
 
 interface SidebarProps {
@@ -65,9 +66,10 @@ interface SidebarProps {
   onNavigate: (page: PageType) => void;
   analysisCompleteCount?: number;
   totalBidCount?: number;
+  lastSyncTime?: Date | null;
 }
 
-export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 0, totalBidCount = 0 }: SidebarProps) {
+export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 0, totalBidCount = 0, lastSyncTime }: SidebarProps) {
   const sections = role === 'ceo' ? CEO_SECTIONS : role === 'proposal' ? PROPOSAL_SECTIONS : MANAGER_SECTIONS;
   const accentColor = role === 'ceo' ? '#7C3AED' : role === 'proposal' ? '#0891B2' : '#2563EB';
   const accentBg = role === 'ceo' ? 'rgba(124,58,237,0.15)' : role === 'proposal' ? 'rgba(8,145,178,0.15)' : 'rgba(37,99,235,0.15)';
@@ -112,7 +114,13 @@ export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 
   return (
     <div className="w-[220px] flex-shrink-0 flex flex-col h-full" style={{ backgroundColor: 'var(--dash-surface)', borderRight: '1px solid var(--dash-border)' }}>
       {/* Logo */}
-      <div className="h-14 flex items-center px-4 gap-3 flex-shrink-0" style={{ borderBottom: '1px solid var(--dash-border)' }}>
+      <button
+        onClick={() => onNavigate('대시보드')}
+        className="h-14 flex items-center px-4 gap-3 flex-shrink-0 w-full text-left"
+        style={{ borderBottom: '1px solid var(--dash-border)', cursor: 'pointer', background: 'none', transition: 'opacity 0.15s' }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.75'; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+      >
         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: logoGradient }}>
           <Building2 style={{ width: '16px', height: '16px', color: 'white' }} />
         </div>
@@ -120,7 +128,7 @@ export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 
           <div style={{ fontSize: '10px', color: 'var(--dash-text-4)', lineHeight: 1 }}>나라장터</div>
           <div style={{ fontSize: '13px', color: 'var(--dash-text)', fontWeight: 600, lineHeight: 1.3 }}>AI 입찰 분석</div>
         </div>
-      </div>
+      </button>
 
       {/* Role badge */}
       {role !== 'manager' && (
@@ -157,7 +165,9 @@ export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 
           <span style={{ fontSize: '11px', color: '#22C55E' }}>실시간 연동 중</span>
         </div>
         <div style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>나라장터 G2B · v2.4.1</div>
-        <div style={{ fontSize: '10px', color: 'var(--dash-text-6)', marginTop: '2px' }}>최종 동기화: 09:20 AM</div>
+        <div style={{ fontSize: '10px', color: 'var(--dash-text-6)', marginTop: '2px' }}>
+          최종 동기화: {lastSyncTime ? lastSyncTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '—'}
+        </div>
       </div>
     </div>
   );
