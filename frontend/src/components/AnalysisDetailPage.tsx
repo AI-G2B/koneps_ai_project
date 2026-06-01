@@ -275,13 +275,6 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
               <RefreshCw style={{ width: '14px', height: '14px' }} />
               목차 재생성
             </button>
-            <button
-              onClick={() => showToast('info', '준비 중입니다')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
-            >
-              <Download style={{ width: '14px', height: '14px' }} />
-              엑셀 다운로드
-            </button>
           </div>
         </div>
       )}

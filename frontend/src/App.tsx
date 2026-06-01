@@ -17,6 +17,7 @@ import { AnalysisDetailPage } from './components/AnalysisDetailPage';
 import { AnalysisListPage } from './components/AnalysisListPage';
 import { StrategyReportPage } from './components/StrategyReportPage';
 import { ProposalPage } from './components/ProposalPage';
+import { ProposalOutlinePage } from './components/ProposalOutlinePage';
 import {
   fetchBids,
   fetchBidById,
@@ -47,9 +48,9 @@ const FALLBACK_ACCOUNTS = [
   { id: 0, username: 'ceo01',     password: '1234', name: '대표이사',   role: 'ceo'     as const },
 ];
 
-const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정', '도움말'];
+const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정'];
 
-export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '현황 요약' | '전략 리포트' | '설정' | '도움말';
+export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '목차 현황' | '현황 요약' | '전략 리포트' | '설정';
 
 export interface AgencySettings {
   preferred: string[];
@@ -111,6 +112,10 @@ export default function App() {
     }
   });
   const [isFetching, setIsFetching] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(() => {
+    const t = sessionStorage.getItem('koneps_bids_time');
+    return t ? new Date(Number(t)) : null;
+  });
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [activePage, setActivePage] = useState<PageType>(() => {
@@ -186,6 +191,7 @@ export default function App() {
       });
       setDashboardStats(stats);
       setTypeStats(types);
+      setLastSyncTime(new Date());
       addNotification({
         type: 'sync',
         title: '동기화 완료',
@@ -206,7 +212,9 @@ export default function App() {
       ]);
       setBids(fetchedBids);
       sessionStorage.setItem('koneps_bids', JSON.stringify(fetchedBids));
-      sessionStorage.setItem('koneps_bids_time', String(Date.now()));
+      const now = Date.now();
+      sessionStorage.setItem('koneps_bids_time', String(now));
+      setLastSyncTime(new Date(now));
       setBidFlags(prev => {
         const merged = { ...prev };
         Object.entries(flags).forEach(([id, flag]) => {
@@ -339,7 +347,13 @@ export default function App() {
     setOutlineStatusMap(prev => ({ ...prev, [bidId]: 'generating' }));
     setOutlineLogsMap(prev => ({ ...prev, [bidId]: [] }));
 
-    const success = await requestOutlineApi(bidId);
+    const bid = bids.find(b => b.id === bidId);
+    if (!bid) {
+      outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: 'none' };
+      setOutlineStatusMap(prev => ({ ...prev, [bidId]: 'none' }));
+      return;
+    }
+    const success = await requestOutlineApi(bid.number);
     if (!success) {
       // 재생성이면 기존 상태로 복귀, 첫 생성이면 none
       const restoreTo = force ? 'complete' : 'none';
@@ -372,7 +386,7 @@ export default function App() {
         return;
       }
       try {
-        const { exists, logs } = await fetchOutlineStatus(bidId);
+        const { exists, logs } = await fetchOutlineStatus(bid.number);
         setOutlineLogsMap(prev => ({ ...prev, [bidId]: logs }));
         // 완료 판정: "DB 저장 완료" success 로그 + exists.
         // 이전 결과의 로그는 백엔드 progress_store.clear()로 비워졌으므로
@@ -381,7 +395,7 @@ export default function App() {
           l => l.status === 'success' && (l.message || '').includes('DB 저장 완료'),
         );
         if (completed) {
-          const outline = await fetchOutline(bidId);
+          const outline = await fetchOutline(bid.number);
           if (outline) {
             setOutlinesMap(prev => ({ ...prev, [bidId]: outline }));
             outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: 'complete' };
@@ -619,7 +633,7 @@ const toggleBookmark = (bidId: string) => {
         minWidth: '1200px',
       }}
     >
-      <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} analysisCompleteCount={analysisCompleteCount} totalBidCount={activeBidCount} />
+      <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} analysisCompleteCount={analysisCompleteCount} totalBidCount={activeBidCount} lastSyncTime={lastSyncTime} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <DashboardHeader
           user={user}
@@ -705,7 +719,25 @@ const toggleBookmark = (bidId: string) => {
               selectedBid={selectedBid}
             />
           ) : activePage === '제안목차' ? (
-            <ProposalPage bids={bids} bidFlags={bidFlags} />
+            <ProposalPage
+              bids={bids}
+              bidFlags={bidFlags}
+              outlinesMap={outlinesMap}
+              outlineStatusMap={outlineStatusMap}
+              aiStatuses={aiStatuses}
+              onOpenAnalysisDetail={openAnalysisDetail}
+              onRequestOutline={requestOutline}
+            />
+          ) : activePage === '목차 현황' ? (
+            <ProposalOutlinePage
+              bids={bids}
+              bidFlags={bidFlags}
+              outlinesMap={outlinesMap}
+              outlineStatusMap={outlineStatusMap}
+              onOpenAnalysisDetail={openAnalysisDetail}
+              onRequestOutline={requestOutline}
+              onDownloadOutline={downloadOutlineExcel}
+            />
           ) : activePage === '전략 리포트' ? (
             <StrategyReportPage bids={bids} bidFlags={bidFlags} aiStatuses={aiStatuses} />
           ) : activePage === '진행 프로젝트' ? (

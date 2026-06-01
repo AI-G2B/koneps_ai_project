@@ -177,7 +177,7 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
     if (excludeExpired && getDaysUntilDeadline(bid.deadline) < 0) return false;
     const fromDate = getFromDate(dateFilter);
     if (fromDate && new Date(bid.collectedAt) < fromDate) return false;
-    if (statusFilter === 'urgent') return isDeadlineUrgent(bid.deadline);
+    if (statusFilter === 'urgent') return getDaysUntilDeadline(bid.deadline) >= 0 && isDeadlineUrgent(bid.deadline);
     if (statusFilter === 'danger') return bid.risk === 'danger';
     return true;
   });
