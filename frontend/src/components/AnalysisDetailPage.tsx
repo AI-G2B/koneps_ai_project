@@ -12,7 +12,8 @@ interface AnalysisDetailPageProps {
   bid: Bid;
   onBack: () => void;
   aiStatus?: AiStatusType;
-  onRequestAnalysis?: (bidId: string) => void;
+  onRequestAnalysis?: (bidId: string, opts?: { rerun?: boolean }) => void;
+  onDeleteAnalysis?: (bidId: string) => Promise<boolean>;
   analysisLogs?: import('./mockData').AnalysisLog[];
   outline?: import('../services/api').ProposalOutline | null;
   outlineStatus?: 'none' | 'generating' | 'complete';
@@ -121,7 +122,7 @@ const POISON_CATEGORIES: Array<{
   { code: 'L4', group: '법무/지재권', name: '징벌적 지연배상금', criteria: '1일 0.25% 이상 (법정 0.125% 초과) 또는 상한선(30%) 미설정', level: 'caution' },
 ];
 
-export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequestAnalysis, analysisLogs: analysisLogsProp, outline, outlineStatus = 'none', outlineLogs, onRequestOutline, onRegenerateOutline, onDownloadOutline, onUploadAttachment }: AnalysisDetailPageProps) {
+export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequestAnalysis, onDeleteAnalysis, analysisLogs: analysisLogsProp, outline, outlineStatus = 'none', outlineLogs, onRequestOutline, onRegenerateOutline, onDownloadOutline, onUploadAttachment }: AnalysisDetailPageProps) {
   const { showToast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState<DetailTab>('analysis');
@@ -240,7 +241,10 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
           )}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
-              onClick={() => onRequestAnalysis?.(bid.id)}
+              onClick={() => {
+                onRequestAnalysis?.(bid.id, { rerun: true });
+                showToast('info', 'AI 재분석을 시작합니다');
+              }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
             >
               <RefreshCw style={{ width: '13px', height: '13px' }} />
@@ -285,7 +289,16 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
                 취소
               </button>
               <button
-                onClick={() => { setShowDeleteConfirm(false); showToast('warning', '분석 결과가 삭제되었습니다'); }}
+                onClick={async () => {
+                  setShowDeleteConfirm(false);
+                  if (!onDeleteAnalysis) {
+                    showToast('warning', '삭제 기능을 사용할 수 없습니다');
+                    return;
+                  }
+                  const ok = await onDeleteAnalysis(bid.id);
+                  if (ok) showToast('success', '분석 결과가 삭제되었습니다');
+                  else showToast('warning', '분석 결과 삭제에 실패했습니다');
+                }}
                 style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#EF4444', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
               >
                 삭제

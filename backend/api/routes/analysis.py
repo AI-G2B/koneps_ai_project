@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.crud import (
+    delete_analysis_by_notice_id,
     get_analysis_by_notice_id,
     get_notice_detail,
     update_pipeline_status,
@@ -117,4 +118,29 @@ async def get_analysis(
         "bid_ntce_no": bid_ntce_no,
         "pipeline_status": notice.pipeline_status,
         "analysis_result": analysis,
+    }
+
+
+@router.delete(
+    "/{bid_ntce_no}",
+    summary="분석 결과 삭제",
+)
+async def delete_analysis(
+    bid_ntce_no: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """공고의 AI 분석 결과를 삭제하고 파이프라인을 'collected'로 되돌린다."""
+    notice = await get_notice_detail(db, bid_ntce_no)
+    if not notice:
+        raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
+    if notice.pipeline_status == "analyzing":
+        raise HTTPException(status_code=409, detail="분석이 진행 중인 공고는 삭제할 수 없습니다.")
+
+    deleted = await delete_analysis_by_notice_id(db, notice.id)
+    await update_pipeline_status(db, notice.id, "collected")
+    progress_store.clear(notice.id)
+    return {
+        "bid_ntce_no": bid_ntce_no,
+        "deleted": bool(deleted),
+        "pipeline_status": "collected",
     }

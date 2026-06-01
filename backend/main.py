@@ -1,10 +1,16 @@
+import json
+import os
 from contextlib import asynccontextmanager
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.api.routes import bids, analysis, search, auth, outline
+from backend.api.security import get_current_user
+from backend.api.rate_limit import limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
 
 SCHEDULE_HOURS = [10, 13, 16, 20]
 
@@ -96,17 +102,48 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown()
 
 
-app = FastAPI(title="나라장터 AI 분석 플랫폼", lifespan=lifespan)
+# Swagger/Redoc/OpenAPI 스펙은 인증 없이 열려있으면 API 구조가 통째로 노출됨.
+# 기본은 차단. 디버깅 시 .env에 ENABLE_DOCS=true 를 두면 열린다.
+_ENABLE_DOCS = os.getenv("ENABLE_DOCS", "false").lower() == "true"
+app = FastAPI(
+    title="나라장터 AI 분석 플랫폼",
+    lifespan=lifespan,
+    docs_url="/docs" if _ENABLE_DOCS else None,
+    redoc_url="/redoc" if _ENABLE_DOCS else None,
+    openapi_url="/openapi.json" if _ENABLE_DOCS else None,
+)
+
+# slowapi: 한도 초과 시 429 응답으로 자동 변환
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+def _parse_cors_origins() -> list[str]:
+    raw = (os.getenv("CORS_ORIGINS") or "").strip()
+    if not raw or raw == "*":
+        # 기본값: 로컬 개발만 허용. 운영은 .env로 명시.
+        return ["http://localhost:5173"]
+    # JSON 배열 또는 콤마 구분 문자열 모두 허용
+    if raw.startswith("["):
+        try:
+            return [str(o) for o in json.loads(raw)]
+        except json.JSONDecodeError:
+            pass
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_parse_cors_origins(),
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# /auth/login, /auth/me 만 인증 없이 접근 가능. 나머지 데이터/뮤테이션 라우터는 전부 가드.
+protected = [Depends(get_current_user)]
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
-app.include_router(bids.router, prefix="/bids", tags=["공고"])
-app.include_router(analysis.router, prefix="/analysis", tags=["분석"])
-app.include_router(outline.router, prefix="/outline", tags=["제안목차"])
-app.include_router(search.router, prefix="/search", tags=["검색"])
+app.include_router(bids.router, prefix="/bids", tags=["공고"], dependencies=protected)
+app.include_router(analysis.router, prefix="/analysis", tags=["분석"], dependencies=protected)
+app.include_router(outline.router, prefix="/outline", tags=["제안목차"], dependencies=protected)
+app.include_router(search.router, prefix="/search", tags=["검색"], dependencies=protected)

@@ -52,7 +52,8 @@ function BidTypeChart({ bids, ceoMode, typeStats }: { bids: Bid[]; ceoMode: bool
   const chartData = typeStats && typeStats.length > 0
     ? typeStats.map((item) => ({
         name: item.type,
-        value: Math.round(item.ratio * 100),
+        // 백엔드 ratio는 이미 퍼센트(예: 66.4) — 다시 ×100 하지 않는다.
+        value: Math.round(item.ratio),
         count: item.count,
         color: TYPE_COLORS[item.type] ?? '#8B5CF6',
       }))

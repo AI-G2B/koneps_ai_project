@@ -4,7 +4,7 @@ from sqlalchemy import delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from .models import AnalysisResult, Attachment, Notice, NoticeMemo, ProposalOutline, User
+from .models import AgencySetting, AnalysisResult, Attachment, Notice, NoticeMemo, ProposalOutline, User
 
 KST = timezone(timedelta(hours=9))
 
@@ -240,6 +240,15 @@ async def upsert_analysis(db: AsyncSession, notice_id: int, data: dict):
         db.add(existing)
     await db.commit()
     return existing
+
+
+async def delete_analysis_by_notice_id(db: AsyncSession, notice_id: int) -> bool:
+    existing = await get_analysis_by_notice_id(db, notice_id)
+    if not existing:
+        return False
+    await db.delete(existing)
+    await db.commit()
+    return True
 
 
 async def get_type_stats(db: AsyncSession) -> list[dict]:

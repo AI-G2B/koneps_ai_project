@@ -14,6 +14,37 @@ import {
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
 // ─────────────────────────────────────────────
+// 인증 토큰 저장 + 공통 fetch 래퍼
+// ─────────────────────────────────────────────
+
+const TOKEN_KEY = 'koneps_token';
+
+export const setAuthToken = (token: string | null): void => {
+  if (token) sessionStorage.setItem(TOKEN_KEY, token);
+  else sessionStorage.removeItem(TOKEN_KEY);
+};
+
+export const getAuthToken = (): string | null => {
+  try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; }
+};
+
+/** 모든 API 호출 공통 래퍼. Authorization 헤더 자동 첨부 + 토큰 만료 시에만 세션 정리. */
+export async function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const token = getAuthToken();
+  const headers = new Headers(init?.headers);
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const res = await fetch(input, { ...init, headers });
+  // 토큰이 있었는데 401이 나오면 만료/무효 → 세션 정리.
+  // 토큰이 없는 401은 로그인 전 정상 흐름이므로 건드리지 않는다 (무한 리로드 방지).
+  if (res.status === 401 && token) {
+    sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem('koneps_user');
+    if (typeof window !== 'undefined') window.location.reload();
+  }
+  return res;
+}
+
+// ─────────────────────────────────────────────
 // 백엔드 응답 타입 (notices 테이블 기반)
 // ─────────────────────────────────────────────
 
@@ -273,7 +304,8 @@ export type BidFlagsMap = Record<string, { bookmarked: boolean; inProgress: bool
 
 export async function fetchBids(params?: FetchBidsParams): Promise<{ bids: Bid[]; flags: BidFlagsMap }> {
   try {
-    const url = new URL(`${BASE_URL}/bids`);
+    // BASE_URL이 상대경로("/api")일 수도 있어 base 인자를 명시 (절대 URL이면 base는 무시됨).
+    const url = new URL(`${BASE_URL}/bids`, window.location.origin);
     url.searchParams.set('limit', String(params?.limit ?? 100));
     if (params?.offset != null)
       url.searchParams.set('offset', String(params.offset));
@@ -285,7 +317,7 @@ export async function fetchBids(params?: FetchBidsParams): Promise<{ bids: Bid[]
     if (params?.exclude_expired != null) url.searchParams.set('exclude_expired', String(params.exclude_expired));
     if (params?.search) url.searchParams.set('search', params.search);
 
-    const res = await fetch(url.toString(), {
+    const res = await authFetch(url.toString(), {
       headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(10_000),
     });
@@ -309,7 +341,7 @@ export async function fetchBids(params?: FetchBidsParams): Promise<{ bids: Bid[]
 
 export async function fetchBidById(id: string): Promise<Bid> {
   try {
-    const res = await fetch(`${BASE_URL}/bids/${encodeURIComponent(id)}`, {
+    const res = await authFetch(`${BASE_URL}/bids/${encodeURIComponent(id)}`, {
       headers: { 'Content-Type': 'application/json' },
       signal: AbortSignal.timeout(10_000),
     });
@@ -326,7 +358,7 @@ export async function fetchBidById(id: string): Promise<Bid> {
 
 export async function triggerCollect(): Promise<{ saved: number; skipped: number; errors: number }> {
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const res = await fetch(`${BASE_URL}/bids/collect`, {
+  const res = await authFetch(`${BASE_URL}/bids/collect`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ start_date: today, end_date: today }),
@@ -344,7 +376,7 @@ export interface SearchBidsResult {
 
 export async function searchBids(query: string): Promise<SearchBidsResult> {
   try {
-    const res = await fetch(
+    const res = await authFetch(
       `${BASE_URL}/bids/search?query=${encodeURIComponent(query)}`,
       { signal: AbortSignal.timeout(10_000) },
     );
@@ -366,7 +398,7 @@ export async function toggleBookmarkApi(
   is_bookmarked: boolean
 ): Promise<boolean> {
   try {
-    const res = await fetch(
+    const res = await authFetch(
       `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/bookmark?is_bookmarked=${is_bookmarked}`,
       { method: 'PATCH', signal: AbortSignal.timeout(10_000) }
     );
@@ -386,7 +418,7 @@ export async function toggleInProgressApi(
   is_in_progress: boolean
 ): Promise<boolean> {
   try {
-    const res = await fetch(
+    const res = await authFetch(
       `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/in_progress?is_in_progress=${is_in_progress}`,
       { method: 'PATCH', signal: AbortSignal.timeout(10_000) }
     );
@@ -410,7 +442,7 @@ export interface ApiDashboardStats {
 
 export async function fetchDashboardStats(): Promise<ApiDashboardStats | null> {
   try {
-    const res = await fetch(`${BASE_URL}/bids/stats`, {
+    const res = await authFetch(`${BASE_URL}/bids/stats`, {
       signal: AbortSignal.timeout(10_000)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -429,7 +461,7 @@ export interface ApiTypeStatItem {
 
 export async function fetchTypeStats(): Promise<ApiTypeStatItem[]> {
   try {
-    const res = await fetch(`${BASE_URL}/bids/type-stats`, {
+    const res = await authFetch(`${BASE_URL}/bids/type-stats`, {
       signal: AbortSignal.timeout(10_000)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -448,7 +480,7 @@ export interface CollectResult {
 
 export async function collectBidsApi(): Promise<CollectResult | null> {
   try {
-    const res = await fetch(`${BASE_URL}/bids/collect`, {
+    const res = await authFetch(`${BASE_URL}/bids/collect`, {
       method: 'POST',
       signal: AbortSignal.timeout(60_000),
     });
@@ -475,8 +507,14 @@ export interface ApiUser {
   role: string;
 }
 
-export async function loginApi(username: string, password: string): Promise<ApiUser | null> {
+export interface ApiLoginResponse extends ApiUser {
+  access_token: string;
+  token_type: string;
+}
+
+export async function loginApi(username: string, password: string): Promise<ApiLoginResponse | null> {
   try {
+    // 로그인은 토큰 없이 호출해야 하므로 raw fetch 사용.
     const res = await fetch(`${BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -495,7 +533,7 @@ const _emptyMemo: ApiMemo = { notice_id: 0, content: '', author_id: null, author
 
 export async function fetchMemo(bid_ntce_no: string): Promise<ApiMemo> {
   try {
-    const res = await fetch(
+    const res = await authFetch(
       `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/memo`,
       { signal: AbortSignal.timeout(10_000) }
     );
@@ -523,7 +561,7 @@ export async function saveMemo(
     const url = `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/memo`;
     const body = JSON.stringify({ content, author_id, author_name });
     console.log('[memo] PUT 요청:', url, body);
-    const res = await fetch(url, {
+    const res = await authFetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body,
@@ -548,7 +586,7 @@ export interface AnalysisStatus {
 
 export async function fetchAnalysisStatus(bid_ntce_no: string): Promise<AnalysisStatus> {
   try {
-    const res = await fetch(
+    const res = await authFetch(
       `${BASE_URL}/analysis/${encodeURIComponent(bid_ntce_no)}/status`,
       { signal: AbortSignal.timeout(5_000) }
     );
@@ -589,7 +627,7 @@ export interface OutlineStatus {
 
 export async function requestOutlineApi(bid_ntce_no: string): Promise<boolean> {
   try {
-    const res = await fetch(
+    const res = await authFetch(
       `${BASE_URL}/outline/run/${encodeURIComponent(bid_ntce_no)}`,
       { method: 'POST', signal: AbortSignal.timeout(10_000) },
     );
@@ -602,7 +640,7 @@ export async function requestOutlineApi(bid_ntce_no: string): Promise<boolean> {
 
 export async function fetchOutline(bid_ntce_no: string): Promise<ProposalOutline | null> {
   try {
-    const res = await fetch(`${BASE_URL}/outline/${encodeURIComponent(bid_ntce_no)}`, { signal: AbortSignal.timeout(10_000) });
+    const res = await authFetch(`${BASE_URL}/outline/${encodeURIComponent(bid_ntce_no)}`, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return null;
     const d = await res.json() as {
       sections: Record<string, unknown> | null;
@@ -624,7 +662,7 @@ export async function fetchOutline(bid_ntce_no: string): Promise<ProposalOutline
 
 export async function fetchOutlineStatus(bid_ntce_no: string): Promise<OutlineStatus> {
   try {
-    const res = await fetch(`${BASE_URL}/outline/${encodeURIComponent(bid_ntce_no)}/status`, { signal: AbortSignal.timeout(5_000) });
+    const res = await authFetch(`${BASE_URL}/outline/${encodeURIComponent(bid_ntce_no)}/status`, { signal: AbortSignal.timeout(5_000) });
     if (!res.ok) return { exists: false, logs: [] };
     const d = await res.json() as { exists: boolean; logs: Array<{ ts: string; level: string; message: string }> };
     const logs: AnalysisLog[] = (d.logs ?? []).map((l) => ({
@@ -646,7 +684,7 @@ export async function downloadOutlineExcel(bid_ntce_no: string): Promise<void> {
   // iframe/window.open 방식은 cross-origin 응답에서 Content-Disposition을 무시해
   // 임의 UUID로 저장되는 문제가 있어 사용하지 않는다.
   try {
-    const res = await fetch(`${BASE_URL}/outline/${encodeURIComponent(bid_ntce_no)}/excel`);
+    const res = await authFetch(`${BASE_URL}/outline/${encodeURIComponent(bid_ntce_no)}/excel`);
     if (!res.ok) {
       console.warn('[api] downloadOutlineExcel HTTP:', res.status);
       return;
@@ -679,7 +717,7 @@ export async function downloadOutlineExcel(bid_ntce_no: string): Promise<void> {
 
 export async function requestAnalysisApi(bid_ntce_no: string): Promise<boolean> {
   try {
-    const res = await fetch(
+    const res = await authFetch(
       `${BASE_URL}/analysis/run/${encodeURIComponent(bid_ntce_no)}`,
       { method: 'POST', signal: AbortSignal.timeout(10_000) }
     );
@@ -690,6 +728,20 @@ export async function requestAnalysisApi(bid_ntce_no: string): Promise<boolean> 
     return res.ok;
   } catch (err) {
     console.warn('[api] requestAnalysisApi 실패:', err);
+    return false;
+  }
+}
+
+/** AI 분석 결과 삭제. 성공 시 pipeline_status는 'collected'로 되돌아간다. */
+export async function deleteAnalysisApi(bid_ntce_no: string): Promise<boolean> {
+  try {
+    const res = await authFetch(
+      `${BASE_URL}/analysis/${encodeURIComponent(bid_ntce_no)}`,
+      { method: 'DELETE', signal: AbortSignal.timeout(10_000) }
+    );
+    return res.ok;
+  } catch (err) {
+    console.warn('[api] deleteAnalysisApi 실패:', err);
     return false;
   }
 }
@@ -710,7 +762,7 @@ export async function uploadAttachmentApi(
   try {
     const form = new FormData();
     form.append('file', file);
-    const res = await fetch(
+    const res = await authFetch(
       `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/attachments`,
       { method: 'POST', body: form, signal: AbortSignal.timeout(60_000) },
     );
