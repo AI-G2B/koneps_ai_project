@@ -277,6 +277,7 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
     { label: '추정가격', value: formatAmt(bid.presmptPrce) },
     { label: '배정예산', value: formatAmt(bid.asignBdgtAmt) },
     { label: '공고번호', value: bid.number },
+    { label: '공고일', value: bid.ntceDate ? bid.ntceDate.replace(/-/g, '.') : '-' },
     { label: '상태', value: statusLabel },
   ];
 

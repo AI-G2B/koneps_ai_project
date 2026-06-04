@@ -322,6 +322,10 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                   ? { fontSize: '16px', fontWeight: 700, color: isUrgent ? '#EF4444' : 'var(--dash-text-2)' }
                   : { color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }}
               />
+              <InfoCell
+                label="공고일"
+                value={bid.ntceDate ? bid.ntceDate.replace(/-/g, '.') : '-'}
+              />
             </div>
           </div>
 
