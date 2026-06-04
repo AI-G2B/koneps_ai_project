@@ -162,7 +162,7 @@ interface LeftPanelProps extends BidListPageProps {
 function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selectedBid, onOpenSlide, showBidNumber = false }: LeftPanelProps) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [excludeExpired, setExcludeExpired] = useState(true);
+  const excludeExpired = true;
 
   const getFromDate = (f: DateFilter): Date | null => {
     const base = new Date(TODAY);
@@ -240,11 +240,6 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
               </button>
             ))}
           </div>
-          <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--dash-border)', margin: '0 2px', flexShrink: 0 }} />
-          <button onClick={() => setExcludeExpired(v => !v)} className="rounded-md transition-colors"
-            style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: excludeExpired ? 'rgba(37,99,235,0.12)' : 'transparent', color: excludeExpired ? '#2563EB' : 'var(--dash-text-4)', border: `1px solid ${excludeExpired ? 'rgba(37,99,235,0.3)' : 'var(--dash-border-btn)'}`, fontWeight: excludeExpired ? 600 : 400, cursor: 'pointer' }}>
-            {excludeExpired ? '마감 제외' : '마감 포함'}
-          </button>
         </div>
       </div>
 

@@ -91,7 +91,7 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [dateFilter, setDateFilter] = useState<DateFilter>('today');
   const [currentPage, setCurrentPage] = useState(1);
-  const [excludeExpired, setExcludeExpired] = useState(true);
+  const excludeExpired = true;
 
   const handleSort = (key: SortKey) => {
     if (ceoMode) return;
@@ -184,11 +184,6 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
                 </button>
               ))}
             </div>
-            <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--dash-border)', margin: '0 2px', flexShrink: 0 }} />
-            <button onClick={() => setExcludeExpired(v => !v)} className="rounded-md transition-colors"
-              style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: excludeExpired ? 'rgba(37,99,235,0.12)' : 'transparent', color: excludeExpired ? '#2563EB' : 'var(--dash-text-4)', border: `1px solid ${excludeExpired ? 'rgba(37,99,235,0.3)' : 'var(--dash-border-btn)'}`, fontWeight: excludeExpired ? 600 : 400, cursor: 'pointer' }}>
-              {excludeExpired ? '마감 제외' : '마감 포함'}
-            </button>
           </div>
         )}
       </div>
