@@ -17,7 +17,6 @@ import { AnalysisDetailPage } from './components/AnalysisDetailPage';
 import { AnalysisListPage } from './components/AnalysisListPage';
 import { StrategyReportPage } from './components/StrategyReportPage';
 import { ProposalPage } from './components/ProposalPage';
-import { ProposalOutlinePage } from './components/ProposalOutlinePage';
 import { AdminLLMPage } from './components/AdminLLMPage';
 import { AdminPoisonPage } from './components/AdminPoisonPage';
 import { AdminStatusPage } from './components/AdminStatusPage';
@@ -50,7 +49,7 @@ import {
 const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정'];
 const ADMIN_ALLOWED_PAGES: PageType[] = ['대시보드', 'LLM 설정', '독소조항 설정', '시스템 현황'];
 
-export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '목차 현황' | '현황 요약' | '전략 리포트' | '설정' | 'LLM 설정' | '독소조항 설정' | '시스템 현황';
+export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '진행 프로젝트 현황' | '현황 요약' | '전략 리포트' | '설정' | 'LLM 설정' | '독소조항 설정' | '시스템 현황';
 
 export interface AgencySettings {
   preferred: string[];
@@ -773,7 +772,7 @@ const toggleBookmark = (bidId: string) => {
               onSelectBid={handleSelectBid}
               selectedBid={selectedBid}
             />
-          ) : activePage === '제안목차' ? (
+          ) : activePage === '진행 프로젝트 현황' ? (
             <ProposalPage
               bids={bids}
               bidFlags={bidFlags}
@@ -782,16 +781,6 @@ const toggleBookmark = (bidId: string) => {
               aiStatuses={aiStatuses}
               onOpenAnalysisDetail={openAnalysisDetail}
               onRequestOutline={requestOutline}
-            />
-          ) : activePage === '목차 현황' ? (
-            <ProposalOutlinePage
-              bids={bids}
-              bidFlags={bidFlags}
-              outlinesMap={outlinesMap}
-              outlineStatusMap={outlineStatusMap}
-              onOpenAnalysisDetail={openAnalysisDetail}
-              onRequestOutline={requestOutline}
-              onDownloadOutline={downloadOutlineExcel}
             />
           ) : activePage === '전략 리포트' ? (
             <StrategyReportPage bids={bids} bidFlags={bidFlags} aiStatuses={aiStatuses} />

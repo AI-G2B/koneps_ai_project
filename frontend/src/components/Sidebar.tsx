@@ -1,12 +1,12 @@
 import {
-  LayoutDashboard, FileText, Sparkles, BookOpen, List,
+  LayoutDashboard, FileText, Sparkles, BarChart2,
   Settings, Building2, ChevronRight, TrendingUp,
   Bookmark, Briefcase, ShieldCheck, AlertTriangle, Activity,
 } from 'lucide-react';
 import type { UserRole } from './LoginPage';
 import type { PageType } from '../App';
 
-type NavItem = { icon: React.ElementType; label: PageType; badge?: string };
+type NavItem = { icon: React.ElementType; label: PageType; badge?: string; upcomingBadge?: true };
 type NavSection = { label?: string; items: NavItem[] };
 
 const MANAGER_SECTIONS: NavSection[] = [
@@ -25,8 +25,7 @@ const MANAGER_SECTIONS: NavSection[] = [
     label: '분석',
     items: [
       { icon: Sparkles, label: 'AI 분석', badge: '3' },
-      { icon: BookOpen, label: '제안목차' },
-      { icon: List, label: '목차 현황' },
+      { icon: BarChart2, label: '진행 프로젝트 현황', upcomingBadge: true },
     ],
   },
 ];
@@ -49,8 +48,7 @@ const PROPOSAL_SECTIONS: NavSection[] = [
   {
     label: '분석',
     items: [
-      { icon: BookOpen, label: '제안목차' },
-      { icon: List, label: '목차 현황' },
+      { icon: BarChart2, label: '진행 프로젝트 현황', upcomingBadge: true },
       { icon: Sparkles, label: 'AI 분석' },
     ],
   },
@@ -110,7 +108,12 @@ export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 
         onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
       >
         <item.icon style={{ width: '16px', height: '16px', flexShrink: 0, color: isActive ? accentColor : 'var(--dash-icon-off)' }} />
-        <span style={{ flex: 1, fontSize: '13px' }}>{item.label}</span>
+        <span style={{ flex: 1, fontSize: '13px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+        {item.upcomingBadge && (
+          <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', backgroundColor: 'rgba(249,115,22,0.12)', color: '#F97316', border: '1px solid rgba(249,115,22,0.25)', flexShrink: 0 }}>
+            고도화 예정
+          </span>
+        )}
         {(item.badge || item.label === 'AI 분석' || item.label === '공고 목록') && (
           <span className="flex-shrink-0 flex items-center justify-center rounded-full" style={{ fontSize: '10px', padding: '1px 6px', backgroundColor: isActive ? accentColor : badgeBg, color: isActive ? 'white' : accentColor, minWidth: '20px' }}>
             {item.label === 'AI 분석' ? analysisCompleteCount : item.label === '공고 목록' ? totalBidCount : item.badge}

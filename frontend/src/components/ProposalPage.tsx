@@ -1,4 +1,4 @@
-import { BookOpen, CheckCircle2, Circle, ClipboardList, FileText, Loader2, ShieldAlert, Sparkles } from 'lucide-react';
+import { BookOpen, CheckCircle2, Circle, ClipboardList, FileText, Info, Loader2, ShieldAlert, Sparkles } from 'lucide-react';
 import { type Bid, type BidFlags, type AiStatusType, getDaysUntilDeadline } from '../types';
 import { type ProposalOutline } from '../services/api';
 
@@ -178,31 +178,16 @@ export function ProposalPage({
   return (
     <div style={{ flex: 1, padding: '32px 32px 40px', overflowY: 'auto' }}>
       {/* 헤더 */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 4px' }}>제안 준비 체크리스트</h1>
+      <div style={{ marginBottom: '20px' }}>
+        <h1 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 4px' }}>진행 프로젝트 현황</h1>
         <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: 0 }}>진행 중인 공고의 제안 준비 현황을 관리하세요</p>
       </div>
 
-      {inProgressBids.length === 0 ? (
-        <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '60px 24px', textAlign: 'center' }}>
-          <ClipboardList style={{ width: '48px', height: '48px', color: 'var(--dash-text-4)', margin: '0 auto 16px' }} />
-          <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', margin: '0 0 8px' }}>진행 등록된 공고가 없습니다</p>
-          <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: 0 }}>공고 목록에서 진행 등록을 하면 이곳에서 제안 준비 현황을 관리할 수 있습니다</p>
-        </div>
-      ) : (
-        inProgressBids.map(bid => (
-          <BidCard
-            key={bid.id}
-            bid={bid}
-            aiStatus={aiStatuses[bid.id]}
-            outlineStatus={outlineStatusMap[bid.id]}
-            onOpenAnalysisDetail={onOpenAnalysisDetail}
-            onRequestOutline={onRequestOutline}
-          />
-        ))
-      )}
-
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      {/* 고도화 예정 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', backgroundColor: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.2)' }}>
+        <Info style={{ width: '15px', height: '15px', color: '#F97316', flexShrink: 0 }} />
+        <span style={{ fontSize: '12px', color: '#F97316' }}>진행도 표시, 담당자별 구분 뷰 등 기능은 고도화 예정입니다</span>
+      </div>
     </div>
   );
 }
