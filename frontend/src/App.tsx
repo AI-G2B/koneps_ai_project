@@ -84,13 +84,21 @@ export default function App() {
     }
     setLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
   };
+  const CACHE_VERSION = 'v2';
+
   const [bids, setBids] = useState<Bid[]>(() => {
     try {
+      const version = sessionStorage.getItem('koneps_bids_version');
+      if (version !== CACHE_VERSION) {
+        sessionStorage.removeItem('koneps_bids');
+        sessionStorage.removeItem('koneps_bids_time');
+        sessionStorage.removeItem('koneps_bidflags');
+        return [];
+      }
       const cached = sessionStorage.getItem('koneps_bids');
       const cachedTime = sessionStorage.getItem('koneps_bids_time');
       if (cached && cachedTime) {
         const age = Date.now() - Number(cachedTime);
-        // 30분 이내 캐시는 재사용
         if (age < 30 * 60 * 1000) {
           return JSON.parse(cached);
         }
@@ -203,6 +211,7 @@ export default function App() {
       sessionStorage.setItem('koneps_bids', JSON.stringify(fetchedBids));
       const now = Date.now();
       sessionStorage.setItem('koneps_bids_time', String(now));
+      sessionStorage.setItem('koneps_bids_version', CACHE_VERSION);
       setLastSyncTime(new Date(now));
       setBidFlags(prev => {
         const merged = { ...prev };

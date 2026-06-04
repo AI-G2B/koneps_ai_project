@@ -249,6 +249,7 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
             <tr style={{ backgroundColor: 'var(--dash-card-deep)' }}>
               {[
                 ...(showBidNumber ? [{ label: '공고번호', width: '130px' }] : []),
+                { label: '공고일', width: '90px' },
                 { label: '공고명', width: undefined as string | undefined },
                 { label: '발주기관', width: '96px' },
                 { label: '예산', width: '68px' },
@@ -278,7 +279,7 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={showBidNumber ? 6 : 5} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
+                <td colSpan={showBidNumber ? 7 : 6} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
                   해당 기간에 수집된 공고가 없습니다
                 </td>
               </tr>
@@ -341,6 +342,11 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
           <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{bid.number}</span>
         </td>
       )}
+      <td style={{ padding: '12px', verticalAlign: 'middle', width: '90px' }}>
+        <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', whiteSpace: 'nowrap' }}>
+          {bid.ntceDate ? bid.ntceDate.slice(5).replace('-', '.') : '-'}
+        </span>
+      </td>
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <div
           onMouseEnter={(e) => {

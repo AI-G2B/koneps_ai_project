@@ -70,6 +70,7 @@ export interface Bid {
   type: BidType;
   dangerCount: number;
   collectedAt: string;
+  ntceDate?: string;
   is_bookmarked?: boolean;
   is_in_progress?: boolean;
   is_expired?: boolean;

@@ -194,6 +194,7 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
             <tr style={{ backgroundColor: 'var(--dash-card-deep)' }}>
               {[
                 ...(showBidNumber ? [{ label: '공고번호', key: null as SortKey, width: '130px' }] : []),
+                { label: '공고일', key: null as SortKey, width: '90px' },
                 { label: '공고명', key: null as SortKey, width: undefined as string | undefined },
                 { label: '발주기관', key: null as SortKey, width: '85px' },
                 { label: '예산', key: 'budget' as SortKey, width: '80px' },
@@ -210,14 +211,14 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={showBidNumber ? 7 : 6}>
+              <tr><td colSpan={showBidNumber ? 8 : 7}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '8px' }}>
                   <Loader2 className="animate-spin" style={{ width: '24px', height: '24px', color: '#2563EB' }} />
                   <span style={{ fontSize: '13px', color: 'var(--dash-text-3)' }}>공고를 불러오는 중입니다...</span>
                 </div>
               </td></tr>
             ) : sortedBids.length === 0 ? (
-              <tr><td colSpan={showBidNumber ? 7 : 6} style={{ padding: '48px', textAlign: 'center' }}>
+              <tr><td colSpan={showBidNumber ? 8 : 7} style={{ padding: '48px', textAlign: 'center' }}>
                 {ceoMode ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                     <Inbox style={{ width: '28px', height: '28px', color: 'var(--dash-text-4)' }} />
@@ -327,6 +328,11 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
           <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{bid.number}</span>
         </td>
       )}
+      <td style={{ padding: '12px', verticalAlign: 'middle', width: '90px' }}>
+        <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', whiteSpace: 'nowrap' }}>
+          {bid.ntceDate ? bid.ntceDate.slice(5).replace('-', '.') : '-'}
+        </span>
+      </td>
       <td style={{ padding: '12px', verticalAlign: 'top' }}>
         <div
           onMouseEnter={(e) => {
