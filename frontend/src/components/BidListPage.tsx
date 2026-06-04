@@ -159,7 +159,7 @@ interface LeftPanelProps extends BidListPageProps {
   onOpenSlide: (bid: Bid) => void;
 }
 
-function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selectedBid, onOpenSlide, showBidNumber = false }: LeftPanelProps) {
+function LeftPanel({ bids, bidFlags, selectedBid, onOpenSlide, showBidNumber = false }: LeftPanelProps) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const excludeExpired = true;
@@ -254,7 +254,6 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
                 { label: '발주기관', width: '96px' },
                 { label: '예산', width: '68px' },
                 { label: '마감일', width: '82px' },
-                { label: '액션', width: '90px' },
               ].map((col) => (
                 <th
                   key={col.label}
@@ -279,7 +278,7 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={showBidNumber ? 7 : 6} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
+                <td colSpan={showBidNumber ? 6 : 5} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
                   해당 기간에 수집된 공고가 없습니다
                 </td>
               </tr>
@@ -291,8 +290,6 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
                   isSelected={selectedBid?.id === bid.id}
                   flags={bidFlags[bid.id] ?? { bookmarked: false, inProgress: false }}
                   onSelect={() => onOpenSlide(bid)}
-                  onToggleBookmark={onToggleBookmark}
-                  onToggleInProgress={onToggleInProgress}
                   showBidNumber={showBidNumber}
                 />
               ))
@@ -308,13 +305,11 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
   );
 }
 
-function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleInProgress, showBidNumber = false }: {
+function LeftRow({ bid, isSelected, flags, onSelect, showBidNumber = false }: {
   bid: Bid;
   isSelected: boolean;
   flags: BidFlags;
   onSelect: () => void;
-  onToggleBookmark: (bidId: string) => void;
-  onToggleInProgress: (bidId: string) => void;
   showBidNumber?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -400,30 +395,6 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
             </span>
           </div>
         ) : null}
-      </td>
-      <td style={{ padding: '12px', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => onToggleBookmark(bid.id)}
-            className="rounded-md flex items-center justify-center"
-            style={{ width: '28px', height: '28px', color: flags.bookmarked ? '#2563EB' : 'var(--dash-text-3)', backgroundColor: flags.bookmarked ? 'rgba(37,99,235,0.12)' : 'transparent', border: 'none' }}
-            onMouseEnter={(e) => { if (!flags.bookmarked) (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; }}
-            onMouseLeave={(e) => { if (!flags.bookmarked) (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; }}
-            title="찜하기"
-          >
-            <Bookmark style={{ width: '14px', height: '14px', fill: flags.bookmarked ? 'currentColor' : 'none' }} />
-          </button>
-          <button
-            onClick={() => onToggleInProgress(bid.id)}
-            className="rounded-md flex items-center justify-center"
-            style={{ width: '28px', height: '28px', color: flags.inProgress ? '#22C55E' : 'var(--dash-text-3)', backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.12)' : 'transparent', border: 'none' }}
-            onMouseEnter={(e) => { if (!flags.inProgress) (e.currentTarget as HTMLButtonElement).style.color = '#22C55E'; }}
-            onMouseLeave={(e) => { if (!flags.inProgress) (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; }}
-            title="진행하기"
-          >
-            <Play style={{ width: '13px', height: '13px', fill: flags.inProgress ? 'currentColor' : 'none' }} />
-          </button>
-        </div>
       </td>
     </tr>
     {tooltip && createPortal(

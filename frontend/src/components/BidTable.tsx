@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Eye, ExternalLink, Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Calendar, Star, Ban, Bookmark, Play, Inbox, Sparkles, RefreshCw } from 'lucide-react';
+import { Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Calendar, Star, Ban, Inbox, RefreshCw } from 'lucide-react';
 import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from '../types';
 import type { AgencySettings } from '../App';
 
@@ -85,7 +85,7 @@ interface BidTableProps {
   showBidNumber?: boolean;
 }
 
-export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, agencySettings, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, pursuedBids, onTogglePursued: _onTogglePursued, hideFilters = false, ceoMode = false, onRequestAnalysis, showBidNumber = false }: BidTableProps) {
+export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, agencySettings, bidFlags, aiStatuses, onToggleBookmark: _onToggleBookmark, onToggleInProgress: _onToggleInProgress, pursuedBids, onTogglePursued: _onTogglePursued, hideFilters = false, ceoMode = false, onRequestAnalysis: _onRequestAnalysis, showBidNumber = false }: BidTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -251,11 +251,7 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
                   isAvoided={agencySettings.avoided.includes(bid.agency)}
                   flags={bidFlags?.[bid.id] ?? { bookmarked: false, inProgress: false }}
                   aiStatus={aiStatuses?.[bid.id] ?? 'none'}
-                  onToggleBookmark={onToggleBookmark}
-                  onToggleInProgress={onToggleInProgress}
                   isPursued={pursuedBids?.has(bid.id) ?? false}
-                  ceoMode={ceoMode}
-                  onRequestAnalysis={onRequestAnalysis}
                   showBidNumber={showBidNumber}
                 />
               ))
@@ -303,16 +299,12 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
   );
 }
 
-function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, flags, aiStatus, onToggleBookmark, onToggleInProgress, isPursued, ceoMode = false, onRequestAnalysis, showBidNumber = false }: {
+function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, flags, aiStatus, isPursued, showBidNumber = false }: {
   bid: Bid; isSelected: boolean; urgent: boolean; daysLeft: number; onSelect: () => void;
   isPreferred: boolean; isAvoided: boolean;
   flags: BidFlags;
   aiStatus: AiStatusType;
-  onToggleBookmark?: (bidId: string) => void;
-  onToggleInProgress?: (bidId: string) => void;
   isPursued: boolean;
-  ceoMode?: boolean;
-  onRequestAnalysis?: (bidId: string) => void;
   showBidNumber?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -390,55 +382,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
         </div>
       </td>
       <td style={{ padding: '12px', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
-        {aiStatus === 'none' ? (
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <AiStatusIndicator status={aiStatus} />
-            <button
-              onClick={(e) => { e.stopPropagation(); onRequestAnalysis?.(bid.id); }}
-              title="AI 분석 요청"
-              style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', border: 'none', cursor: 'pointer', borderRadius: '4px', color: 'var(--dash-text-4)', flexShrink: 0 }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-4)'; }}
-            >
-              <Sparkles style={{ width: '12px', height: '12px' }} />
-            </button>
-          </div>
-        ) : (
-          <AiStatusIndicator status={aiStatus} />
-        )}
-      </td>
-      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
-        <div className="flex items-center gap-1">
-          <button onClick={(e) => { e.stopPropagation(); onSelect(); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: 'var(--dash-text-3)', backgroundColor: 'transparent' }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
-            title="상세 보기">
-            <Eye style={{ width: '14px', height: '14px' }} />
-          </button>
-          {!ceoMode && (
-            <>
-              <button onClick={(e) => { e.stopPropagation(); onToggleBookmark?.(bid.id); }} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: flags.bookmarked ? '#2563EB' : 'var(--dash-text-3)', backgroundColor: flags.bookmarked ? 'rgba(37,99,235,0.12)' : 'transparent' }}
-                onMouseEnter={(e) => { if (!flags.bookmarked) { (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; } }}
-                onMouseLeave={(e) => { if (!flags.bookmarked) { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; } }}
-                title="찜하기">
-                <Bookmark style={{ width: '14px', height: '14px', fill: flags.bookmarked ? 'currentColor' : 'none' }} />
-              </button>
-              <button onClick={(e) => { e.stopPropagation(); onToggleInProgress?.(bid.id); }} className="rounded-md flex items-center gap-1" style={{ padding: '0 6px', height: '28px', color: flags.inProgress ? '#22C55E' : 'var(--dash-text-3)', backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.12)' : 'transparent' }}
-                onMouseEnter={(e) => { if (!flags.inProgress) { (e.currentTarget as HTMLButtonElement).style.color = '#22C55E'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,197,94,0.1)'; } }}
-                onMouseLeave={(e) => { if (!flags.inProgress) { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; } }}
-                title="진행하기">
-                <Play style={{ width: '12px', height: '12px', fill: flags.inProgress ? 'currentColor' : 'none', flexShrink: 0 }} />
-                {flags.inProgress && <span style={{ fontSize: '11px', whiteSpace: 'nowrap' }}>진행중</span>}
-              </button>
-            </>
-          )}
-          <button onClick={(e) => e.stopPropagation()} className="rounded-md flex items-center justify-center" style={{ width: '28px', height: '28px', color: 'var(--dash-text-3)', backgroundColor: 'transparent' }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-item-bg-alt)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
-            title="나라장터에서 보기">
-            <ExternalLink style={{ width: '14px', height: '14px' }} />
-          </button>
-        </div>
+        <AiStatusIndicator status={aiStatus} />
       </td>
     </tr>
     {titleTooltip && createPortal(
