@@ -59,7 +59,7 @@ export interface AgencySettings {
 
 export interface NotificationItem {
   id: string;
-  type: 'sync' | 'analysis_complete' | 'analysis_fail' | 'bookmark' | 'inprogress';
+  type: 'sync' | 'analysis_complete' | 'analysis_fail' | 'bookmark' | 'inprogress' | 'outline_complete' | 'outline_fail';
   title: string;
   message: string;
   createdAt: Date;
@@ -435,6 +435,7 @@ export default function App() {
             outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: 'complete' };
             setOutlineStatusMap(prev => ({ ...prev, [bidId]: 'complete' }));
             showToast('success', force ? '제안목차 재생성 완료' : '제안목차 생성 완료');
+            addNotification({ type: 'outline_complete', title: '제안목차 생성 완료', message: `${bid.title} 제안목차가 생성되었습니다` });
             delete outlineTimers.current[bidId];
             return;
           }
@@ -446,6 +447,7 @@ export default function App() {
           outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: restoreTo };
           setOutlineStatusMap(prev => ({ ...prev, [bidId]: restoreTo }));
           showToast('warning', '제안목차 생성 실패 — 로그를 확인하세요');
+          addNotification({ type: 'outline_fail', title: '제안목차 생성 실패', message: `${bid?.title ?? bidId} 제안목차 생성에 실패했습니다` });
           delete outlineTimers.current[bidId];
           return;
         }

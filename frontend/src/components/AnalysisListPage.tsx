@@ -119,10 +119,15 @@ function BidCard({ bid, aiStatus, flags, onOpenAnalysisDetail, onToggleBookmark,
       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(37,99,235,0.3)'; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--dash-border)'; }}
     >
-      {/* 상단: AI 상태 + 위험도 + D-day */}
+      {/* 상단: AI 상태 + 위험도 + 타입 + D-day */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
         <AiStatusIndicator status={aiStatus} />
         <RiskBadge risk={bid.risk} />
+        {bid.type !== '기타' && (
+          <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '4px', backgroundColor: 'rgba(37,99,235,0.1)', color: '#60A5FA', flexShrink: 0, fontWeight: 500 }}>
+            {bid.type}
+          </span>
+        )}
         {urgent && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />

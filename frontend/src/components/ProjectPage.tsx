@@ -231,6 +231,11 @@ function ProjectCard({ bid, isSelected, onSelect, aiStatus, onUpdateManagers }: 
       {/* 제목 행 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
         <RiskBadge risk={bid.risk} />
+        {bid.type !== '기타' && (
+          <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(37,99,235,0.1)', color: '#60A5FA', flexShrink: 0, fontWeight: 500 }}>
+            {bid.type}
+          </span>
+        )}
         <span style={{ fontSize: '13px', fontWeight: 600, color: isSelected ? '#5BC37E' : 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
           {bid.title}
         </span>

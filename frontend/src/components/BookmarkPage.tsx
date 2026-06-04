@@ -102,6 +102,11 @@ function BidCard({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
           {/* 제목 행 */}
           <div className="flex items-center gap-2" style={{ marginBottom: '8px' }}>
             <RiskBadge risk={bid.risk} />
+            {bid.type !== '기타' && (
+              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(37,99,235,0.1)', color: '#60A5FA', flexShrink: 0, fontWeight: 500 }}>
+                {bid.type}
+              </span>
+            )}
             <span
               style={{
                 fontSize: '13px',
