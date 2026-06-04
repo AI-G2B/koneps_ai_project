@@ -124,6 +124,51 @@ const POISON_CATEGORIES: Array<{
   { code: 'L4', group: '법무/지재권', name: '징벌적 지연배상금', criteria: '1일 0.25% 이상 (법정 0.125% 초과) 또는 상한선(30%) 미설정', level: 'caution' },
 ];
 
+function generateReportHTML(bid: Bid): string {
+  const detail = bid.detail;
+  const riskFactors = bid.riskFactors ?? [];
+  let html = '';
+
+  if (detail) {
+    html += '<h2>AI 추출 핵심항목</h2>';
+    const items = [
+      { label: '예산규모',   value: detail.budget },
+      { label: '수행기간',   value: detail.execPeriod },
+      { label: '평가방식',   value: detail.evalMethod },
+      { label: '사업목적',   value: detail.purpose },
+      { label: '납품방식',   value: detail.deliveryMethod },
+      { label: '기술요건',   value: detail.techRequirement },
+      { label: '입찰방식',   value: detail.bidMethod },
+      { label: '보안요건',   value: detail.securityRequirement },
+    ];
+    html += '<table>';
+    items.forEach((item) => {
+      html += `<tr><th>${item.label}</th><td>${item.value ?? '-'}</td></tr>`;
+    });
+    html += '</table>';
+
+    if (detail.requirements && detail.requirements.length > 0) {
+      html += '<h2>요구사항</h2>';
+      html += '<table><tr><th>분류</th><th>코드</th><th>항목명</th><th>내용</th></tr>';
+      detail.requirements.forEach((req) => {
+        html += `<tr><td>${req.category ?? '-'}</td><td>${req.code ?? '-'}</td><td>${req.name ?? '-'}</td><td>${req.detail ?? '-'}</td></tr>`;
+      });
+      html += '</table>';
+    }
+  }
+
+  if (riskFactors.length > 0) {
+    html += '<h2>독소조항 분석</h2>';
+    html += '<table><tr><th>항목</th><th>위험도</th><th>조항 내용</th><th>판단근거</th></tr>';
+    riskFactors.forEach((rf) => {
+      html += `<tr><td>${rf.category ?? '-'}</td><td>${rf.severity ?? '-'}</td><td>${rf.clause ?? '-'}</td><td>${rf.reason ?? '-'}</td></tr>`;
+    });
+    html += '</table>';
+  }
+
+  return html;
+}
+
 export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequestAnalysis, onDeleteAnalysis, analysisLogs: analysisLogsProp, outline, outlineStatus = 'none', outlineLogs, onRequestOutline, onRegenerateOutline, onDownloadOutline, onUploadAttachment, bidFlags, onToggleInProgress }: AnalysisDetailPageProps) {
   const { showToast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -132,6 +177,38 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
   const [uploading, setUploading] = useState(false);
   const [logsExpanded, setLogsExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDownload = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${bid.title} - AI 분석 리포트</title>
+  <style>
+    body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; color: #1e293b; }
+    h1 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    h2 { font-size: 15px; font-weight: 600; margin: 20px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+    h3 { font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
+    p, li { font-size: 12px; line-height: 1.6; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+    th, td { border: 1px solid #e2e8f0; padding: 6px 10px; font-size: 12px; text-align: left; }
+    th { background: #f8fafc; font-weight: 600; }
+    .meta { color: #64748b; font-size: 12px; margin-bottom: 16px; }
+    @media print { body { padding: 0; } button { display: none; } }
+  </style>
+</head>
+<body>
+  <h1>${bid.title}</h1>
+  <div class="meta">발주기관: ${bid.agency ?? '-'} | 공고번호: ${bid.number} | 마감일: ${bid.deadline?.slice(0, 10) ?? '-'}</div>
+  ${generateReportHTML(bid)}
+</body>
+</html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+  };
 
   const aiStatus: AiStatusType = aiStatusProp ?? bid.aiStatus ?? 'none';
   const detail = bid.detail;
@@ -207,7 +284,7 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--dash-bg)', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
       {/* 1. 상단 네비게이션 */}
-      <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button
           onClick={onBack}
           style={{
@@ -221,6 +298,20 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
         >
           <ArrowLeft style={{ width: '14px', height: '14px' }} />
           뒤로
+        </button>
+        <button
+          onClick={handleDownload}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '6px 12px', border: '1px solid var(--dash-border)',
+            borderRadius: '8px', background: 'var(--dash-card)',
+            color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; }}
+        >
+          <Download style={{ width: '14px', height: '14px' }} />
+          리포트 다운로드
         </button>
       </div>
 
