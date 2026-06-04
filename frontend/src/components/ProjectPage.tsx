@@ -477,18 +477,13 @@ function ProjectCalendar({ inProgressBids, onOpenSlideOver }: { inProgressBids: 
 
   const handleDayClick = (day: number) => {
     if (!deadlineMap.has(day)) return;
-    const bids = deadlineMap.get(day) ?? [];
-    if (bids.length === 1) {
-      onOpenSlideOver(bids[0]);
-    } else {
-      setSelectedDay(selectedDay === day ? null : day);
-    }
+    setSelectedDay(selectedDay === day ? null : day);
   };
 
   const popupBids = selectedDay ? (deadlineMap.get(selectedDay) ?? []) : [];
 
   return (
-    <div style={{ flexShrink: 0, height: '360px', borderRadius: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '14px 8px', overflow: 'hidden' }}>
+    <div style={{ flexShrink: 0, height: '560px', borderRadius: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '14px 8px', overflow: 'hidden' }}>
       {/* 헤더 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', padding: '0 4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
@@ -611,11 +606,11 @@ function ProjectCalendar({ inProgressBids, onOpenSlideOver }: { inProgressBids: 
               <X style={{ width: '13px', height: '13px' }} />
             </button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '220px', overflowY: 'auto', paddingRight: '2px' }}>
             {popupBids.map((bid) => (
               <div
                 key={bid.id}
-                onClick={() => { onOpenSlideOver(bid); setSelectedDay(null); }}
+                onClick={() => { onOpenSlideOver(bid); }}
                 style={{ padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--dash-surface)', border: '1px solid var(--dash-border)', cursor: 'pointer', transition: 'background-color 0.15s' }}
                 onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg-alt)')}
                 onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-surface)')}
