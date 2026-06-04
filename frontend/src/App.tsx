@@ -870,6 +870,8 @@ const toggleBookmark = (bidId: string) => {
             onRegenerateOutline={regenerateOutline}
             onDownloadOutline={downloadOutlineExcel}
             onUploadAttachment={uploadAttachment}
+            bidFlags={bidFlags}
+            onToggleInProgress={toggleInProgress}
           />
         </div>
       )}

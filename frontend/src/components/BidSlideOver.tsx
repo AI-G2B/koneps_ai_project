@@ -45,6 +45,7 @@ interface BidSlideOverProps {
 export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false, analysisLogs, outlineStatus = 'none', onRequestOutline, onDownloadOutline }: BidSlideOverProps) {
   const { showToast } = useToast();
   const [showFileMenu, setShowFileMenu] = useState(false);
+  const [showConfirm, setShowConfirm] = useState<'add' | 'remove' | null>(null);
   const [hoveredFileIndex, setHoveredFileIndex] = useState<number | null>(null);
   const [hoveredCardIndex, setHoveredCardIndex] = useState<number | null>(null);
   const fileMenuRef = useRef<HTMLDivElement>(null);
@@ -363,7 +364,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
 
               {/* 진행하기 */}
               <button
-                onClick={() => onToggleInProgress(bid.id)}
+                onClick={() => setShowConfirm(flags.inProgress ? 'remove' : 'add')}
                 className="flex items-center gap-1.5 rounded-lg transition-colors"
                 style={{
                   padding: '6px 14px',
@@ -390,7 +391,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                 }}
               >
                 <Play style={{ width: '13px', height: '13px', fill: flags.inProgress ? 'currentColor' : 'none' }} />
-                {flags.inProgress ? '진행중' : '진행하기'}
+                {flags.inProgress ? '진행 프로젝트 등록됨' : '진행 프로젝트로 등록'}
               </button>
             </div>
           )}
@@ -663,6 +664,36 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
         </>
       )}
     </div>
+
+    {/* 진행하기 확인 다이얼로그 */}
+    {showConfirm && bid && (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+        <div style={{ backgroundColor: 'var(--dash-card)', borderRadius: '12px', padding: '24px', maxWidth: '360px', width: '100%', margin: '0 16px', border: '1px solid var(--dash-border)' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px' }}>
+            {showConfirm === 'add' ? '진행 프로젝트로 등록하시겠습니까?' : '진행 프로젝트에서 제거하시겠습니까?'}
+          </h3>
+          {showConfirm === 'add' && (
+            <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: '0 0 20px', lineHeight: 1.6 }}>
+              등록하면 AI 분석이 자동으로 시작됩니다.
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: showConfirm === 'remove' ? '20px' : 0 }}>
+            <button
+              onClick={() => setShowConfirm(null)}
+              style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer' }}
+            >
+              취소
+            </button>
+            <button
+              onClick={() => { onToggleInProgress(bid.id); setShowConfirm(null); }}
+              style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: showConfirm === 'add' ? '#2563EB' : '#EF4444', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+            >
+              {showConfirm === 'add' ? '등록' : '제거'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }
