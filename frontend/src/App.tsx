@@ -822,7 +822,7 @@ const toggleBookmark = (bidId: string) => {
               {inProgressBids.length === 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', borderRadius: '10px', backgroundColor: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
                   <Info style={{ width: '16px', height: '16px', color: '#7C3AED', flexShrink: 0 }} />
-                  <span style={{ fontSize: '13px', color: '#7C3AED' }}>담당자 모드에서 공고에 진행하기를 설정하면 이곳에 표시됩니다</span>
+                  <span style={{ fontSize: '13px', color: '#7C3AED' }}>담당자 모드에서 공고에 진행 등록을 하면 이곳에 표시됩니다</span>
                 </div>
               )}
               <div className="flex gap-4" style={{ minHeight: '440px' }}>

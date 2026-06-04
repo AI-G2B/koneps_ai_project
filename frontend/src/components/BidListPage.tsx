@@ -364,12 +364,12 @@ function LeftRow({ bid, isSelected, flags, onSelect, showBidNumber = false }: {
           )}
           {flags.bookmarked && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-blue-bg)', color: '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />찜
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />관심
             </span>
           )}
           {flags.inProgress && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-green-bg)', color: '#5BC37E', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#5BC37E', flexShrink: 0, display: 'inline-block' }} />진행중
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#5BC37E', flexShrink: 0, display: 'inline-block' }} />진행
             </span>
           )}
         </div>
@@ -460,7 +460,7 @@ function RightPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onOp
         </div>
         <div className="flex gap-1">
           {([
-            { key: 'bookmarked' as TabType, label: '찜한 공고', count: bookmarkedBids.length, activeColor: '#2563EB', activeBg: 'rgba(37,99,235,0.12)', activeBorder: 'rgba(37,99,235,0.3)' },
+            { key: 'bookmarked' as TabType, label: '관심공고', count: bookmarkedBids.length, activeColor: '#2563EB', activeBg: 'rgba(37,99,235,0.12)', activeBorder: 'rgba(37,99,235,0.3)' },
             { key: 'inProgress' as TabType, label: '진행중 공고', count: inProgressBids.length, activeColor: '#22C55E', activeBg: 'rgba(34,197,94,0.12)', activeBorder: 'rgba(34,197,94,0.3)' },
           ] as const).map((tab) => (
             <button
@@ -544,10 +544,10 @@ function RightEmptyState({ tab }: { tab: TabType }) {
       </div>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--dash-text-3)', marginBottom: '2px' }}>
-          {isBookmark ? '찜한 공고가 없습니다' : '진행중인 공고가 없습니다'}
+          {isBookmark ? '관심공고가 없습니다' : '진행 중인 공고가 없습니다'}
         </div>
         <div style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>
-          {isBookmark ? '현황 리스트에서 공고를 찜해보세요' : '찜한 공고를 진행 상태로 변경해보세요'}
+          {isBookmark ? '현황 리스트에서 관심공고를 추가해보세요' : '관심공고를 진행 상태로 변경해보세요'}
         </div>
       </div>
     </div>
@@ -590,7 +590,7 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
       <div className="flex items-center gap-2" style={{ marginBottom: '5px' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: tab === 'inProgress' ? 'var(--badge-green-bg)' : 'var(--badge-blue-bg)', color: tab === 'inProgress' ? '#5BC37E' : '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0 }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: tab === 'inProgress' ? '#5BC37E' : '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />
-          {tab === 'inProgress' ? '진행중' : '찜'}
+          {tab === 'inProgress' ? '진행' : '관심'}
         </span>
       </div>
 
@@ -638,7 +638,7 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; }}
             >
               <BookmarkX style={{ width: '11px', height: '11px' }} />
-              찜 해제
+              관심공고 해제
             </button>
             <button
               onClick={() => onToggleInProgress(bid.id)}
@@ -667,7 +667,7 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
               }}
             >
               <Play style={{ width: '10px', height: '10px', fill: flags.inProgress ? 'currentColor' : 'none', flexShrink: 0 }} />
-              {flags.inProgress ? '진행중' : '진행하기'}
+              {flags.inProgress ? '진행' : '진행 등록'}
             </button>
           </>
         ) : null}

@@ -161,8 +161,8 @@ function BidCard({ bid, aiStatus, flags, onOpenAnalysisDetail, onToggleBookmark,
           onMouseLeave={(e) => { if (!flags.bookmarked) (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border)'; }}
         >
           {flags.bookmarked
-            ? <><BookmarkX style={{ width: '12px', height: '12px' }} />찜 해제</>
-            : <><Bookmark style={{ width: '12px', height: '12px' }} />찜하기</>
+            ? <><BookmarkX style={{ width: '12px', height: '12px' }} />관심공고 해제</>
+            : <><Bookmark style={{ width: '12px', height: '12px' }} />관심공고 추가</>
           }
         </button>
         <button
@@ -172,7 +172,7 @@ function BidCard({ bid, aiStatus, flags, onOpenAnalysisDetail, onToggleBookmark,
           onMouseLeave={(e) => { if (!flags.inProgress) (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border)'; }}
         >
           <Play style={{ width: '12px', height: '12px', fill: flags.inProgress ? 'currentColor' : 'none' }} />
-          {flags.inProgress ? '진행중' : '진행하기'}
+          {flags.inProgress ? '진행' : '진행 등록'}
         </button>
       </div>
     </div>
@@ -181,7 +181,7 @@ function BidCard({ bid, aiStatus, flags, onOpenAnalysisDetail, onToggleBookmark,
 
 function EmptyState({ tab }: { tab: TabType }) {
   const messages: Record<TabType, { title: string; sub: string }> = {
-    complete:  { title: '아직 분석 완료된 공고가 없습니다', sub: '공고를 찜하거나 진행하기를 누르면 AI 분석이 시작됩니다' },
+    complete:  { title: '아직 분석 완료된 공고가 없습니다', sub: '관심공고 추가 또는 진행 등록을 하면 AI 분석이 시작됩니다' },
     analyzing: { title: '현재 분석 중인 공고가 없습니다', sub: '' },
     pending:   { title: '대기 중인 공고가 없습니다', sub: '' },
   };

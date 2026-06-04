@@ -196,7 +196,7 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
             </div>
             <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '4px' }}>AI 분석 대기 중</div>
             <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
-              진행하기를 누르거나 상세 리포트에서<br />직접 분석을 시작할 수 있습니다.
+              진행 등록을 하거나 상세 리포트에서<br />직접 분석을 시작할 수 있습니다.
             </div>
             {aiStatus === 'none' && !ceoMode && (
               <button

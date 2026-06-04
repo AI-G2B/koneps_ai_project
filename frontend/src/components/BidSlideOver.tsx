@@ -360,8 +360,8 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                 }}
               >
                 {flags.bookmarked
-                  ? <><BookmarkX style={{ width: '14px', height: '14px' }} />찜 해제</>
-                  : <><Bookmark style={{ width: '14px', height: '14px' }} />찜하기</>
+                  ? <><BookmarkX style={{ width: '14px', height: '14px' }} />관심공고 해제</>
+                  : <><Bookmark style={{ width: '14px', height: '14px' }} />관심공고 추가</>
                 }
               </button>
 
@@ -423,7 +423,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                   AI 분석 대기 중
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
-                  진행하기를 누르거나 상세 리포트에서<br />직접 분석을 시작할 수 있습니다.
+                  진행 등록을 하거나 상세 리포트에서<br />직접 분석을 시작할 수 있습니다.
                 </div>
                 {aiStatus === 'none' && (
                   <button

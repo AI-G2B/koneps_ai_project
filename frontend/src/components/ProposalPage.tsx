@@ -186,8 +186,8 @@ export function ProposalPage({
       {inProgressBids.length === 0 ? (
         <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '60px 24px', textAlign: 'center' }}>
           <ClipboardList style={{ width: '48px', height: '48px', color: 'var(--dash-text-4)', margin: '0 auto 16px' }} />
-          <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', margin: '0 0 8px' }}>진행하기로 설정된 공고가 없습니다</p>
-          <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: 0 }}>공고 목록에서 진행하기를 설정하면 이곳에서 제안 준비 현황을 관리할 수 있습니다</p>
+          <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', margin: '0 0 8px' }}>진행 등록된 공고가 없습니다</p>
+          <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: 0 }}>공고 목록에서 진행 등록을 하면 이곳에서 제안 준비 현황을 관리할 수 있습니다</p>
         </div>
       ) : (
         inProgressBids.map(bid => (

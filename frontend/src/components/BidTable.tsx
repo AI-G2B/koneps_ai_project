@@ -223,7 +223,7 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                     <Inbox style={{ width: '28px', height: '28px', color: 'var(--dash-text-4)' }} />
                     <div style={{ fontSize: '13px', color: 'var(--dash-text-4)' }}>진행 중인 공고가 없습니다</div>
-                    <div style={{ fontSize: '12px', color: 'var(--dash-text-5)' }}>담당자가 공고에 진행하기를 설정하면 여기에 표시됩니다</div>
+                    <div style={{ fontSize: '12px', color: 'var(--dash-text-5)' }}>담당자가 공고에 진행 등록을 하면 여기에 표시됩니다</div>
                   </div>
                 ) : bids.length === 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
@@ -343,10 +343,10 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
             <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA', flexShrink: 0 }}>{bid.type}</span>
           )}
           {flags.bookmarked && (
-            <span style={badge('var(--badge-blue-bg)', '#4A7FD4', 'sm')}>{DOT('#4A7FD4')}찜</span>
+            <span style={badge('var(--badge-blue-bg)', '#4A7FD4', 'sm')}>{DOT('#4A7FD4')}관심</span>
           )}
           {flags.inProgress && (
-            <span style={badge('var(--badge-green-bg)', '#5BC37E', 'sm')}>{DOT('#5BC37E')}진행중</span>
+            <span style={badge('var(--badge-green-bg)', '#5BC37E', 'sm')}>{DOT('#5BC37E')}진행</span>
           )}
           {isPreferred && (
             <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#2563EB', flexShrink: 0 }}>

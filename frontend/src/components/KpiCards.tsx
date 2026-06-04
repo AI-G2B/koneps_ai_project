@@ -124,7 +124,7 @@ export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuse
               진행중인 사업이 없습니다
             </div>
             <div style={{ fontSize: '12px', color: 'var(--dash-text-4)' }}>
-              담당자가 공고에 진행하기를 설정하면 여기에 표시됩니다
+              담당자가 공고에 진행 등록을 하면 여기에 표시됩니다
             </div>
           </div>
         </motion.div>

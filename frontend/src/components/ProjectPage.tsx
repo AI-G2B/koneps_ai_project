@@ -149,7 +149,7 @@ function EmptyState() {
       </div>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--dash-text-3)', marginBottom: '4px' }}>진행 중인 프로젝트가 없습니다</div>
-        <div style={{ fontSize: '12px', color: 'var(--dash-text-5)' }}>공고 목록에서 진행하기 버튼을 눌러 추가하세요</div>
+        <div style={{ fontSize: '12px', color: 'var(--dash-text-5)' }}>공고 목록에서 진행 등록 버튼을 눌러 추가하세요</div>
       </div>
     </div>
   );

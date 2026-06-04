@@ -63,7 +63,7 @@ function EmptyState() {
         <Bookmark style={{ width: '24px', height: '24px', color: '#2563EB' }} />
       </div>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--dash-text-3)', marginBottom: '4px' }}>찜한 공고가 없습니다</div>
+        <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--dash-text-3)', marginBottom: '4px' }}>관심공고가 없습니다</div>
         <div style={{ fontSize: '12px', color: 'var(--dash-text-5)' }}>공고 목록에서 관심 공고를 추가해보세요</div>
       </div>
     </div>
@@ -149,10 +149,10 @@ function BidCard({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
             style={{ padding: '5px 10px', height: '30px', fontSize: '12px', color: '#2563EB', backgroundColor: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.2)' }}
             onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.18)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; }}
-            title="찜 해제"
+            title="관심공고 해제"
           >
             <BookmarkX style={{ width: '13px', height: '13px' }} />
-            <span>찜 해제</span>
+            <span>관심공고 해제</span>
           </button>
           <button
             onClick={() => onToggleInProgress(bid.id)}
@@ -167,10 +167,10 @@ function BidCard({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
             }}
             onMouseEnter={(e) => { if (!flags.inProgress) { (e.currentTarget as HTMLButtonElement).style.color = '#22C55E'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,197,94,0.1)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(34,197,94,0.3)'; } }}
             onMouseLeave={(e) => { if (!flags.inProgress) { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-btn)'; } }}
-            title="진행하기"
+            title="진행 등록"
           >
             <Play style={{ width: '12px', height: '12px', fill: flags.inProgress ? 'currentColor' : 'none', flexShrink: 0 }} />
-            <span>{flags.inProgress ? '진행중' : '진행하기'}</span>
+            <span>{flags.inProgress ? '진행' : '진행 등록'}</span>
           </button>
         </div>
       </div>
