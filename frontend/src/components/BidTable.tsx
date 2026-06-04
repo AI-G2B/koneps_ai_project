@@ -194,8 +194,9 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
             <tr style={{ backgroundColor: 'var(--dash-card-deep)' }}>
               {[
                 ...(showBidNumber ? [{ label: '공고번호', key: null as SortKey, width: '130px' }] : []),
-                { label: '공고일', key: null as SortKey, width: '90px' },
+                { label: '공고일', key: null as SortKey, width: '64px', align: 'center' as const },
                 { label: '공고명', key: null as SortKey, width: undefined as string | undefined },
+                { label: '상태', key: null as SortKey, width: '72px' },
                 { label: '발주기관', key: null as SortKey, width: '85px' },
                 { label: '예산', key: 'budget' as SortKey, width: '80px' },
                 { label: '마감일', key: 'deadline' as SortKey, width: '90px' },
@@ -203,7 +204,7 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
                 { label: '액션', key: null as SortKey, width: '70px' },
               ].map((col) => (
                 <th key={col.label} onClick={() => col.key && handleSort(col.key)}
-                  style={{ padding: '8px 12px', textAlign: 'left', fontSize: '11px', color: 'var(--dash-text-4)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500, whiteSpace: 'nowrap', width: col.width, cursor: col.key ? 'pointer' : 'default', borderBottom: '1px solid var(--dash-border)', userSelect: 'none' }}>
+                  style={{ padding: '8px 12px', textAlign: (col as any).align ?? 'left', fontSize: '11px', color: 'var(--dash-text-4)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500, whiteSpace: 'nowrap', width: col.width, cursor: col.key ? 'pointer' : 'default', borderBottom: '1px solid var(--dash-border)', userSelect: 'none' }}>
                   <div className="flex items-center gap-1">{col.label}{col.key && !ceoMode && <SortIcon col={col.key} />}</div>
                 </th>
               ))}
@@ -211,14 +212,14 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={showBidNumber ? 8 : 7}>
+              <tr><td colSpan={showBidNumber ? 9 : 8}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '8px' }}>
                   <Loader2 className="animate-spin" style={{ width: '24px', height: '24px', color: '#2563EB' }} />
                   <span style={{ fontSize: '13px', color: 'var(--dash-text-3)' }}>공고를 불러오는 중입니다...</span>
                 </div>
               </td></tr>
             ) : sortedBids.length === 0 ? (
-              <tr><td colSpan={showBidNumber ? 8 : 7} style={{ padding: '48px', textAlign: 'center' }}>
+              <tr><td colSpan={showBidNumber ? 9 : 8} style={{ padding: '48px', textAlign: 'center' }}>
                 {ceoMode ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                     <Inbox style={{ width: '28px', height: '28px', color: 'var(--dash-text-4)' }} />
@@ -320,12 +321,12 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
           <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{bid.number}</span>
         </td>
       )}
-      <td style={{ padding: '12px', verticalAlign: 'middle', width: '90px' }}>
+      <td style={{ padding: '8px 8px', verticalAlign: 'middle', width: '64px', textAlign: 'center' }}>
         <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', whiteSpace: 'nowrap' }}>
           {bid.ntceDate ? bid.ntceDate.slice(5).replace('-', '.') : '-'}
         </span>
       </td>
-      <td style={{ padding: '12px', verticalAlign: 'top' }}>
+      <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <div
           onMouseEnter={(e) => {
             const el = e.currentTarget;
@@ -335,34 +336,35 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
             }
           }}
           onMouseLeave={() => setTitleTooltip(null)}
-          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', display: 'block', whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.5, marginBottom: '4px' }}>
+          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.5 }}>
           {bid.title}
         </div>
-        <div className="flex items-center gap-1" style={{ flexWrap: 'wrap', rowGap: '2px' }}>
-          {bid.type !== '기타' && (
-            <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA', flexShrink: 0 }}>{bid.type}</span>
-          )}
+        {bid.type !== '기타' && (
+          <span className="rounded" style={{ display: 'inline-block', marginTop: '4px', fontSize: '10px', padding: '1px 5px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA' }}>{bid.type}</span>
+        )}
+      </td>
+      <td style={{ padding: '12px', verticalAlign: 'middle', width: '72px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
           {flags.bookmarked && (
-            <span style={badge('var(--badge-blue-bg)', '#4A7FD4', 'sm')}>{DOT('#4A7FD4')}관심</span>
+            <span style={{ fontSize: '11px', color: '#4A7FD4', fontWeight: 500, whiteSpace: 'nowrap' }}>관심공고</span>
           )}
           {flags.inProgress && (
-            <span style={badge('var(--badge-green-bg)', '#5BC37E', 'sm')}>{DOT('#5BC37E')}진행</span>
+            <span style={{ fontSize: '11px', color: '#5BC37E', fontWeight: 500, whiteSpace: 'nowrap' }}>진행중</span>
           )}
-          {isPreferred && (
-            <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#2563EB', flexShrink: 0 }}>
-              <Star style={{ width: '9px', height: '9px' }} />선호
-            </span>
-          )}
-          {isAvoided && (
-            <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(239,68,68,0.12)', color: '#EF4444', flexShrink: 0 }}>
-              <Ban style={{ width: '9px', height: '9px' }} />기피
-            </span>
-          )}
-          <span style={{ fontSize: '10px', color: 'var(--dash-text-5)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bid.number}</span>
         </div>
       </td>
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', display: 'block', wordBreak: 'keep-all', overflowWrap: 'break-word', maxWidth: '80px', lineHeight: 1.5 }}>{bid.agency}</span>
+        {isPreferred && (
+          <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', marginTop: '2px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#2563EB', display: 'inline-flex' }}>
+            <Star style={{ width: '9px', height: '9px' }} />선호
+          </span>
+        )}
+        {isAvoided && (
+          <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', marginTop: '2px', backgroundColor: 'rgba(239,68,68,0.12)', color: '#EF4444', display: 'inline-flex' }}>
+            <Ban style={{ width: '9px', height: '9px' }} />기피
+          </span>
+        )}
       </td>
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <span style={{ fontSize: '13px', color: 'var(--dash-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>{formatBudget(bid.budget)}</span>

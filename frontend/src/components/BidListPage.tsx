@@ -251,8 +251,9 @@ function LeftPanel({ bids, bidFlags, selectedBid, onOpenSlide, showBidNumber = f
             <tr style={{ backgroundColor: 'var(--dash-card-deep)' }}>
               {[
                 ...(showBidNumber ? [{ label: '공고번호', width: '130px' }] : []),
-                { label: '공고일', width: '90px' },
+                { label: '공고일', width: '64px', align: 'center' as const },
                 { label: '공고명', width: undefined as string | undefined },
+                { label: '상태', width: '72px' },
                 { label: '발주기관', width: '96px' },
                 { label: '예산', width: '68px' },
                 { label: '마감일', width: '82px' },
@@ -261,7 +262,7 @@ function LeftPanel({ bids, bidFlags, selectedBid, onOpenSlide, showBidNumber = f
                   key={col.label}
                   style={{
                     padding: '8px 12px',
-                    textAlign: 'left',
+                    textAlign: (col as any).align ?? 'left',
                     fontSize: '11px',
                     color: 'var(--dash-text-4)',
                     textTransform: 'uppercase',
@@ -280,7 +281,7 @@ function LeftPanel({ bids, bidFlags, selectedBid, onOpenSlide, showBidNumber = f
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={showBidNumber ? 6 : 5} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
+                <td colSpan={showBidNumber ? 7 : 6} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
                   해당 기간에 수집된 공고가 없습니다
                 </td>
               </tr>
@@ -339,7 +340,7 @@ function LeftRow({ bid, isSelected, flags, onSelect, showBidNumber = false }: {
           <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{bid.number}</span>
         </td>
       )}
-      <td style={{ padding: '12px', verticalAlign: 'middle', width: '90px' }}>
+      <td style={{ padding: '8px 8px', verticalAlign: 'middle', width: '64px', textAlign: 'center' }}>
         <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', whiteSpace: 'nowrap' }}>
           {bid.ntceDate ? bid.ntceDate.slice(5).replace('-', '.') : '-'}
         </span>
@@ -354,23 +355,21 @@ function LeftRow({ bid, isSelected, flags, onSelect, showBidNumber = false }: {
             }
           }}
           onMouseLeave={() => setTooltip(null)}
-          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', display: 'block', whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.5, marginBottom: '4px' }}
+          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.5 }}
         >
           {bid.title}
         </div>
-        <div className="flex items-center gap-1" style={{ flexWrap: 'wrap', rowGap: '2px' }}>
-          {bid.type !== '기타' && (
-            <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA', flexShrink: 0 }}>{bid.type}</span>
-          )}
+        {bid.type !== '기타' && (
+          <span className="rounded" style={{ display: 'inline-block', marginTop: '4px', fontSize: '10px', padding: '1px 5px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA' }}>{bid.type}</span>
+        )}
+      </td>
+      <td style={{ padding: '12px', verticalAlign: 'middle', width: '72px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
           {flags.bookmarked && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-blue-bg)', color: '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />관심
-            </span>
+            <span style={{ fontSize: '11px', color: '#4A7FD4', fontWeight: 500, whiteSpace: 'nowrap' }}>관심공고</span>
           )}
           {flags.inProgress && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-green-bg)', color: '#5BC37E', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#5BC37E', flexShrink: 0, display: 'inline-block' }} />진행
-            </span>
+            <span style={{ fontSize: '11px', color: '#5BC37E', fontWeight: 500, whiteSpace: 'nowrap' }}>진행중</span>
           )}
         </div>
       </td>
