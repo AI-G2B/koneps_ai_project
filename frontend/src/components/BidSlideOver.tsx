@@ -40,12 +40,15 @@ interface BidSlideOverProps {
   outlineStatus?: 'none' | 'generating' | 'complete';
   onRequestOutline?: (bidId: string) => void;
   onDownloadOutline?: (bidId: string) => void;
+  onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
 }
 
-export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false, analysisLogs, outlineStatus = 'none', onRequestOutline, onDownloadOutline }: BidSlideOverProps) {
+export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false, analysisLogs, outlineStatus = 'none', onRequestOutline, onDownloadOutline, onUpdateManagers }: BidSlideOverProps) {
   const { showToast } = useToast();
   const [showFileMenu, setShowFileMenu] = useState(false);
   const [showConfirm, setShowConfirm] = useState<'add' | 'remove' | null>(null);
+  const [regSalesManager, setRegSalesManager] = useState('');
+  const [regProjectPm, setRegProjectPm] = useState('');
   const [hoveredFileIndex, setHoveredFileIndex] = useState<number | null>(null);
   const [hoveredCardIndex, setHoveredCardIndex] = useState<number | null>(null);
   const fileMenuRef = useRef<HTMLDivElement>(null);
@@ -364,7 +367,13 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
 
               {/* 진행하기 */}
               <button
-                onClick={() => setShowConfirm(flags.inProgress ? 'remove' : 'add')}
+                onClick={() => {
+                  if (!flags.inProgress) {
+                    setRegSalesManager(bid.salesManager ?? '');
+                    setRegProjectPm(bid.projectPm ?? '');
+                  }
+                  setShowConfirm(flags.inProgress ? 'remove' : 'add');
+                }}
                 className="flex items-center gap-1.5 rounded-lg transition-colors"
                 style={{
                   padding: '6px 14px',
@@ -670,14 +679,38 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
       <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
         <div style={{ backgroundColor: 'var(--dash-card)', borderRadius: '12px', padding: '24px', maxWidth: '360px', width: '100%', margin: '0 16px', border: '1px solid var(--dash-border)' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px' }}>
-            {showConfirm === 'add' ? '진행 프로젝트로 등록하시겠습니까?' : '진행 프로젝트에서 제거하시겠습니까?'}
+            {showConfirm === 'add' ? '진행 프로젝트로 등록' : '진행 프로젝트에서 제거하시겠습니까?'}
           </h3>
-          {showConfirm === 'add' && (
-            <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: '0 0 20px', lineHeight: 1.6 }}>
-              등록하면 AI 분석이 자동으로 시작됩니다.
-            </p>
+          {showConfirm === 'add' ? (
+            <>
+              <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: '0 0 16px', lineHeight: 1.6 }}>
+                등록하면 AI 분석이 자동으로 시작됩니다.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>영업담당자</div>
+                  <input
+                    value={regSalesManager}
+                    onChange={(e) => setRegSalesManager(e.target.value)}
+                    placeholder="이름 입력 (선택)"
+                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--dash-border-med)', backgroundColor: 'var(--dash-input-bg)', color: 'var(--dash-text)', marginTop: '4px', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>담당 PM</div>
+                  <input
+                    value={regProjectPm}
+                    onChange={(e) => setRegProjectPm(e.target.value)}
+                    placeholder="이름 입력 (선택)"
+                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--dash-border-med)', backgroundColor: 'var(--dash-input-bg)', color: 'var(--dash-text)', marginTop: '4px', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div style={{ marginBottom: '20px' }} />
           )}
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: showConfirm === 'remove' ? '20px' : 0 }}>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
             <button
               onClick={() => setShowConfirm(null)}
               style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer' }}
@@ -685,7 +718,13 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
               취소
             </button>
             <button
-              onClick={() => { onToggleInProgress(bid.id); setShowConfirm(null); }}
+              onClick={() => {
+                onToggleInProgress(bid.id);
+                if (showConfirm === 'add' && (regSalesManager || regProjectPm)) {
+                  onUpdateManagers?.(bid.id, regSalesManager, regProjectPm);
+                }
+                setShowConfirm(null);
+              }}
               style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: showConfirm === 'add' ? '#2563EB' : '#EF4444', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
             >
               {showConfirm === 'add' ? '등록' : '제거'}

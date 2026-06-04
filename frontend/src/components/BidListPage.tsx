@@ -39,10 +39,11 @@ interface BidListPageProps {
   outlineStatusMap?: Record<string, 'none' | 'generating' | 'complete'>;
   onRequestOutline?: (bidId: string) => void;
   onDownloadOutline?: (bidId: string) => void;
+  onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
   showBidNumber?: boolean;
 }
 
-export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false, analysisLogsMap, outlineStatusMap, onRequestOutline, onDownloadOutline, showBidNumber = false }: BidListPageProps) {
+export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false, analysisLogsMap, outlineStatusMap, onRequestOutline, onDownloadOutline, onUpdateManagers, showBidNumber = false }: BidListPageProps) {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('bookmarked');
@@ -147,6 +148,7 @@ export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onTo
         outlineStatus={selectedBid && outlineStatusMap ? outlineStatusMap[selectedBid.id] : 'none'}
         onRequestOutline={onRequestOutline}
         onDownloadOutline={onDownloadOutline}
+        onUpdateManagers={onUpdateManagers}
       />
     </>
   );

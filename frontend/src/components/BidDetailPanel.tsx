@@ -24,11 +24,14 @@ interface BidDetailPanelProps {
   onDownloadOutline?: (bidId: string) => void;
   bidFlags?: Record<string, BidFlags>;
   onToggleInProgress?: (bidId: string) => void;
+  onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
 }
 
-export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false, analysisLogs, outlineStatus = 'none', onRequestOutline, onDownloadOutline, bidFlags, onToggleInProgress }: BidDetailPanelProps) {
+export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false, analysisLogs, outlineStatus = 'none', onRequestOutline, onDownloadOutline, bidFlags, onToggleInProgress, onUpdateManagers }: BidDetailPanelProps) {
   const { showToast } = useToast();
   const [showInProgressConfirm, setShowInProgressConfirm] = React.useState<'add' | 'remove' | null>(null);
+  const [regSalesManager, setRegSalesManager] = React.useState('');
+  const [regProjectPm, setRegProjectPm] = React.useState('');
   const [showFileMenu, setShowFileMenu] = useState(false);
   const fileMenuRef = useRef<HTMLDivElement>(null);
 
@@ -304,7 +307,13 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
           const flags = bidFlags?.[bid.id] ?? { bookmarked: false, inProgress: false };
           return (
             <button
-              onClick={() => setShowInProgressConfirm(flags.inProgress ? 'remove' : 'add')}
+              onClick={() => {
+                if (!flags.inProgress) {
+                  setRegSalesManager(bid.salesManager ?? '');
+                  setRegProjectPm(bid.projectPm ?? '');
+                }
+                setShowInProgressConfirm(flags.inProgress ? 'remove' : 'add');
+              }}
               className="w-full flex items-center justify-center gap-1.5 rounded-xl transition-colors"
               style={{
                 marginBottom: '8px',
@@ -372,14 +381,38 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
           <div style={{ backgroundColor: 'var(--dash-card)', borderRadius: '12px', padding: '24px', maxWidth: '360px', width: '100%', margin: '0 16px', border: '1px solid var(--dash-border)' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px' }}>
-              {showInProgressConfirm === 'add' ? '진행 프로젝트로 등록하시겠습니까?' : '진행 프로젝트에서 제거하시겠습니까?'}
+              {showInProgressConfirm === 'add' ? '진행 프로젝트로 등록' : '진행 프로젝트에서 제거하시겠습니까?'}
             </h3>
-            {showInProgressConfirm === 'add' && (
-              <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: '0 0 20px', lineHeight: 1.6 }}>
-                등록하면 AI 분석이 자동으로 시작됩니다.
-              </p>
+            {showInProgressConfirm === 'add' ? (
+              <>
+                <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: '0 0 16px', lineHeight: 1.6 }}>
+                  등록하면 AI 분석이 자동으로 시작됩니다.
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>영업담당자</div>
+                    <input
+                      value={regSalesManager}
+                      onChange={(e) => setRegSalesManager(e.target.value)}
+                      placeholder="이름 입력 (선택)"
+                      style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--dash-border-med)', backgroundColor: 'var(--dash-input-bg)', color: 'var(--dash-text)', marginTop: '4px', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>담당 PM</div>
+                    <input
+                      value={regProjectPm}
+                      onChange={(e) => setRegProjectPm(e.target.value)}
+                      placeholder="이름 입력 (선택)"
+                      style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--dash-border-med)', backgroundColor: 'var(--dash-input-bg)', color: 'var(--dash-text)', marginTop: '4px', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div style={{ marginBottom: '20px' }} />
             )}
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: showInProgressConfirm === 'remove' ? '20px' : 0 }}>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setShowInProgressConfirm(null)}
                 style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer' }}
@@ -387,7 +420,13 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
                 취소
               </button>
               <button
-                onClick={() => { onToggleInProgress?.(bid.id); setShowInProgressConfirm(null); }}
+                onClick={() => {
+                  onToggleInProgress?.(bid.id);
+                  if (showInProgressConfirm === 'add' && (regSalesManager || regProjectPm)) {
+                    onUpdateManagers?.(bid.id, regSalesManager, regProjectPm);
+                  }
+                  setShowInProgressConfirm(null);
+                }}
                 style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: showInProgressConfirm === 'add' ? '#2563EB' : '#EF4444', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
               >
                 {showInProgressConfirm === 'add' ? '등록' : '제거'}

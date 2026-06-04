@@ -71,6 +71,8 @@ export interface Bid {
   dangerCount: number;
   collectedAt: string;
   ntceDate?: string;
+  salesManager?: string;
+  projectPm?: string;
   is_bookmarked?: boolean;
   is_in_progress?: boolean;
   is_expired?: boolean;

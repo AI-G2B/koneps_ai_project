@@ -23,6 +23,7 @@ import {
   fetchBidById,
   toggleBookmarkApi,
   toggleInProgressApi,
+  updateBidManagersApi,
   requestAnalysisApi,
   fetchAnalysisStatus,
   uploadAttachmentApi,
@@ -522,6 +523,13 @@ const toggleBookmark = (bidId: string) => {
     }
   };
 
+  const updateBidManagers = async (bidId: string, salesManager: string, projectPm: string) => {
+    const bid = bids.find(b => b.id === bidId);
+    if (!bid) return;
+    setBids(prev => prev.map(b => b.id === bidId ? { ...b, salesManager, projectPm } : b));
+    await updateBidManagersApi(bid.number, salesManager, projectPm);
+  };
+
   const [analysisDetailBid, setAnalysisDetailBid] = useState<Bid | null>(null);
   const [showAnalysisDetail, setShowAnalysisDetail] = useState<boolean>(
     () => localStorage.getItem('koneps:showAnalysisDetail') === 'true'
@@ -728,6 +736,7 @@ const toggleBookmark = (bidId: string) => {
               outlineStatusMap={outlineStatusMap}
               onRequestOutline={requestOutline}
               onDownloadOutline={downloadOutlineExcel}
+              onUpdateManagers={updateBidManagers}
             />
           ) : activePage === 'AI 분석' ? (
             <AnalysisListPage
@@ -780,6 +789,7 @@ const toggleBookmark = (bidId: string) => {
               onToggleInProgress={toggleInProgress}
               onOpenAnalysisDetail={openAnalysisDetail}
               onRequestAnalysis={requestAnalysis}
+              onUpdateManagers={updateBidManagers}
               ceoMode={isCeo}
               currentUser={user}
             />
@@ -805,7 +815,7 @@ const toggleBookmark = (bidId: string) => {
                   onRequestAnalysis={requestAnalysis}
                   showBidNumber={true}
                 />
-                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} ceoMode={true} analysisLogs={selectedBid ? analysisLogsMap[selectedBid.id] : undefined} outlineStatus={selectedBid ? outlineStatusMap[selectedBid.id] : 'none'} onRequestOutline={requestOutline} onDownloadOutline={downloadOutlineExcel} />
+                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} ceoMode={true} analysisLogs={selectedBid ? analysisLogsMap[selectedBid.id] : undefined} outlineStatus={selectedBid ? outlineStatusMap[selectedBid.id] : 'none'} onRequestOutline={requestOutline} onDownloadOutline={downloadOutlineExcel} bidFlags={bidFlags} onToggleInProgress={toggleInProgress} onUpdateManagers={updateBidManagers} />
               </div>
               <BottomWidgets
                 bids={inProgressBids}
@@ -837,6 +847,7 @@ const toggleBookmark = (bidId: string) => {
                   outlineStatusMap={outlineStatusMap}
                   onRequestOutline={requestOutline}
                   onDownloadOutline={downloadOutlineExcel}
+                  onUpdateManagers={updateBidManagers}
                 />
               </div>
               <BottomWidgets
