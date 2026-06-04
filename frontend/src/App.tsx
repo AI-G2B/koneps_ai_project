@@ -17,6 +17,7 @@ import { AnalysisDetailPage } from './components/AnalysisDetailPage';
 import { AnalysisListPage } from './components/AnalysisListPage';
 import { StrategyReportPage } from './components/StrategyReportPage';
 import { ProposalPage } from './components/ProposalPage';
+import { HelpPage } from './components/HelpPage';
 import { AdminLLMPage } from './components/AdminLLMPage';
 import { AdminPoisonPage } from './components/AdminPoisonPage';
 import { AdminStatusPage } from './components/AdminStatusPage';
@@ -49,7 +50,7 @@ import {
 const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정'];
 const ADMIN_ALLOWED_PAGES: PageType[] = ['대시보드', 'LLM 설정', '독소조항 설정', '시스템 현황'];
 
-export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '진행 프로젝트 현황' | '현황 요약' | '전략 리포트' | '설정' | 'LLM 설정' | '독소조항 설정' | '시스템 현황';
+export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '진행 프로젝트 현황' | '현황 요약' | '전략 리포트' | '설정' | '도움말' | 'LLM 설정' | '독소조항 설정' | '시스템 현황';
 
 export interface AgencySettings {
   preferred: string[];
@@ -721,7 +722,9 @@ const toggleBookmark = (bidId: string) => {
             scrollbarColor: 'var(--dash-scrollbar) transparent',
           }}
         >
-          {activePage === '설정' ? (
+          {activePage === '도움말' ? (
+            <HelpPage />
+          ) : activePage === '설정' ? (
             <SettingsPage
               settings={agencySettings}
               onSave={async (newSettings) => {

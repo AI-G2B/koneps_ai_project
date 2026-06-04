@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, FileText, Sparkles, BarChart2,
-  Settings, Building2, ChevronRight, TrendingUp,
+  Settings, HelpCircle, Building2, ChevronRight, TrendingUp,
   Bookmark, Briefcase, ShieldCheck, AlertTriangle, Activity,
 } from 'lucide-react';
 import type { UserRole } from './LoginPage';
@@ -70,6 +70,7 @@ const ADMIN_SECTIONS: NavSection[] = [
 
 const SYSTEM_ITEMS: NavItem[] = [
   { icon: Settings, label: '설정' },
+  { icon: HelpCircle, label: '도움말' },
 ];
 
 interface SidebarProps {
@@ -109,11 +110,6 @@ export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 
       >
         <item.icon style={{ width: '16px', height: '16px', flexShrink: 0, color: isActive ? accentColor : 'var(--dash-icon-off)' }} />
         <span style={{ flex: 1, fontSize: '13px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
-        {item.upcomingBadge && (
-          <span style={{ fontSize: '9px', padding: '1px 5px', borderRadius: '4px', backgroundColor: 'rgba(249,115,22,0.12)', color: '#F97316', border: '1px solid rgba(249,115,22,0.25)', flexShrink: 0 }}>
-            고도화 예정
-          </span>
-        )}
         {(item.badge || item.label === 'AI 분석' || item.label === '공고 목록') && (
           <span className="flex-shrink-0 flex items-center justify-center rounded-full" style={{ fontSize: '10px', padding: '1px 6px', backgroundColor: isActive ? accentColor : badgeBg, color: isActive ? 'white' : accentColor, minWidth: '20px' }}>
             {item.label === 'AI 분석' ? analysisCompleteCount : item.label === '공고 목록' ? totalBidCount : item.badge}
