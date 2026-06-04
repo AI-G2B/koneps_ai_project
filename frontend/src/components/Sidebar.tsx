@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, FileText, Sparkles, BookOpen, List,
   Settings, Building2, ChevronRight, TrendingUp,
-  Bookmark, Briefcase,
+  Bookmark, Briefcase, ShieldCheck, AlertTriangle, Activity,
 } from 'lucide-react';
 import type { UserRole } from './LoginPage';
 import type { PageType } from '../App';
@@ -56,6 +56,20 @@ const PROPOSAL_SECTIONS: NavSection[] = [
   },
 ];
 
+const ADMIN_SECTIONS: NavSection[] = [
+  {
+    items: [{ icon: LayoutDashboard, label: '대시보드' }],
+  },
+  {
+    label: '어드민 설정',
+    items: [
+      { icon: ShieldCheck, label: 'LLM 설정' },
+      { icon: AlertTriangle, label: '독소조항 설정' },
+      { icon: Activity, label: '시스템 현황' },
+    ],
+  },
+];
+
 const SYSTEM_ITEMS: NavItem[] = [
   { icon: Settings, label: '설정' },
 ];
@@ -70,18 +84,20 @@ interface SidebarProps {
 }
 
 export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 0, totalBidCount = 0, lastSyncTime }: SidebarProps) {
-  const sections = role === 'ceo' ? CEO_SECTIONS : role === 'proposal' ? PROPOSAL_SECTIONS : MANAGER_SECTIONS;
-  const accentColor = role === 'ceo' ? '#7C3AED' : role === 'proposal' ? '#0891B2' : '#2563EB';
-  const accentBg = role === 'ceo' ? 'rgba(124,58,237,0.15)' : role === 'proposal' ? 'rgba(8,145,178,0.15)' : 'rgba(37,99,235,0.15)';
-  const badgeBg = role === 'ceo' ? 'rgba(124,58,237,0.2)' : role === 'proposal' ? 'rgba(8,145,178,0.2)' : 'rgba(37,99,235,0.2)';
-  const logoGradient = role === 'ceo'
+  const sections = role === 'admin' ? ADMIN_SECTIONS : role === 'ceo' ? CEO_SECTIONS : role === 'proposal' ? PROPOSAL_SECTIONS : MANAGER_SECTIONS;
+  const accentColor = role === 'admin' ? '#475569' : role === 'ceo' ? '#7C3AED' : role === 'proposal' ? '#0891B2' : '#2563EB';
+  const accentBg = role === 'admin' ? 'rgba(71,85,105,0.15)' : role === 'ceo' ? 'rgba(124,58,237,0.15)' : role === 'proposal' ? 'rgba(8,145,178,0.15)' : 'rgba(37,99,235,0.15)';
+  const badgeBg = role === 'admin' ? 'rgba(71,85,105,0.2)' : role === 'ceo' ? 'rgba(124,58,237,0.2)' : role === 'proposal' ? 'rgba(8,145,178,0.2)' : 'rgba(37,99,235,0.2)';
+  const logoGradient = role === 'admin'
+    ? 'linear-gradient(135deg, #475569, #334155)'
+    : role === 'ceo'
     ? 'linear-gradient(135deg, #7C3AED, #5B21B6)'
     : role === 'proposal'
     ? 'linear-gradient(135deg, #0891B2, #0E7490)'
     : 'linear-gradient(135deg, #2563EB, #1D4ED8)';
-  const roleLabel = role === 'ceo' ? 'CEO 모드' : role === 'proposal' ? '제안팀 모드' : '담당자 모드';
-  const roleBadgeBg = role === 'ceo' ? 'rgba(124,58,237,0.12)' : role === 'proposal' ? 'rgba(8,145,178,0.12)' : 'rgba(37,99,235,0.12)';
-  const roleBadgeBorder = role === 'ceo' ? 'rgba(124,58,237,0.25)' : role === 'proposal' ? 'rgba(8,145,178,0.25)' : 'rgba(37,99,235,0.25)';
+  const roleLabel = role === 'admin' ? '어드민' : role === 'ceo' ? 'CEO 모드' : role === 'proposal' ? '제안팀 모드' : '담당자 모드';
+  const roleBadgeBg = role === 'admin' ? 'rgba(71,85,105,0.12)' : role === 'ceo' ? 'rgba(124,58,237,0.12)' : role === 'proposal' ? 'rgba(8,145,178,0.12)' : 'rgba(37,99,235,0.12)';
+  const roleBadgeBorder = role === 'admin' ? 'rgba(71,85,105,0.25)' : role === 'ceo' ? 'rgba(124,58,237,0.25)' : role === 'proposal' ? 'rgba(8,145,178,0.25)' : 'rgba(37,99,235,0.25)';
 
   const NavButton = ({ item }: { item: NavItem }) => {
     const isActive = activePage === item.label;
@@ -152,10 +168,14 @@ export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 
           </div>
         ))}
 
-        <SectionLabel label="시스템" />
-        <div className="space-y-0.5">
-          {SYSTEM_ITEMS.map((item) => <NavButton key={item.label} item={item} />)}
-        </div>
+        {role !== 'admin' && (
+          <>
+            <SectionLabel label="시스템" />
+            <div className="space-y-0.5">
+              {SYSTEM_ITEMS.map((item) => <NavButton key={item.label} item={item} />)}
+            </div>
+          </>
+        )}
       </nav>
 
       {/* Status Footer */}

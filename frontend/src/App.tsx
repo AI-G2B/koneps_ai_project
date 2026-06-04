@@ -18,6 +18,9 @@ import { AnalysisListPage } from './components/AnalysisListPage';
 import { StrategyReportPage } from './components/StrategyReportPage';
 import { ProposalPage } from './components/ProposalPage';
 import { ProposalOutlinePage } from './components/ProposalOutlinePage';
+import { AdminLLMPage } from './components/AdminLLMPage';
+import { AdminPoisonPage } from './components/AdminPoisonPage';
+import { AdminStatusPage } from './components/AdminStatusPage';
 import {
   fetchBids,
   fetchBidById,
@@ -45,8 +48,9 @@ import {
 } from './services/api';
 
 const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정'];
+const ADMIN_ALLOWED_PAGES: PageType[] = ['대시보드', 'LLM 설정', '독소조항 설정', '시스템 현황'];
 
-export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '목차 현황' | '현황 요약' | '전략 리포트' | '설정';
+export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '목차 현황' | '현황 요약' | '전략 리포트' | '설정' | 'LLM 설정' | '독소조항 설정' | '시스템 현황';
 
 export interface AgencySettings {
   preferred: string[];
@@ -610,6 +614,11 @@ const toggleBookmark = (bidId: string) => {
     if (!CEO_ALLOWED_PAGES.includes(activePage)) setActivePage('대시보드');
   }, [user, activePage]);
 
+  useEffect(() => {
+    if (!user || user.role !== 'admin') return;
+    if (!ADMIN_ALLOWED_PAGES.includes(activePage)) setActivePage('대시보드');
+  }, [user, activePage]);
+
   const syncAiStatus = (bid: Bid) => {
     // 서버 분석 상태(pipeline_status 기반 bid.aiStatus)를 런타임 aiStatuses에 반영.
     // 이미 분석된 공고를 목록/검색에서 열었을 때 분석 결과가 보이도록 한다.
@@ -652,11 +661,17 @@ const toggleBookmark = (bidId: string) => {
     setUser(null);
   };
 
+  const handleDirectLogin = (adminUser: User) => {
+    sessionStorage.setItem('koneps_user', JSON.stringify(adminUser));
+    setUser(adminUser);
+  };
+
   if (!user) {
-    return <LoginPage onLogin={handleLogin} loginError={loginError} />;
+    return <LoginPage onLogin={handleLogin} loginError={loginError} onDirectLogin={handleDirectLogin} />;
   }
 
   const isCeo = user.role === 'ceo';
+  const isAdmin = user.role === 'admin';
   const inProgressBids = bids.filter(b => bidFlags[b.id]?.inProgress ?? false);
   const analysisCompleteCount = Object.values(aiStatuses).filter(s => s === 'complete').length;
   const activeBidCount = bids.filter(b => getDaysUntilDeadline(b.deadline) >= 0).length;
@@ -793,6 +808,14 @@ const toggleBookmark = (bidId: string) => {
               ceoMode={isCeo}
               currentUser={user}
             />
+          ) : activePage === 'LLM 설정' ? (
+            <AdminLLMPage />
+          ) : activePage === '독소조항 설정' ? (
+            <AdminPoisonPage />
+          ) : activePage === '시스템 현황' ? (
+            <AdminStatusPage dashboardStats={dashboardStats} totalBidCount={bids.length} />
+          ) : isAdmin ? (
+            <AdminStatusPage dashboardStats={dashboardStats} totalBidCount={bids.length} />
           ) : isCeo ? (
             <>
               <KpiCards bids={inProgressBids} bidsLoading={isFetching} ceoMode={true} aiStatuses={aiStatuses} dashboardStats={dashboardStats} />
