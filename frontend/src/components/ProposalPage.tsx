@@ -91,7 +91,7 @@ function BidCard({
   const riskReviewComplete = analysisComplete && Array.isArray(bid.riskFactors) && bid.riskFactors.length > 0;
   const outlineComplete = outlineStatus === 'complete';
   const outlineGenerating = outlineStatus === 'generating';
-  const memo = (bid as Record<string, unknown>).memo;
+  const memo = (bid as unknown as Record<string, unknown>).memo;
   const memoComplete = typeof memo === 'string' && memo.trim().length > 0;
 
   const doneCount = [analysisComplete, riskReviewComplete, outlineComplete, memoComplete].filter(Boolean).length;

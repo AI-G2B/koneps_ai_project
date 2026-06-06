@@ -79,13 +79,24 @@ async def generate_outline(notice_id: int, db) -> dict:
 
     project_type = analysis.project_type
     if not is_supported(project_type):
-        labels = ", ".join(cfg["label"] for cfg in OUTLINE_TYPES.values())
-        msg = (
-            f"{get_label(project_type) or project_type or '미정'} 유형은 "
-            f"목차 생성을 지원하지 않습니다 (지원: {labels})"
-        )
-        progress_store.emit(notice_id, msg, level="error")
-        raise UnsupportedProjectTypeError(msg)
+        # Gemini가 본문 보고 "기타" 등으로 분류했더라도 수집기가 공고명으로 ISP/ISMP를 판별했으면 그걸 폴백으로 사용.
+        from backend.db.crud import get_notice_by_id
+        notice = await get_notice_by_id(db, notice_id)
+        fallback = notice.isp_ismp_type if notice else None
+        if is_supported(fallback):
+            progress_store.emit(
+                notice_id,
+                f"분석 결과 project_type={project_type or '미정'} 미지원 → 공고명 분류({fallback})로 폴백"
+            )
+            project_type = fallback
+        else:
+            labels = ", ".join(cfg["label"] for cfg in OUTLINE_TYPES.values())
+            msg = (
+                f"{get_label(project_type) or project_type or '미정'} 유형은 "
+                f"목차 생성을 지원하지 않습니다 (지원: {labels})"
+            )
+            progress_store.emit(notice_id, msg, level="error")
+            raise UnsupportedProjectTypeError(msg)
 
     progress_store.emit(notice_id, f"목차 생성 준비 ({get_label(project_type)})")
 

@@ -11,7 +11,7 @@ import { BookmarkPage } from './components/BookmarkPage';
 import { ProjectPage } from './components/ProjectPage';
 import { BidListPage } from './components/BidListPage';
 import { BottomWidgets } from './components/BottomWidgets';
-import { type Bid, type BidFlags, type AiStatusType, getDaysUntilDeadline } from './types';
+import { type Bid, type BidFlags, type AiStatusType, type AnalysisLog, getDaysUntilDeadline } from './types';
 import { useToast } from './components/ToastProvider';
 import { AnalysisDetailPage } from './components/AnalysisDetailPage';
 import { AnalysisListPage } from './components/AnalysisListPage';
@@ -625,14 +625,6 @@ const toggleBookmark = (bidId: string) => {
     } finally {
       setDetailLoading(false);
     }
-  };
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('koneps_user');
-    sessionStorage.removeItem('koneps_bids');
-    sessionStorage.removeItem('koneps_bids_time');
-    sessionStorage.removeItem('koneps_bidflags');
-    setUser(null);
   };
 
   if (!user) {
