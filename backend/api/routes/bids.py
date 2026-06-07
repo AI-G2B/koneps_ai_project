@@ -311,7 +311,7 @@ async def type_stats(
 
 @router.get("", summary="공고 목록 조회", response_model=BidListResponse)
 async def list_bids(
-    limit: int = Query(20, ge=1, le=100, description="페이지당 건수"),
+    limit: int = Query(20, ge=1, le=500, description="페이지당 건수"),
     offset: int = Query(0, ge=0, description="건너뛸 건수"),
     isp_ismp_only: bool = Query(False, description="ISP/ISMP 공고만 조회"),
     bookmarked_only: bool = Query(False, description="관심 표시한 공고만 조회"),
