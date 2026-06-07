@@ -130,7 +130,7 @@ def parse_bid(item: dict) -> dict:
 
     return {
         "bid_ntce_no": item.get("bidNtceNo", ""),
-        "bid_ntce_ord": item.get("bidNtceOrd", ""),  # 입찰공고차수 (재공고 판별)
+        "bid_ntce_ord": item.get("bidNtceOrd", "000").zfill(3),  # 입찰공고차수 — 3자리 제로패딩으로 정규화 (MAX 정렬 보장)
         "bid_ntce_nm": bid_ntce_nm,
         "ntce_instt_nm": item.get("ntceInsttNm", ""),  # 공고기관명
         "dminstt_nm": item.get("dminsttNm", ""),  # 수요기관명
