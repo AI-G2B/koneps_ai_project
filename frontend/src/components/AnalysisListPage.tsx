@@ -119,10 +119,15 @@ function BidCard({ bid, aiStatus, flags, onOpenAnalysisDetail, onToggleBookmark,
       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(37,99,235,0.3)'; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--dash-border)'; }}
     >
-      {/* 상단: AI 상태 + 위험도 + D-day */}
+      {/* 상단: AI 상태 + 위험도 + 타입 + D-day */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
         <AiStatusIndicator status={aiStatus} />
         <RiskBadge risk={bid.risk} />
+        {bid.type !== '기타' && (
+          <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '4px', backgroundColor: 'rgba(37,99,235,0.1)', color: '#60A5FA', flexShrink: 0, fontWeight: 500 }}>
+            {bid.type}
+          </span>
+        )}
         {urgent && (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />
@@ -161,8 +166,8 @@ function BidCard({ bid, aiStatus, flags, onOpenAnalysisDetail, onToggleBookmark,
           onMouseLeave={(e) => { if (!flags.bookmarked) (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border)'; }}
         >
           {flags.bookmarked
-            ? <><BookmarkX style={{ width: '12px', height: '12px' }} />찜 해제</>
-            : <><Bookmark style={{ width: '12px', height: '12px' }} />찜하기</>
+            ? <><BookmarkX style={{ width: '12px', height: '12px' }} />관심공고 해제</>
+            : <><Bookmark style={{ width: '12px', height: '12px' }} />관심공고 추가</>
           }
         </button>
         <button
@@ -172,7 +177,7 @@ function BidCard({ bid, aiStatus, flags, onOpenAnalysisDetail, onToggleBookmark,
           onMouseLeave={(e) => { if (!flags.inProgress) (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border)'; }}
         >
           <Play style={{ width: '12px', height: '12px', fill: flags.inProgress ? 'currentColor' : 'none' }} />
-          {flags.inProgress ? '진행중' : '진행하기'}
+          {flags.inProgress ? '진행' : '진행 등록'}
         </button>
       </div>
     </div>
@@ -181,7 +186,7 @@ function BidCard({ bid, aiStatus, flags, onOpenAnalysisDetail, onToggleBookmark,
 
 function EmptyState({ tab }: { tab: TabType }) {
   const messages: Record<TabType, { title: string; sub: string }> = {
-    complete:  { title: '아직 분석 완료된 공고가 없습니다', sub: '공고를 찜하거나 진행하기를 누르면 AI 분석이 시작됩니다' },
+    complete:  { title: '아직 분석 완료된 공고가 없습니다', sub: '관심공고 추가 또는 진행 등록을 하면 AI 분석이 시작됩니다' },
     analyzing: { title: '현재 분석 중인 공고가 없습니다', sub: '' },
     pending:   { title: '대기 중인 공고가 없습니다', sub: '' },
   };

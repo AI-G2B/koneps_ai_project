@@ -25,7 +25,7 @@ export function StrategyReportPage({ bids, bidFlags, aiStatuses }: StrategyRepor
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '6px' }}>아직 진행 중인 사업이 없습니다</div>
-            <div style={{ fontSize: '13px', color: 'var(--dash-text-4)' }}>담당자가 공고에 진행하기를 설정하면 여기에 표시됩니다</div>
+            <div style={{ fontSize: '13px', color: 'var(--dash-text-4)' }}>담당자가 공고에 진행 등록을 하면 여기에 표시됩니다</div>
           </div>
         </div>
       </div>

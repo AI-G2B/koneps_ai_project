@@ -39,10 +39,11 @@ interface BidListPageProps {
   outlineStatusMap?: Record<string, 'none' | 'generating' | 'complete'>;
   onRequestOutline?: (bidId: string) => void;
   onDownloadOutline?: (bidId: string) => void;
+  onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
   showBidNumber?: boolean;
 }
 
-export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false, analysisLogsMap, outlineStatusMap, onRequestOutline, onDownloadOutline, showBidNumber = false }: BidListPageProps) {
+export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false, analysisLogsMap, outlineStatusMap, onRequestOutline, onDownloadOutline, onUpdateManagers, showBidNumber = false }: BidListPageProps) {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('bookmarked');
@@ -147,6 +148,7 @@ export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onTo
         outlineStatus={selectedBid && outlineStatusMap ? outlineStatusMap[selectedBid.id] : 'none'}
         onRequestOutline={onRequestOutline}
         onDownloadOutline={onDownloadOutline}
+        onUpdateManagers={onUpdateManagers}
       />
     </>
   );
@@ -159,10 +161,10 @@ interface LeftPanelProps extends BidListPageProps {
   onOpenSlide: (bid: Bid) => void;
 }
 
-function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selectedBid, onOpenSlide, showBidNumber = false }: LeftPanelProps) {
+function LeftPanel({ bids, bidFlags, selectedBid, onOpenSlide, showBidNumber = false }: LeftPanelProps) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [excludeExpired, setExcludeExpired] = useState(true);
+  const excludeExpired = true;
 
   const getFromDate = (f: DateFilter): Date | null => {
     const base = new Date(TODAY);
@@ -240,11 +242,6 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
               </button>
             ))}
           </div>
-          <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--dash-border)', margin: '0 2px', flexShrink: 0 }} />
-          <button onClick={() => setExcludeExpired(v => !v)} className="rounded-md transition-colors"
-            style={{ padding: '3px 10px', fontSize: '11px', backgroundColor: excludeExpired ? 'rgba(37,99,235,0.12)' : 'transparent', color: excludeExpired ? '#2563EB' : 'var(--dash-text-4)', border: `1px solid ${excludeExpired ? 'rgba(37,99,235,0.3)' : 'var(--dash-border-btn)'}`, fontWeight: excludeExpired ? 600 : 400, cursor: 'pointer' }}>
-            {excludeExpired ? '마감 제외' : '마감 포함'}
-          </button>
         </div>
       </div>
 
@@ -254,17 +251,18 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
             <tr style={{ backgroundColor: 'var(--dash-card-deep)' }}>
               {[
                 ...(showBidNumber ? [{ label: '공고번호', width: '130px' }] : []),
+                { label: '공고일', width: '64px', align: 'center' as const },
                 { label: '공고명', width: undefined as string | undefined },
+                { label: '상태', width: '72px' },
                 { label: '발주기관', width: '96px' },
                 { label: '예산', width: '68px' },
                 { label: '마감일', width: '82px' },
-                { label: '액션', width: '90px' },
               ].map((col) => (
                 <th
                   key={col.label}
                   style={{
                     padding: '8px 12px',
-                    textAlign: 'left',
+                    textAlign: (col as any).align ?? 'left',
                     fontSize: '11px',
                     color: 'var(--dash-text-4)',
                     textTransform: 'uppercase',
@@ -283,7 +281,7 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={showBidNumber ? 6 : 5} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
+                <td colSpan={showBidNumber ? 7 : 6} style={{ padding: '40px', textAlign: 'center', color: 'var(--dash-text-4)', fontSize: '13px' }}>
                   해당 기간에 수집된 공고가 없습니다
                 </td>
               </tr>
@@ -295,8 +293,6 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
                   isSelected={selectedBid?.id === bid.id}
                   flags={bidFlags[bid.id] ?? { bookmarked: false, inProgress: false }}
                   onSelect={() => onOpenSlide(bid)}
-                  onToggleBookmark={onToggleBookmark}
-                  onToggleInProgress={onToggleInProgress}
                   showBidNumber={showBidNumber}
                 />
               ))
@@ -312,13 +308,11 @@ function LeftPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, selec
   );
 }
 
-function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleInProgress, showBidNumber = false }: {
+function LeftRow({ bid, isSelected, flags, onSelect, showBidNumber = false }: {
   bid: Bid;
   isSelected: boolean;
   flags: BidFlags;
   onSelect: () => void;
-  onToggleBookmark: (bidId: string) => void;
-  onToggleInProgress: (bidId: string) => void;
   showBidNumber?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -346,6 +340,11 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
           <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{bid.number}</span>
         </td>
       )}
+      <td style={{ padding: '8px 8px', verticalAlign: 'middle', width: '64px', textAlign: 'center' }}>
+        <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', whiteSpace: 'nowrap' }}>
+          {bid.ntceDate ? bid.ntceDate.slice(5).replace('-', '.') : '-'}
+        </span>
+      </td>
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <div
           onMouseEnter={(e) => {
@@ -356,23 +355,21 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
             }
           }}
           onMouseLeave={() => setTooltip(null)}
-          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', display: 'block', whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.5, marginBottom: '4px' }}
+          style={{ fontSize: '13px', color: isSelected ? '#93C5FD' : 'var(--dash-text)', whiteSpace: 'normal', wordBreak: 'keep-all', lineHeight: 1.5 }}
         >
           {bid.title}
         </div>
-        <div className="flex items-center gap-1" style={{ flexWrap: 'wrap', rowGap: '2px' }}>
-          {bid.type !== '기타' && (
-            <span className="rounded" style={{ fontSize: '10px', padding: '0 4px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA', flexShrink: 0 }}>{bid.type}</span>
-          )}
+        {bid.type !== '기타' && (
+          <span className="rounded" style={{ display: 'inline-block', marginTop: '4px', fontSize: '10px', padding: '1px 5px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA' }}>{bid.type}</span>
+        )}
+      </td>
+      <td style={{ padding: '12px', verticalAlign: 'middle', width: '72px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
           {flags.bookmarked && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-blue-bg)', color: '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />찜
-            </span>
+            <span style={{ fontSize: '11px', color: '#4A7FD4', fontWeight: 500, whiteSpace: 'nowrap' }}>관심공고</span>
           )}
           {flags.inProgress && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-green-bg)', color: '#5BC37E', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#5BC37E', flexShrink: 0, display: 'inline-block' }} />진행중
-            </span>
+            <span style={{ fontSize: '11px', color: '#5BC37E', fontWeight: 500, whiteSpace: 'nowrap' }}>진행중</span>
           )}
         </div>
       </td>
@@ -399,30 +396,6 @@ function LeftRow({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
             </span>
           </div>
         ) : null}
-      </td>
-      <td style={{ padding: '12px', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => onToggleBookmark(bid.id)}
-            className="rounded-md flex items-center justify-center"
-            style={{ width: '28px', height: '28px', color: flags.bookmarked ? '#2563EB' : 'var(--dash-text-3)', backgroundColor: flags.bookmarked ? 'rgba(37,99,235,0.12)' : 'transparent', border: 'none' }}
-            onMouseEnter={(e) => { if (!flags.bookmarked) (e.currentTarget as HTMLButtonElement).style.color = '#2563EB'; }}
-            onMouseLeave={(e) => { if (!flags.bookmarked) (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; }}
-            title="찜하기"
-          >
-            <Bookmark style={{ width: '14px', height: '14px', fill: flags.bookmarked ? 'currentColor' : 'none' }} />
-          </button>
-          <button
-            onClick={() => onToggleInProgress(bid.id)}
-            className="rounded-md flex items-center justify-center"
-            style={{ width: '28px', height: '28px', color: flags.inProgress ? '#22C55E' : 'var(--dash-text-3)', backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.12)' : 'transparent', border: 'none' }}
-            onMouseEnter={(e) => { if (!flags.inProgress) (e.currentTarget as HTMLButtonElement).style.color = '#22C55E'; }}
-            onMouseLeave={(e) => { if (!flags.inProgress) (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; }}
-            title="진행하기"
-          >
-            <Play style={{ width: '13px', height: '13px', fill: flags.inProgress ? 'currentColor' : 'none' }} />
-          </button>
-        </div>
       </td>
     </tr>
     {tooltip && createPortal(
@@ -486,7 +459,7 @@ function RightPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onOp
         </div>
         <div className="flex gap-1">
           {([
-            { key: 'bookmarked' as TabType, label: '찜한 공고', count: bookmarkedBids.length, activeColor: '#2563EB', activeBg: 'rgba(37,99,235,0.12)', activeBorder: 'rgba(37,99,235,0.3)' },
+            { key: 'bookmarked' as TabType, label: '관심공고', count: bookmarkedBids.length, activeColor: '#2563EB', activeBg: 'rgba(37,99,235,0.12)', activeBorder: 'rgba(37,99,235,0.3)' },
             { key: 'inProgress' as TabType, label: '진행중 공고', count: inProgressBids.length, activeColor: '#22C55E', activeBg: 'rgba(34,197,94,0.12)', activeBorder: 'rgba(34,197,94,0.3)' },
           ] as const).map((tab) => (
             <button
@@ -570,10 +543,10 @@ function RightEmptyState({ tab }: { tab: TabType }) {
       </div>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--dash-text-3)', marginBottom: '2px' }}>
-          {isBookmark ? '찜한 공고가 없습니다' : '진행중인 공고가 없습니다'}
+          {isBookmark ? '관심공고가 없습니다' : '진행 중인 공고가 없습니다'}
         </div>
         <div style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>
-          {isBookmark ? '현황 리스트에서 공고를 찜해보세요' : '찜한 공고를 진행 상태로 변경해보세요'}
+          {isBookmark ? '현황 리스트에서 관심공고를 추가해보세요' : '관심공고를 진행 상태로 변경해보세요'}
         </div>
       </div>
     </div>
@@ -616,7 +589,7 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
       <div className="flex items-center gap-2" style={{ marginBottom: '5px' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: tab === 'inProgress' ? 'var(--badge-green-bg)' : 'var(--badge-blue-bg)', color: tab === 'inProgress' ? '#5BC37E' : '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0 }}>
           <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: tab === 'inProgress' ? '#5BC37E' : '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />
-          {tab === 'inProgress' ? '진행중' : '찜'}
+          {tab === 'inProgress' ? '진행' : '관심'}
         </span>
       </div>
 
@@ -664,7 +637,7 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.1)'; }}
             >
               <BookmarkX style={{ width: '11px', height: '11px' }} />
-              찜 해제
+              관심공고 해제
             </button>
             <button
               onClick={() => onToggleInProgress(bid.id)}
@@ -693,7 +666,7 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
               }}
             >
               <Play style={{ width: '10px', height: '10px', fill: flags.inProgress ? 'currentColor' : 'none', flexShrink: 0 }} />
-              {flags.inProgress ? '진행중' : '진행하기'}
+              {flags.inProgress ? '진행' : '진행 등록'}
             </button>
           </>
         ) : null}
