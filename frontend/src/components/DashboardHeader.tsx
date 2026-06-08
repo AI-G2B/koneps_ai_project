@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, Bell, ChevronDown, RefreshCw, Sun, Moon, LogOut, Sparkles, Bookmark, Play, Trash2, CheckCheck, Loader2 } from 'lucide-react';
+import { Search, Bell, ChevronDown, RefreshCw, Sun, Moon, LogOut, Sparkles, Bookmark, Play, Trash2, CheckCheck, Loader2, BookOpen } from 'lucide-react';
 import { searchBids, type SearchBidsResult } from '../services/api';
 import { useToast } from './ToastProvider';
 import { useTheme } from 'next-themes';
@@ -46,6 +46,8 @@ const NOTIF_ICON: Record<NotificationItem['type'], { icon: React.ElementType; co
   analysis_fail:     { icon: Sparkles,  color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
   bookmark:          { icon: Bookmark,  color: '#2563EB', bg: 'rgba(37,99,235,0.12)' },
   inprogress:        { icon: Play,      color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
+  outline_complete:  { icon: BookOpen,  color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
+  outline_fail:      { icon: BookOpen,  color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
 };
 
 export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead, onMarkAsRead, onClearNotifications, onSync, isSyncing = false, onOpenAnalysisDetail }: DashboardHeaderProps) {

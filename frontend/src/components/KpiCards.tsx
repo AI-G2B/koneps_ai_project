@@ -1,4 +1,4 @@
-import { FileText, Clock, TrendingUp, TrendingDown, Loader2, Inbox, Briefcase, ShieldAlert } from 'lucide-react';
+import { FileText, Clock, Loader2, Inbox, Briefcase, ShieldAlert } from 'lucide-react';
 import { motion } from 'motion/react';
 import { type Bid, type AiStatusType, isDeadlineUrgent, TODAY } from '../types';
 import { type ApiDashboardStats } from '../services/api';
@@ -17,8 +17,6 @@ interface KpiCardProps {
   unit: string;
   sub: string;
   subColor?: string;
-  trend?: string;
-  trendUp?: boolean;
   icon: React.ElementType;
   iconBgColor: string;
   iconColor: string;
@@ -29,7 +27,7 @@ interface KpiCardProps {
   loading?: boolean;
 }
 
-function KpiCard({ title, value, unit, sub, subColor, trend, trendUp, icon: Icon, iconBgColor, iconColor, accentColor, alert, progress, progressLabel, loading }: KpiCardProps) {
+function KpiCard({ title, value, unit, sub, subColor, icon: Icon, iconBgColor, iconColor, accentColor, alert, progress, progressLabel, loading }: KpiCardProps) {
   return (
     <div
       className="rounded-xl flex flex-col"
@@ -76,12 +74,6 @@ function KpiCard({ title, value, unit, sub, subColor, trend, trendUp, icon: Icon
       <div className="flex items-center gap-1.5 mt-auto">
         {alert && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: accentColor, animation: 'pulse 2s infinite' }} />}
         <span style={{ fontSize: '10px', color: subColor || 'var(--dash-text-2)' }}>{sub}</span>
-        {trend && (
-          <span className="flex items-center gap-0.5 ml-auto" style={{ fontSize: '10px', color: trendUp ? '#22C55E' : '#EF4444' }}>
-            {trendUp ? <TrendingUp style={{ width: '10px', height: '10px' }} /> : <TrendingDown style={{ width: '10px', height: '10px' }} />}
-            {trend}
-          </span>
-        )}
       </div>
     </div>
   );
@@ -124,7 +116,7 @@ export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuse
               진행중인 사업이 없습니다
             </div>
             <div style={{ fontSize: '12px', color: 'var(--dash-text-4)' }}>
-              담당자가 공고에 진행하기를 설정하면 여기에 표시됩니다
+              담당자가 공고에 진행 등록을 하면 여기에 표시됩니다
             </div>
           </div>
         </motion.div>
@@ -173,8 +165,6 @@ export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuse
           value={String(todayCount)}
           unit="건"
           sub={diffCount >= 0 ? `어제 대비 +${diffCount}건 증가` : `어제 대비 ${diffCount}건 감소`}
-          trend={`${diffCount >= 0 ? '+' : ''}${diffPct}%`}
-          trendUp={diffCount >= 0}
           icon={FileText}
           iconBgColor="rgba(37,99,235,0.15)"
           iconColor="#2563EB"
@@ -188,8 +178,6 @@ export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuse
           value={String(urgentCount)}
           unit="건"
           sub="3일 이내 마감 예정"
-          trend={`+${urgentCount}건`}
-          trendUp={false}
           icon={Clock}
           iconBgColor="rgba(239,68,68,0.12)"
           iconColor="#EF4444"

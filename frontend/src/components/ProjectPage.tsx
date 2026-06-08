@@ -23,6 +23,7 @@ interface ProjectPageProps {
   onToggleInProgress: (bidId: string) => void;
   onOpenAnalysisDetail?: (bid: Bid) => void;
   onRequestAnalysis?: (bidId: string) => void;
+  onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
   ceoMode?: boolean;
   currentUser?: CurrentUser | null;
 }
@@ -54,7 +55,7 @@ function getDaysInMonth(year: number, month: number): number {
   return new Date(year, month, 0).getDate();
 }
 
-export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedBid, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, currentUser }: ProjectPageProps) {
+export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedBid, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, onUpdateManagers, ceoMode = false, currentUser }: ProjectPageProps) {
   const inProgressBids = bids.filter((b) => bidFlags[b.id]?.inProgress ?? false);
   const [slideOverBid, setSlideOverBid] = useState<Bid | null>(null);
   const [isSlideOverOpen, setIsSlideOverOpen] = useState(false);
@@ -70,7 +71,7 @@ export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedB
         {/* 왼쪽: 카드 목록 + 캘린더 */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '16px', minHeight: 0, alignItems: 'stretch' }}>
           <div style={{ flex: 2, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-            <CardList inProgressBids={inProgressBids} onSelectBid={onSelectBid} selectedBid={selectedBid} aiStatuses={aiStatuses} />
+            <CardList inProgressBids={inProgressBids} onSelectBid={onSelectBid} selectedBid={selectedBid} aiStatuses={aiStatuses} onUpdateManagers={onUpdateManagers} />
           </div>
           <div style={{ flexShrink: 0, flexGrow: 0, width: '280px', display: 'flex', flexDirection: 'column', height: '100%', gap: '12px', overflow: 'hidden' }}>
             <ProjectCalendar inProgressBids={inProgressBids} onOpenSlideOver={openSlideOver} />
@@ -91,6 +92,7 @@ export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedB
         onToggleInProgress={onToggleInProgress}
         onOpenAnalysisDetail={onOpenAnalysisDetail}
         onRequestAnalysis={onRequestAnalysis}
+        onUpdateManagers={onUpdateManagers}
         ceoMode={ceoMode}
         showFullDetail={ceoMode}
       />
@@ -98,11 +100,12 @@ export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedB
   );
 }
 
-function CardList({ inProgressBids, onSelectBid, selectedBid, aiStatuses }: {
+function CardList({ inProgressBids, onSelectBid, selectedBid, aiStatuses, onUpdateManagers }: {
   inProgressBids: Bid[];
   onSelectBid: (bid: Bid) => void;
   selectedBid: Bid | null;
   aiStatuses?: Record<string, AiStatusType>;
+  onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
 }) {
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', overflow: 'hidden' }}>
@@ -128,6 +131,7 @@ function CardList({ inProgressBids, onSelectBid, selectedBid, aiStatuses }: {
                 isSelected={selectedBid?.id === bid.id}
                 onSelect={() => onSelectBid(bid)}
                 aiStatus={aiStatuses?.[bid.id] ?? bid.aiStatus}
+                onUpdateManagers={onUpdateManagers}
               />
             ))}
           </div>
@@ -145,17 +149,66 @@ function EmptyState() {
       </div>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: '14px', fontWeight: 500, color: 'var(--dash-text-3)', marginBottom: '4px' }}>진행 중인 프로젝트가 없습니다</div>
-        <div style={{ fontSize: '12px', color: 'var(--dash-text-5)' }}>공고 목록에서 진행하기 버튼을 눌러 추가하세요</div>
+        <div style={{ fontSize: '12px', color: 'var(--dash-text-5)' }}>공고 목록에서 진행 등록 버튼을 눌러 추가하세요</div>
       </div>
     </div>
   );
 }
 
-function ProjectCard({ bid, isSelected, onSelect, aiStatus }: {
+function ManagerField({ label, value, onSave }: {
+  label: string;
+  value: string;
+  onSave: (v: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+
+  const startEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDraft(value);
+    setEditing(true);
+  };
+
+  const commit = () => {
+    setEditing(false);
+    onSave(draft);
+  };
+
+  return (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ fontSize: '11px', color: 'var(--dash-text-4)', marginBottom: '3px' }}>{label}</div>
+      {editing ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commit(); }
+            if (e.key === 'Escape') setEditing(false);
+          }}
+          onBlur={commit}
+          onClick={(e) => e.stopPropagation()}
+          style={{ fontSize: '13px', color: 'var(--dash-text)', border: 'none', borderBottom: '1px solid var(--dash-border-med)', backgroundColor: 'transparent', outline: 'none', width: '100%', padding: '0 0 2px' }}
+        />
+      ) : (
+        <div
+          onClick={startEdit}
+          title="클릭하여 편집"
+          style={{ fontSize: '13px', color: value ? 'var(--dash-text)' : 'var(--dash-text-5)', cursor: 'text', minHeight: '18px' }}
+        >
+          {value || '미지정'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectCard({ bid, isSelected, onSelect, aiStatus, onUpdateManagers }: {
   bid: Bid;
   isSelected: boolean;
   onSelect: () => void;
   aiStatus: AiStatusType;
+  onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
 }) {
   const daysLeft = getDaysUntilDeadline(bid.deadline);
   const urgent = isDeadlineUrgent(bid.deadline);
@@ -178,6 +231,11 @@ function ProjectCard({ bid, isSelected, onSelect, aiStatus }: {
       {/* 제목 행 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
         <RiskBadge risk={bid.risk} />
+        {bid.type !== '기타' && (
+          <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(37,99,235,0.1)', color: '#60A5FA', flexShrink: 0, fontWeight: 500 }}>
+            {bid.type}
+          </span>
+        )}
         <span style={{ fontSize: '13px', fontWeight: 600, color: isSelected ? '#5BC37E' : 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
           {bid.title}
         </span>
@@ -205,6 +263,25 @@ function ProjectCard({ bid, isSelected, onSelect, aiStatus }: {
         </span>
         <AiStatusIndicator status={aiStatus} />
       </div>
+
+      {/* 담당자 입력 */}
+      {onUpdateManagers && (
+        <div
+          style={{ display: 'flex', gap: '16px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid var(--dash-border-faint)' }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <ManagerField
+            label="영업담당자"
+            value={bid.salesManager ?? ''}
+            onSave={(v) => onUpdateManagers(bid.id, v, bid.projectPm ?? '')}
+          />
+          <ManagerField
+            label="담당 PM"
+            value={bid.projectPm ?? ''}
+            onSave={(v) => onUpdateManagers(bid.id, bid.salesManager ?? '', v)}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -400,18 +477,13 @@ function ProjectCalendar({ inProgressBids, onOpenSlideOver }: { inProgressBids: 
 
   const handleDayClick = (day: number) => {
     if (!deadlineMap.has(day)) return;
-    const bids = deadlineMap.get(day) ?? [];
-    if (bids.length === 1) {
-      onOpenSlideOver(bids[0]);
-    } else {
-      setSelectedDay(selectedDay === day ? null : day);
-    }
+    setSelectedDay(selectedDay === day ? null : day);
   };
 
   const popupBids = selectedDay ? (deadlineMap.get(selectedDay) ?? []) : [];
 
   return (
-    <div style={{ flexShrink: 0, height: '360px', borderRadius: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '14px 8px', overflow: 'hidden' }}>
+    <div style={{ flexShrink: 0, height: '560px', borderRadius: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '14px 8px', overflow: 'hidden' }}>
       {/* 헤더 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', padding: '0 4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
@@ -534,11 +606,11 @@ function ProjectCalendar({ inProgressBids, onOpenSlideOver }: { inProgressBids: 
               <X style={{ width: '13px', height: '13px' }} />
             </button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '220px', overflowY: 'auto', paddingRight: '2px' }}>
             {popupBids.map((bid) => (
               <div
                 key={bid.id}
-                onClick={() => { onOpenSlideOver(bid); setSelectedDay(null); }}
+                onClick={() => { onOpenSlideOver(bid); }}
                 style={{ padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--dash-surface)', border: '1px solid var(--dash-border)', cursor: 'pointer', transition: 'background-color 0.15s' }}
                 onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg-alt)')}
                 onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-surface)')}
