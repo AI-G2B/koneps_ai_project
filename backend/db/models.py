@@ -58,6 +58,11 @@ class Attachment(Base):
     downloaded_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     is_rfp:       Mapped[bool]           = mapped_column(Boolean, default=False)  # 제안요청서 여부
 
+    # 변환 텍스트 캐시 — pypdf(PDF) 또는 LibreAI(HWP)로 추출. 분석/제안목차 시 재사용해 LibreAI 일 50회 한도와 재변환 부담 회피.
+    converted_md:      Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    converted_at:      Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    conversion_source: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)  # 'pypdf' | 'libreai'
+
     notice: Mapped["Notice"] = relationship("Notice", back_populates="attachments")
 
 
@@ -106,6 +111,8 @@ class ProposalOutline(Base):
     guideline_base:        Mapped[str]           = mapped_column(String(20), default="MOIS_ISP")
     total_pages_estimate:  Mapped[Optional[int]] = mapped_column(nullable=True)
     sections:              Mapped[list]          = mapped_column(JSONB, default=list)
+    # RFP 원문(요구사항 섹션) — 앵커 식별 LLM + fuzzy slice로 추출한 verbatim 텍스트. 프론트·엑셀 "RFP 원문" 시트 노출용.
+    rfp_raw_text:          Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     model_used:            Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     prompt_version:        Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     generated_at:          Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)

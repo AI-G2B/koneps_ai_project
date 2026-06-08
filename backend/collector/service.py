@@ -50,9 +50,11 @@ async def save_bids(
         download: 첨부파일 다운로드 여부
 
     Returns:
-        {"saved": int, "skipped": int, "errors": int}
+        {"saved": int, "skipped": int, "errors": int, "new_notice_ids": list[int]}
+        — new_notice_ids는 이번 호출에서 처음 INSERT된 Notice의 id 리스트. 자동 분석 큐에 enqueue할 때 사용.
     """
     saved = skipped = errors = 0
+    new_notice_ids: list[int] = []
 
     for r in results:
         bid = r["bid"]
@@ -108,12 +110,13 @@ async def save_bids(
             if attachment_rows:
                 await create_attachments(db, notice.id, attachment_rows)
 
+            new_notice_ids.append(notice.id)
             saved += 1
         except Exception:
             logger.exception("공고 저장 실패: %s", bid.get("bid_ntce_no", "unknown"))
             errors += 1
 
-    return {"saved": saved, "skipped": skipped, "errors": errors}
+    return {"saved": saved, "skipped": skipped, "errors": errors, "new_notice_ids": new_notice_ids}
 
 
 async def collect_and_save(
@@ -136,7 +139,7 @@ async def collect_and_save(
         download   : 첨부파일 다운로드 여부
 
     Returns:
-        {"saved": int, "skipped": int, "errors": int}
+        {"saved": int, "skipped": int, "errors": int, "new_notice_ids": list[int]}
     """
     results = fetch_bids(start_date, end_date, start_time, end_time)
     return await save_bids(db, results, download)

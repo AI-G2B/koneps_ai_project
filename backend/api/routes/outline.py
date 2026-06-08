@@ -113,7 +113,10 @@ async def download_outline_excel(
     if not outline:
         raise HTTPException(status_code=404, detail="생성된 제안목차가 없습니다.")
 
-    xlsx_bytes = build_outline_xlsx(outline.sections or {})
+    outline_payload = dict(outline.sections or {})
+    if outline.rfp_raw_text:
+        outline_payload["rfp_raw_text"] = outline.rfp_raw_text
+    xlsx_bytes = build_outline_xlsx(outline_payload)
     filename = f"(제안목차) {notice.bid_ntce_nm}.xlsx"
     encoded = quote(filename, safe="")
     return StreamingResponse(
@@ -148,6 +151,7 @@ async def get_outline(
     return {
         "bid_ntce_no": bid_ntce_no,
         "sections": outline.sections,
+        "rfp_raw_text": outline.rfp_raw_text,
         "guideline_base": outline.guideline_base,
         "model_used": outline.model_used,
         "generated_at": outline.generated_at,

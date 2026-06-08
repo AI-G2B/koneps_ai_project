@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Building2, Eye, EyeOff, ShieldCheck, BarChart3 } from 'lucide-react';
 
-export type UserRole = 'manager' | 'ceo' | 'proposal';
+export type UserRole = 'manager' | 'ceo' | 'proposal' | 'admin';
 
 export interface User {
   id: number;

@@ -74,6 +74,7 @@ export interface ApiBidListItem {
   bid_ntce_dt: string | null;
   collected_at: string | null;
   pipeline_status: string;
+  parse_error_msg: string | null;
   bid_ntce_dtl_url: string | null;
 }
 
@@ -151,6 +152,7 @@ function mapBidType(item: ApiBidListItem): BidType {
 function mapPipelineStatus(status: string | null): AiStatusType {
   if (status === 'analyzed') return 'complete';
   if (status === 'analyzing' || status === 'parsing') return 'analyzing';
+  if (status === 'failed') return 'failed';
   return 'none';
 }
 
@@ -247,6 +249,7 @@ export function mapApiBidListItemToBid(item: ApiBidListItem): Bid {
     is_in_progress: item.is_in_progress,
     is_expired: item.is_expired,
     ntce_dtl_url: item.bid_ntce_dtl_url ?? undefined,
+    failReason: item.parse_error_msg ?? undefined,
   };
 }
 
@@ -284,6 +287,7 @@ export function mapApiBidDetailToBid(res: ApiBidDetailResponse): Bid {
       fileUrl: a.file_url.startsWith('http') ? a.file_url : `${BASE_URL}/${a.file_url.replace(/^\//, '')}`,
       fileType: a.file_type,
     })),
+    failReason: res.parse_error_msg ?? undefined,
   };
 }
 
@@ -623,6 +627,7 @@ export async function fetchAnalysisStatus(bid_ntce_no: string): Promise<Analysis
 
 export interface ProposalOutline {
   sections: Record<string, unknown> | null;
+  rfpRawText: string | null;
   guidelineBase: string;
   modelUsed: string | null;
   generatedAt: string | null;
@@ -652,12 +657,14 @@ export async function fetchOutline(bid_ntce_no: string): Promise<ProposalOutline
     if (!res.ok) return null;
     const d = await res.json() as {
       sections: Record<string, unknown> | null;
+      rfp_raw_text: string | null;
       guideline_base: string;
       model_used: string | null;
       generated_at: string | null;
     };
     return {
       sections: d.sections,
+      rfpRawText: d.rfp_raw_text ?? null,
       guidelineBase: d.guideline_base,
       modelUsed: d.model_used,
       generatedAt: d.generated_at,
@@ -724,6 +731,38 @@ export async function downloadOutlineExcel(bid_ntce_no: string): Promise<void> {
     }, 200);
   } catch (err) {
     console.warn('[api] downloadOutlineExcel 실패:', err);
+  }
+}
+
+export async function downloadAnalysisDocx(bid_ntce_no: string): Promise<void> {
+  // AI 분석 결과 Word 다운로드 — 4 섹션(사업개요/평가항목/요구사항/독소조항)
+  try {
+    const res = await authFetch(`${BASE_URL}/analysis/${encodeURIComponent(bid_ntce_no)}/docx`);
+    if (!res.ok) {
+      console.warn('[api] downloadAnalysisDocx HTTP:', res.status);
+      return;
+    }
+    const disposition = res.headers.get('Content-Disposition') ?? '';
+    let filename = `(AI 분석) ${bid_ntce_no}.docx`;
+    const m = disposition.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i);
+    if (m) {
+      try { filename = decodeURIComponent(m[1]); } catch { filename = m[1]; }
+    }
+    const blob = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objUrl;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      if (a.parentNode) document.body.removeChild(a);
+      URL.revokeObjectURL(objUrl);
+    }, 200);
+  } catch (err) {
+    console.warn('[api] downloadAnalysisDocx 실패:', err);
   }
 }
 
@@ -838,4 +877,254 @@ export async function saveAgencySettings(
     console.warn('[api] saveAgencySettings 실패:', err);
     return false;
   }
+}
+
+// ─────────────────────────────────────────────
+// 관리자 프롬프트 API
+// ─────────────────────────────────────────────
+
+export interface AdminPromptSummary {
+  key: string;
+  description: string | null;
+  placeholders: string[];
+  version: number;
+  updated_at: string | null;
+  updated_by: number | null;
+}
+
+export interface AdminPromptDetail extends AdminPromptSummary {
+  content: string;
+  default_content: string | null;
+}
+
+export interface AdminPromptHistoryItem {
+  version: number;
+  content: string;
+  saved_at: string | null;
+  saved_by: number | null;
+}
+
+export async function adminListPrompts(): Promise<AdminPromptSummary[]> {
+  const res = await authFetch(`${BASE_URL}/admin/prompts`, { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function adminGetPrompt(key: string): Promise<AdminPromptDetail> {
+  const res = await authFetch(`${BASE_URL}/admin/prompts/${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function adminUpdatePrompt(key: string, content: string): Promise<{ version: number } | { error: string }> {
+  const res = await authFetch(`${BASE_URL}/admin/prompts/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return { error: data.detail ?? `HTTP ${res.status}` };
+  }
+  return res.json();
+}
+
+export async function adminGetPromptHistory(key: string): Promise<AdminPromptHistoryItem[]> {
+  const res = await authFetch(`${BASE_URL}/admin/prompts/${encodeURIComponent(key)}/history`, { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function adminRollbackPrompt(key: string, version: number): Promise<{ version: number } | { error: string }> {
+  const res = await authFetch(`${BASE_URL}/admin/prompts/${encodeURIComponent(key)}/rollback`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ version }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return { error: data.detail ?? `HTTP ${res.status}` };
+  }
+  return res.json();
+}
+
+export async function adminResetPrompt(key: string): Promise<{ version: number } | { error: string }> {
+  const res = await authFetch(`${BASE_URL}/admin/prompts/${encodeURIComponent(key)}/reset`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return { error: data.detail ?? `HTTP ${res.status}` };
+  }
+  return res.json();
+}
+
+// ─────────────────────────────────────────────
+// 관리자 LLM 설정 API
+// ─────────────────────────────────────────────
+
+export interface AdminLLMConfig {
+  provider: string;
+  model: string;
+  fallback_provider: string | null;
+  fallback_model: string | null;
+  temperature: number;
+  updated_at: string | null;
+}
+
+export interface AdminProviderModel {
+  model: string;
+  label: string | null;
+  is_default: boolean;
+}
+
+export interface AdminProvider {
+  provider: string;
+  label: string;
+  env_var: string;
+  is_available: boolean;
+  models: AdminProviderModel[];
+}
+
+export async function adminGetLLMConfig(): Promise<AdminLLMConfig> {
+  const res = await authFetch(`${BASE_URL}/admin/llm-config`, { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function adminUpdateLLMConfig(body: {
+  provider: string;
+  model: string;
+  fallback_provider: string | null;
+  fallback_model: string | null;
+  temperature: number;
+}): Promise<(AdminLLMConfig & { warning: string | null }) | { error: string }> {
+  const res = await authFetch(`${BASE_URL}/admin/llm-config`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return { error: data.detail ?? `HTTP ${res.status}` };
+  }
+  return res.json();
+}
+
+export async function adminListProviders(): Promise<AdminProvider[]> {
+  const res = await authFetch(`${BASE_URL}/admin/providers`, { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function adminAddProviderModel(provider: string, model: string, label?: string): Promise<{ model: string } | { error: string }> {
+  const res = await authFetch(`${BASE_URL}/admin/providers/${encodeURIComponent(provider)}/models`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, label: label ?? null }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return { error: data.detail ?? `HTTP ${res.status}` };
+  }
+  return res.json();
+}
+
+export async function adminRemoveProviderModel(provider: string, model: string): Promise<{ deleted: boolean } | { error: string }> {
+  const res = await authFetch(`${BASE_URL}/admin/providers/${encodeURIComponent(provider)}/models/${encodeURIComponent(model)}`, {
+    method: 'DELETE',
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return { error: data.detail ?? `HTTP ${res.status}` };
+  }
+  return res.json();
+}
+
+// ─────────────────────────────────────────────
+// 관리자 운영 API (Phase 4)
+// ─────────────────────────────────────────────
+
+export interface AdminOpsStatus {
+  analysis: {
+    concurrency_limit: number;
+    daily_cap: number;
+    daily_count: number;
+    active_in_flight: number;
+    backoff_sec: number;
+  };
+  attachments: {
+    converted_total: number;
+    converted_libreai: number;
+    converted_pypdf: number;
+  };
+  notices: { stuck_analyzing: number };
+  analysis_results: { with_poison_clauses: number };
+  seed: { prompts_count: number; llm_config_seeded: boolean };
+}
+
+export interface AdminOpsTestLLMResult {
+  ok: boolean;
+  provider?: string;
+  model_used?: string;
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  text?: string;
+  elapsed_sec: number;
+  error?: string;
+}
+
+export async function adminOpsStatus(): Promise<AdminOpsStatus> {
+  const res = await authFetch(`${BASE_URL}/admin/ops/status`, { signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+export async function adminOpsTestLLM(user_text: string): Promise<AdminOpsTestLLMResult> {
+  const res = await authFetch(`${BASE_URL}/admin/ops/test-llm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_text }),
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    return { ok: false, elapsed_sec: 0, error: data.detail ?? `HTTP ${res.status}` };
+  }
+  return res.json();
+}
+
+export async function adminOpsResetStuck(): Promise<{ reset_count: number } | { error: string }> {
+  const res = await authFetch(`${BASE_URL}/admin/ops/reset-stuck`, { method: 'POST', signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) return { error: `HTTP ${res.status}` };
+  return res.json();
+}
+
+export async function adminOpsWipeConvertedMd(source: 'libreai' | 'pypdf' | null): Promise<{ wiped_count: number; source: string } | { error: string }> {
+  const res = await authFetch(`${BASE_URL}/admin/ops/wipe-converted-md`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ source }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) return { error: `HTTP ${res.status}` };
+  return res.json();
+}
+
+export async function adminOpsWipePoisonClauses(): Promise<{ wiped_count: number } | { error: string }> {
+  const res = await authFetch(`${BASE_URL}/admin/ops/wipe-poison-clauses`, { method: 'POST', signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) return { error: `HTTP ${res.status}` };
+  return res.json();
+}
+
+export async function adminOpsReseedPrompts(): Promise<{ before: number; after: number } | { error: string }> {
+  const res = await authFetch(`${BASE_URL}/admin/ops/reseed-prompts`, { method: 'POST', signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) return { error: `HTTP ${res.status}` };
+  return res.json();
 }

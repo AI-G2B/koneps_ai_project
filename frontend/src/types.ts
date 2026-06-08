@@ -1,5 +1,5 @@
 export type RiskLevel = 'danger' | 'caution' | 'good';
-export type AiStatusType = 'none' | 'pending' | 'analyzing' | 'complete';
+export type AiStatusType = 'none' | 'pending' | 'analyzing' | 'complete' | 'failed';
 export type BidType = 'ISP' | 'ISMP' | '기타';
 
 export interface BidFlags {
@@ -77,6 +77,7 @@ export interface Bid {
   detail?: BidDetail;
   riskFactors?: RiskFactor[];
   attachments?: Attachment[];
+  failReason?: string;  // 분석 실패/제외 사유 (parse_error_msg) — 'failed' 상태일 때 표시
 }
 
 export const TODAY = new Date();

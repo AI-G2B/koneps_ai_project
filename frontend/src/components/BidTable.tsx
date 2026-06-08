@@ -41,6 +41,7 @@ export function AiStatusIndicator({ status }: { status: AiStatusType }) {
   if (status === 'none')     return <span style={badge('var(--badge-gray-bg)',   '#81878F')}>{DOT('#81878F')}분석 전</span>;
   if (status === 'pending')  return <span style={badge('var(--badge-gray-bg)',   '#81878F')}>{DOT('#81878F', true)}대기중</span>;
   if (status === 'analyzing')return <span style={badge('var(--badge-orange-bg)', '#FFC379')}>{DOT('#FFC379', true)}분석중</span>;
+  if (status === 'failed')   return <span style={badge('rgba(239,68,68,0.12)',   '#EF4444')}>{DOT('#EF4444')}분석 실패</span>;
   return                            <span style={badge('var(--badge-green-bg)',  '#5BC37E')}>{DOT('#5BC37E')}완료</span>;
 }
 

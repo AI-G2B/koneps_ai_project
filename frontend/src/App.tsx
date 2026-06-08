@@ -18,6 +18,7 @@ import { AnalysisListPage } from './components/AnalysisListPage';
 import { StrategyReportPage } from './components/StrategyReportPage';
 import { ProposalPage } from './components/ProposalPage';
 import { ProposalOutlinePage } from './components/ProposalOutlinePage';
+import { AdminConsole } from './components/AdminConsole';
 import {
   fetchBids,
   fetchBidById,
@@ -599,18 +600,30 @@ const toggleBookmark = (bidId: string) => {
     if (bid.aiStatus === 'complete') {
       setAiStatuses(prev => ({ ...prev, [bid.id]: 'complete' }));
       aiStatusesRef.current = { ...aiStatusesRef.current, [bid.id]: 'complete' };
+      return;
+    }
+    // 자동 분석으로 서버에서 이미 'analyzing' 상태인 공고: 프론트에서 폴링을 켜서 실시간 로그를 받는다.
+    if (bid.aiStatus === 'analyzing' && !analysisTimers.current[bid.id]) {
+      requestAnalysis(bid.id, { force: true });
     }
   };
 
-  /** 목록 응답에 'complete'으로 내려온 공고들을 런타임 aiStatuses에 일괄 반영. */
+  /** 목록 응답에 'complete' 또는 'analyzing'으로 내려온 공고들을 런타임 aiStatuses에 일괄 반영. */
   const syncAiStatusesFromList = (list: Bid[]) => {
     const completed: Record<string, AiStatusType> = {};
+    const analyzingBids: string[] = [];
     for (const b of list) {
       if (b.aiStatus === 'complete') completed[b.id] = 'complete';
+      else if (b.aiStatus === 'analyzing' && !analysisTimers.current[b.id]) analyzingBids.push(b.id);
     }
-    if (Object.keys(completed).length === 0) return;
-    setAiStatuses(prev => ({ ...prev, ...completed }));
-    aiStatusesRef.current = { ...aiStatusesRef.current, ...completed };
+    if (Object.keys(completed).length > 0) {
+      setAiStatuses(prev => ({ ...prev, ...completed }));
+      aiStatusesRef.current = { ...aiStatusesRef.current, ...completed };
+    }
+    // 자동 분석 중인 공고들 — 폴링 시작 (force=true로 백엔드 트리거 생략)
+    for (const bidId of analyzingBids) {
+      requestAnalysis(bidId, { force: true });
+    }
   };
 
   const handleSelectBid = async (bid: Bid) => {
@@ -629,6 +642,17 @@ const toggleBookmark = (bidId: string) => {
 
   if (!user) {
     return <LoginPage onLogin={handleLogin} loginError={loginError} />;
+  }
+
+  // 관리자 계정은 대시보드 우회 — 콘솔만 노출.
+  if (user.role === 'admin') {
+    const handleLogout = () => {
+      setAuthToken(null);
+      sessionStorage.removeItem('koneps_user');
+      sessionStorage.removeItem('koneps_analysis_logs');
+      setUser(null);
+    };
+    return <AdminConsole user={user} onLogout={handleLogout} />;
   }
 
   const isCeo = user.role === 'ceo';

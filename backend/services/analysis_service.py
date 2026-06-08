@@ -1,26 +1,20 @@
 import asyncio
 import logging
-import time as _time
 from datetime import datetime
 
 import httpx
-from google import genai
-from google.genai import errors as genai_errors
-from google.genai import types
 from sqlalchemy import func, select
 
-from backend.config import get_settings
 from backend.db.crud import upsert_analysis
 from backend.db.models import Attachment, Notice
-from backend.prompts.rfp_analysis import SYSTEM_PROMPT, build_analysis_prompt
+from backend.prompts.rfp_analysis import build_analysis_prompt_dynamic
+from backend.prompts.rfp_analysis_general import build_general_analysis_prompt_dynamic
+from backend.services.llm import FilePart, LLMError, LLMRequest, call_with_fallback
+from backend.services.llm_config_store import get_active_config
+from backend.services.prompt_store import get_prompt
 from backend.services import progress_store
 
 logger = logging.getLogger(__name__)
-
-
-def _get_client():
-    settings = get_settings()
-    return genai.Client(api_key=settings.gemini_api_key)
 
 
 def _parse_json_response(text: str) -> dict:
@@ -70,7 +64,6 @@ async def analyze_rfp(notice_id: int, db) -> dict:
     db: SQLAlchemy AsyncSession (백그라운드 작업은 자체 세션을 생성해 전달).
     독소조항은 analysis_results.poison_clauses(JSONB)에 통째로 저장한다.
     """
-    settings = get_settings()
 
     # 0. e-발주 첨부 보강
     # collector는 ntceSpecDocUrl(입찰공고서/공고문)만 받아오므로 제안요청서·과업지시서가 누락된다.
@@ -79,10 +72,12 @@ async def analyze_rfp(notice_id: int, db) -> dict:
     from backend.services.g2b_service import fetch_eorder_attachments, save_eorder_attachments
 
     notice_row = (await db.execute(
-        select(Notice.bid_ntce_no, Notice.bid_ntce_dt).where(Notice.id == notice_id)
+        select(Notice.bid_ntce_no, Notice.bid_ntce_dt, Notice.notice_type, Notice.isp_ismp_type).where(Notice.id == notice_id)
     )).first()
+    notice_type_value: str | None = None
+    isp_ismp_type_value: str | None = None
     if notice_row:
-        bid_ntce_no_value, bid_ntce_dt_value = notice_row
+        bid_ntce_no_value, bid_ntce_dt_value, notice_type_value, isp_ismp_type_value = notice_row
         dt_str = bid_ntce_dt_value.strftime("%Y%m%d") if bid_ntce_dt_value else ""
         progress_store.emit(notice_id, "e-발주 제안요청서·과업지시서 조회")
         try:
@@ -122,134 +117,101 @@ async def analyze_rfp(notice_id: int, db) -> dict:
     if not pdf_atts and not hwp_atts:
         raise ValueError("분석할 첨부파일이 없습니다")
 
-    g2b_headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Referer": "https://www.g2b.go.kr/",
-    }
-
-    content_parts: list = []
+    files: list[FilePart] = []
     progress_store.emit(notice_id, f"분석 대상: PDF {len(pdf_atts)}건, HWP {len(hwp_atts)}건")
 
-    import os
-    from backend.services.hwp_service import convert_hwp
-
-    async def _load_bytes(att, http) -> tuple[bytes | None, str]:
-        """첨부 바이트 로드. 수집 시 다운로드한 local_path가 있으면 거기서 읽고, 없으면 G2B에서 받음."""
-        if att.local_path and os.path.exists(att.local_path):
-            try:
-                with open(att.local_path, "rb") as f:
-                    return f.read(), "로컬"
-            except OSError:
-                pass
-        try:
-            resp = await http.get(att.file_url, headers=g2b_headers)
-            if resp.status_code == 200:
-                return resp.content, "G2B"
-        except Exception as e:  # noqa: BLE001
-            logger.warning(f"G2B 다운로드 에러 ({att.file_name}): {e}")
-        return None, "실패"
+    from backend.services.extract import ensure_converted_md, load_attachment_bytes
 
     async with httpx.AsyncClient(timeout=60, follow_redirects=True) as http:
-        # PDF → 원본 바이트로 Gemini에 직접 전송
+        # PDF — bytes 그대로 + converted_md(pypdf 추출본) 두 표현 모두 동봉.
+        # Gemini는 native multimodal(bytes), Claude는 32MB 내면 native 아니면 text 폴백, OpenAI는 항상 text.
         for att in pdf_atts:
-            data, source = await _load_bytes(att, http)
+            data, source = await load_attachment_bytes(att, http=http)
             if not data:
                 progress_store.emit(notice_id, f"PDF 로드 실패: {att.file_name}", level="warning")
                 continue
-            content_parts.append(
-                types.Part.from_bytes(data=data, mime_type="application/pdf")
-            )
-            progress_store.emit(notice_id, f"PDF 로드({source}): {att.file_name} ({len(data)//1024}KB)")
-            logger.info(f"PDF 로드 완료({source}): {att.file_name} ({len(data)} bytes)")
-
-        # HWP → 리브레AI 변환 후 텍스트로 전송 (변환 결과 캐시 컬럼이 없어 매 분석 시 변환)
-        for att in hwp_atts:
-            data, source = await _load_bytes(att, http)
-            if not data:
-                progress_store.emit(notice_id, f"HWP 로드 실패: {att.file_name}", level="warning")
-                continue
             try:
-                result = await convert_hwp(data, att.file_name)
-                text = result.get("md", "")
-                if text:
-                    content_parts.append(f"[파일: {att.file_name}]\n{text}")
-                    progress_store.emit(notice_id, f"HWP 변환({source}→리브레AI): {att.file_name}")
-                    logger.info(f"HWP 변환 완료({source}): {att.file_name}")
+                pdf_text = await ensure_converted_md(att, db, http=http, data=data)
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"PDF 텍스트 캐시 실패 ({att.file_name}): {e}")
+                pdf_text = None
+            files.append(FilePart(
+                file_name=att.file_name,
+                mime_type="application/pdf",
+                data=data,
+                text=pdf_text,
+            ))
+            progress_store.emit(notice_id, f"PDF 로드({source}): {att.file_name} ({len(data)//1024}KB)")
+
+        # HWP/HWPX — LibreAI 변환 텍스트만 동봉 (모든 provider가 텍스트로 처리).
+        for att in hwp_atts:
+            cache_hit = bool(att.converted_md)
+            try:
+                text = await ensure_converted_md(att, db, http=http)
             except Exception as e:  # noqa: BLE001
                 progress_store.emit(notice_id, f"HWP 변환 실패: {att.file_name}", level="warning")
                 logger.warning(f"HWP 변환 실패 ({att.file_name}): {e}")
+                continue
+            if not text:
+                progress_store.emit(notice_id, f"HWP 로드/변환 실패: {att.file_name}", level="warning")
+                continue
+            files.append(FilePart(
+                file_name=att.file_name,
+                mime_type="text/markdown",
+                text=text,
+            ))
+            label = "캐시" if cache_hit else "리브레AI"
+            progress_store.emit(notice_id, f"HWP {label}: {att.file_name}")
 
-    if not content_parts:
+    if not files:
         raise ValueError("분석 가능한 첨부파일이 없습니다")
 
     # 2. 분석 상태 = processing
     await upsert_analysis(db, notice_id, {"analysis_status": "processing"})
 
-    # 3. Gemini 호출 (429/503 재시도 + fallback 모델)
+    # 3. LLM 호출 — provider 추상화 (Gemini/Claude/OpenAI). 활성 설정 기반.
     try:
-        client = _get_client()
-        prompt_text = build_analysis_prompt("")
-        contents = content_parts + [prompt_text]
-        gen_config = {
-            "system_instruction": SYSTEM_PROMPT,
-            "response_mime_type": "application/json",
-            "temperature": 0.1,
-        }
+        # ISP/ISMP 공고는 컨설팅 전용 프롬프트, 그 외(시스템 구축·유지관리·일반 용역 등)는 범용 프롬프트.
+        is_isp_ismp = isp_ismp_type_value in ("ISP", "ISMP") or notice_type_value in ("ISP", "ISMP")
+        if is_isp_ismp:
+            system_instruction = await get_prompt("rfp_analysis.system", db)
+            prompt_text = await build_analysis_prompt_dynamic("", db)
+            prompt_kind = "ISP/ISMP"
+        else:
+            system_instruction = await get_prompt("rfp_analysis_general.system", db)
+            prompt_text = await build_general_analysis_prompt_dynamic("", db)
+            prompt_kind = "범용"
+        progress_store.emit(notice_id, f"분석 프롬프트: {prompt_kind} (notice_type={notice_type_value})")
 
-        models_to_try = [settings.gemini_model]
-        if settings.gemini_fallback_model and settings.gemini_fallback_model != settings.gemini_model:
-            models_to_try.append(settings.gemini_fallback_model)
+        llm_cfg = await get_active_config(db)
+        request = LLMRequest(
+            system=system_instruction,
+            user_text=prompt_text,
+            model=llm_cfg.model,
+            temperature=llm_cfg.temperature,
+            response_json=True,
+            files=files,
+        )
 
-        response = None
-        actual_model = None
-        last_error: Exception | None = None
+        # PDF 직접 전송 분석은 응답이 더 오래 걸릴 수 있어 outline보다 timeout을 길게.
+        ANALYSIS_LLM_TIMEOUT = 240
+        try:
+            response = await call_with_fallback(
+                llm_cfg,
+                request,
+                timeout=ANALYSIS_LLM_TIMEOUT,
+                on_progress=lambda msg, lvl: progress_store.emit(notice_id, msg, level=lvl),
+            )
+        except LLMError as e:
+            raise RuntimeError(f"LLM 호출 실패: {e}") from e
 
-        for model_name in models_to_try:
-            progress_store.emit(notice_id, f"Gemini 호출 시작 (model={model_name})")
-            _t0 = _time.monotonic()
-            try:
-                for attempt in range(3):
-                    try:
-                        response = await asyncio.to_thread(
-                            client.models.generate_content,
-                            model=model_name,
-                            contents=contents,
-                            config=gen_config,
-                        )
-                        actual_model = model_name
-                        elapsed = _time.monotonic() - _t0
-                        progress_store.emit(notice_id, f"Gemini 응답 수신 ({elapsed:.1f}초, model={model_name})", level="success")
-                        logger.info(f"Gemini 응답 성공: model={model_name} (notice_id={notice_id})")
-                        break
-                    except (genai_errors.ClientError, genai_errors.ServerError) as e:
-                        err_str = str(e)
-                        if ("429" in err_str or "503" in err_str) and attempt < 2:
-                            wait = 20 * (attempt + 1)
-                            progress_store.emit(notice_id, f"재시도 대기 {wait}초 (시도 {attempt + 1}/3)", level="warning")
-                            logger.warning(f"Gemini 재시도 대기 {wait}초 (notice_id={notice_id}, model={model_name}, 시도 {attempt + 1}/3): {err_str[:50]}")
-                            await asyncio.sleep(wait)
-                        else:
-                            raise
-                if response is not None:
-                    break
-            except Exception as e:  # noqa: BLE001
-                last_error = e
-                if model_name != models_to_try[-1]:
-                    progress_store.emit(notice_id, f"{model_name} 실패, fallback {models_to_try[-1]}로 전환", level="warning")
-                    logger.warning(f"{model_name} 모든 재시도 실패, fallback 시도 (notice_id={notice_id}): {str(e)[:80]}")
-                    response = None
-                    continue
-                raise
-
-        if response is None:
-            raise last_error or RuntimeError("Gemini 응답 없음")
-
-        progress_store.emit(notice_id, "Gemini 응답 JSON 파싱")
+        progress_store.emit(notice_id, f"응답 JSON 파싱 (model={response.model_used})")
         result = _parse_json_response(response.text)
+        actual_model = response.model_used
 
     except Exception as e:  # noqa: BLE001
-        progress_store.emit(notice_id, f"Gemini 분석 실패: {str(e)[:120]}", level="error")
-        logger.error(f"Gemini 분석 실패 (notice_id={notice_id}): {e}", exc_info=True)
+        progress_store.emit(notice_id, f"LLM 분석 실패: {str(e)[:120]}", level="error")
+        logger.error(f"LLM 분석 실패 (notice_id={notice_id}): {e}", exc_info=True)
         await upsert_analysis(db, notice_id, {"analysis_status": "failed"})
         raise
 

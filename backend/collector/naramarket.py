@@ -7,11 +7,14 @@
 """
 
 import os
+from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
 
-load_dotenv()
+# uvicorn cwd가 어디든 프로젝트 루트의 .env를 절대경로로 로드. override=False로 쉘 export가 우선되게 (CORS_ORIGINS 같은 운영용 오버라이드 보장).
+_ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
+load_dotenv(_ENV_PATH, override=False)
 
 API_KEY = os.getenv("NARA_API_KEY", "")
 

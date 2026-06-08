@@ -7,8 +7,10 @@ GET  /analysis/{bid_ntce_no}      → 분석 결과 조회
 """
 
 import logging
+from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +22,7 @@ from backend.db.crud import (
 )
 from backend.db.database import AsyncSessionLocal, get_db
 from backend.services import progress_store
+from backend.services.analysis_docx import build_analysis_docx
 from backend.services.analysis_service import analyze_rfp
 
 router = APIRouter()
@@ -119,6 +122,35 @@ async def get_analysis(
         "pipeline_status": notice.pipeline_status,
         "analysis_result": analysis,
     }
+
+
+@router.get(
+    "/{bid_ntce_no}/docx",
+    summary="AI 분석 결과 Word 다운로드",
+)
+async def download_analysis_docx(
+    bid_ntce_no: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """analysis_results.raw_analysis JSONB를 Word(.docx) 문서로 다운로드."""
+    notice = await get_notice_detail(db, bid_ntce_no)
+    if not notice:
+        raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
+    analysis = await get_analysis_by_notice_id(db, notice.id)
+    if not analysis or not analysis.raw_analysis:
+        raise HTTPException(status_code=404, detail="분석 결과가 없습니다.")
+
+    docx_bytes = build_analysis_docx(analysis.raw_analysis, project_name=notice.bid_ntce_nm)
+    filename = f"(AI 분석) {notice.bid_ntce_nm}.docx"
+    encoded = quote(filename, safe="")
+    return StreamingResponse(
+        iter([docx_bytes]),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded}",
+            "Content-Length": str(len(docx_bytes)),
+        },
+    )
 
 
 @router.delete(
