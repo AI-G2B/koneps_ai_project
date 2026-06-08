@@ -204,7 +204,7 @@ async def get_notices_isp_ismp(db: AsyncSession, limit: int = 20):
     result = await db.execute(
         select(Notice)
         .join(sq, and_(Notice.bid_ntce_no == sq.c.bno, Notice.bid_ntce_ord == sq.c.max_ord))
-        .where(Notice.is_isp_ismp == True)
+        .where(Notice.is_isp_ismp.is_(True))
         .order_by(Notice.bid_clse_dt.asc())
         .limit(limit)
     )
@@ -360,7 +360,7 @@ async def get_dashboard_stats(db: AsyncSession) -> dict:
 async def get_active_outline(db: AsyncSession, notice_id: int):
     result = await db.execute(
         select(ProposalOutline).where(
-            ProposalOutline.notice_id == notice_id, ProposalOutline.is_active == True
+            ProposalOutline.notice_id == notice_id, ProposalOutline.is_active.is_(True)
         )
     )
     return result.scalar_one_or_none()
