@@ -18,8 +18,6 @@ pipeline_status 값:
 
 from datetime import date, datetime, timedelta, timezone
 
-KST = timezone(timedelta(hours=9))
-
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -33,7 +31,6 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.collector.naramarket import fetch_bids, fetch_bids_by_query
-
 from backend.collector.service import collect_and_save, save_bids
 from backend.db.crud import (
     count_notices,
@@ -47,8 +44,10 @@ from backend.db.crud import (
     set_in_progress,
     upsert_memo,
 )
-from backend.db.models import Attachment, Notice
 from backend.db.database import get_db
+from backend.db.models import Attachment, Notice
+
+KST = timezone(timedelta(hours=9))
 
 router = APIRouter()
 

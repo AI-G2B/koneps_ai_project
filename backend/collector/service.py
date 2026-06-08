@@ -14,14 +14,14 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-KST = timezone(timedelta(hours=9))
-
-logger = logging.getLogger(__name__)
-
 from backend.collector.file_downloader import download_attachments
 from backend.collector.naramarket import fetch_bids, fetch_eorder_attachments
 from backend.db.crud import create_attachments, create_notice, get_notice_by_bid_no, get_notice_detail
 from backend.db.models import Notice
+
+KST = timezone(timedelta(hours=9))
+
+logger = logging.getLogger(__name__)
 
 
 def _parse_dt(value: str | None) -> datetime | None:
