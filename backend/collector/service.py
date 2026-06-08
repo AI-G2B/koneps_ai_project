@@ -118,6 +118,7 @@ async def save_bids(
             saved += 1
         except Exception:
             logger.exception("공고 저장 실패: %s", bid.get("bid_ntce_no", "unknown"))
+            await db.rollback()
             errors += 1
 
     return {"saved": saved, "skipped": skipped, "errors": errors}
