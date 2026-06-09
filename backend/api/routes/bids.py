@@ -132,6 +132,7 @@ class BidListItem(BaseModel):
     is_bookmarked: bool  # 관심 공고 여부
     is_in_progress: bool  # 진행 프로젝트 여부
     is_expired: bool = False  # 입찰마감일 경과 여부 (bid_clse_dt < 현재 KST)
+    in_progress_at: date | None = None  # 진행 등록 날짜
     sales_manager: str | None = None  # 영업담당자
     project_pm: str | None = None  # 담당 PM
     presmpt_prce: float | None  # 추정가격
@@ -198,6 +199,7 @@ class BidDetailResponse(BaseModel):
     isp_ismp_type: str | None
     is_bookmarked: bool  # 관심 공고 여부
     is_in_progress: bool  # 진행 프로젝트 여부
+    in_progress_at: date | None = None  # 진행 등록 날짜
     is_expired: bool = False  # 입찰마감일 경과 여부
     sales_manager: str | None = None  # 영업담당자
     project_pm: str | None = None  # 담당 PM

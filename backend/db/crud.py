@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -173,6 +173,9 @@ async def set_in_progress(db: AsyncSession, bid_ntce_no: str, is_in_progress: bo
     notice.is_in_progress = is_in_progress
     if is_in_progress:
         notice.is_bookmarked = True
+        notice.in_progress_at = date.today()
+    else:
+        notice.in_progress_at = None
     await db.commit()
     await db.refresh(notice)
     return notice

@@ -130,6 +130,10 @@ async def lifespan(app: FastAPI):
         await conn.execute(text("""
             ALTER TABLE proposal_outlines ADD COLUMN IF NOT EXISTS rfp_raw_text TEXT
         """))
+        # 진행 등록 날짜 — 진행하기 버튼 클릭 시점을 저장해 전략 리포트 시작일 표시.
+        await conn.execute(text("""
+            ALTER TABLE notices ADD COLUMN IF NOT EXISTS in_progress_at DATE
+        """))
         # LLM 활성 설정 — admin 콘솔에서 provider/model/fallback/temperature 변경.
         await conn.execute(text("""
             CREATE TABLE IF NOT EXISTS llm_config (
