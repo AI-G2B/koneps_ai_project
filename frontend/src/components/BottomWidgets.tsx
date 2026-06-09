@@ -416,17 +416,23 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
         className="flex items-center gap-3 mt-2 pt-2"
         style={{ borderTop: '1px solid var(--dash-border)' }}
       >
-        <div className="flex items-center gap-1.5">
-          <span style={{ width: '8px', height: '8px', borderRadius: '9999px', backgroundColor: '#EF4444', display: 'inline-block' }} />
-          <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>마감일</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span style={{ width: '8px', height: '8px', borderRadius: '4px', backgroundColor: 'rgba(37,99,235,0.3)', display: 'inline-block', border: '1px solid rgba(37,99,235,0.4)' }} />
-          <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>오늘</span>
-        </div>
-        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)', marginLeft: 'auto' }}>
-          이번달 {[...bidsByDate.keys()].filter(d => d.startsWith(`${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`)).length}일 마감
-        </span>
+        {bids.length === 0 ? (
+          <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>진행 등록된 공고의 마감일이 표시됩니다</span>
+        ) : (
+          <>
+            <div className="flex items-center gap-1.5">
+              <span style={{ width: '8px', height: '8px', borderRadius: '9999px', backgroundColor: '#EF4444', display: 'inline-block' }} />
+              <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>마감일</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span style={{ width: '8px', height: '8px', borderRadius: '4px', backgroundColor: 'rgba(37,99,235,0.3)', display: 'inline-block', border: '1px solid rgba(37,99,235,0.4)' }} />
+              <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>오늘</span>
+            </div>
+            <span style={{ fontSize: '11px', color: 'var(--dash-text-5)', marginLeft: 'auto' }}>
+              이번달 {[...bidsByDate.keys()].filter(d => d.startsWith(`${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`)).length}일 마감
+            </span>
+          </>
+        )}
       </div>
 
       {/* Popup */}
@@ -508,10 +514,12 @@ export function BottomWidgets({ bids, bidFlags, aiStatuses, onToggleBookmark, on
     setIsSlideOverOpen(true);
   };
 
+  const inProgressBids = bids.filter(b => bidFlags[b.id]?.inProgress ?? false);
+
   return (
     <>
       <div className="flex gap-3">
-        <DeadlineCalendar bids={bids} onOpenSlideOver={openSlideOver} />
+        <DeadlineCalendar bids={inProgressBids} onOpenSlideOver={openSlideOver} />
         <BidTypeChart bids={bids} ceoMode={ceoMode} typeStats={typeStats} />
       </div>
       <BidSlideOver

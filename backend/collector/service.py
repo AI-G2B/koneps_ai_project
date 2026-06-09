@@ -14,14 +14,14 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.collector.file_downloader import download_attachments
+from backend.collector.naramarket import fetch_bids, fetch_eorder_attachments
+from backend.db.crud import create_attachments, create_notice, get_notice_by_bid_no, get_notice_detail
+from backend.db.models import Notice
+
 KST = timezone(timedelta(hours=9))
 
 logger = logging.getLogger(__name__)
-
-from backend.collector.file_downloader import download_attachments
-from backend.collector.naramarket import fetch_bids, fetch_eorder_attachments
-from backend.db.crud import create_attachments, create_notice, get_notice_by_bid_no
-from backend.db.models import Notice
 
 
 def _parse_dt(value: str | None) -> datetime | None:
@@ -64,6 +64,11 @@ async def save_bids(
             skipped += 1
             continue
 
+        # 정정공고인 경우 이전 차수의 북마크/진행 중 플래그를 이어받는다
+        prev = await get_notice_detail(db, bid["bid_ntce_no"])
+        inherit_bookmarked = prev.is_bookmarked if prev else False
+        inherit_in_progress = prev.is_in_progress if prev else False
+
         # E발주 20번 API로 제안요청서 등 전자입찰 첨부파일 추가 조회
         eorder = fetch_eorder_attachments(bid["bid_ntce_no"], bid.get("bid_ntce_dt", ""))
         all_attachments = r["attachments"] + eorder
@@ -89,6 +94,8 @@ async def save_bids(
                 openg_dt=_parse_dt(bid["openg_dt"]),
                 ntce_kind_nm=bid.get("ntce_kind_nm"),
                 bid_ntce_dtl_url=bid["bid_ntce_dtl_url"],
+                is_bookmarked=inherit_bookmarked,
+                is_in_progress=inherit_in_progress,
                 pipeline_status="collected",
                 collected_at=datetime.now(timezone.utc),
             )
@@ -114,6 +121,7 @@ async def save_bids(
             saved += 1
         except Exception:
             logger.exception("공고 저장 실패: %s", bid.get("bid_ntce_no", "unknown"))
+            await db.rollback()
             errors += 1
 
     return {"saved": saved, "skipped": skipped, "errors": errors, "new_notice_ids": new_notice_ids}

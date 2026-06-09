@@ -40,11 +40,15 @@ interface BidSlideOverProps {
   outlineStatus?: 'none' | 'generating' | 'complete';
   onRequestOutline?: (bidId: string) => void;
   onDownloadOutline?: (bidId: string) => void;
+  onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
 }
 
-export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false, analysisLogs, outlineStatus = 'none', onRequestOutline, onDownloadOutline }: BidSlideOverProps) {
+export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, showFullDetail = false, analysisLogs, outlineStatus = 'none', onRequestOutline, onDownloadOutline, onUpdateManagers }: BidSlideOverProps) {
   const { showToast } = useToast();
   const [showFileMenu, setShowFileMenu] = useState(false);
+  const [showConfirm, setShowConfirm] = useState<'add' | 'remove' | null>(null);
+  const [regSalesManager, setRegSalesManager] = useState('');
+  const [regProjectPm, setRegProjectPm] = useState('');
   const [hoveredFileIndex, setHoveredFileIndex] = useState<number | null>(null);
   const [hoveredCardIndex, setHoveredCardIndex] = useState<number | null>(null);
   const fileMenuRef = useRef<HTMLDivElement>(null);
@@ -318,6 +322,10 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                   ? { fontSize: '16px', fontWeight: 700, color: isUrgent ? '#EF4444' : 'var(--dash-text-2)' }
                   : { color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }}
               />
+              <InfoCell
+                label="공고일"
+                value={bid.ntceDate ? bid.ntceDate.replace(/-/g, '.') : '-'}
+              />
             </div>
           </div>
 
@@ -356,14 +364,20 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                 }}
               >
                 {flags.bookmarked
-                  ? <><BookmarkX style={{ width: '14px', height: '14px' }} />찜 해제</>
-                  : <><Bookmark style={{ width: '14px', height: '14px' }} />찜하기</>
+                  ? <><BookmarkX style={{ width: '14px', height: '14px' }} />관심공고 해제</>
+                  : <><Bookmark style={{ width: '14px', height: '14px' }} />관심공고 추가</>
                 }
               </button>
 
               {/* 진행하기 */}
               <button
-                onClick={() => onToggleInProgress(bid.id)}
+                onClick={() => {
+                  if (!flags.inProgress) {
+                    setRegSalesManager(bid.salesManager ?? '');
+                    setRegProjectPm(bid.projectPm ?? '');
+                  }
+                  setShowConfirm(flags.inProgress ? 'remove' : 'add');
+                }}
                 className="flex items-center gap-1.5 rounded-lg transition-colors"
                 style={{
                   padding: '6px 14px',
@@ -390,7 +404,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                 }}
               >
                 <Play style={{ width: '13px', height: '13px', fill: flags.inProgress ? 'currentColor' : 'none' }} />
-                {flags.inProgress ? '진행중' : '진행하기'}
+                {flags.inProgress ? '진행 프로젝트 등록됨' : '진행 프로젝트로 등록'}
               </button>
             </div>
           )}
@@ -413,7 +427,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                   AI 분석 대기 중
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--dash-text-4)', textAlign: 'center', lineHeight: 1.6 }}>
-                  진행하기를 누르거나 상세 리포트에서<br />직접 분석을 시작할 수 있습니다.
+                  진행 등록을 하거나 상세 리포트에서<br />직접 분석을 시작할 수 있습니다.
                 </div>
                 {aiStatus === 'none' && (
                   <button
@@ -663,6 +677,66 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
         </>
       )}
     </div>
+
+    {/* 진행하기 확인 다이얼로그 */}
+    {showConfirm && bid && (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+        <div style={{ backgroundColor: 'var(--dash-card)', borderRadius: '12px', padding: '24px', maxWidth: '360px', width: '100%', margin: '0 16px', border: '1px solid var(--dash-border)' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px' }}>
+            {showConfirm === 'add' ? '진행 프로젝트로 등록' : '진행 프로젝트에서 제거하시겠습니까?'}
+          </h3>
+          {showConfirm === 'add' ? (
+            <>
+              <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: '0 0 16px', lineHeight: 1.6 }}>
+                등록하면 AI 분석이 자동으로 시작됩니다.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>영업담당자</div>
+                  <input
+                    value={regSalesManager}
+                    onChange={(e) => setRegSalesManager(e.target.value)}
+                    placeholder="이름 입력 (선택)"
+                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--dash-border-med)', backgroundColor: 'var(--dash-input-bg)', color: 'var(--dash-text)', marginTop: '4px', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>담당 PM</div>
+                  <input
+                    value={regProjectPm}
+                    onChange={(e) => setRegProjectPm(e.target.value)}
+                    placeholder="이름 입력 (선택)"
+                    style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--dash-border-med)', backgroundColor: 'var(--dash-input-bg)', color: 'var(--dash-text)', marginTop: '4px', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div style={{ marginBottom: '20px' }} />
+          )}
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setShowConfirm(null)}
+              style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer' }}
+            >
+              취소
+            </button>
+            <button
+              onClick={() => {
+                onToggleInProgress(bid.id);
+                if (showConfirm === 'add' && (regSalesManager || regProjectPm)) {
+                  onUpdateManagers?.(bid.id, regSalesManager, regProjectPm);
+                }
+                setShowConfirm(null);
+              }}
+              style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: showConfirm === 'add' ? '#2563EB' : '#EF4444', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+            >
+              {showConfirm === 'add' ? '등록' : '제거'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }

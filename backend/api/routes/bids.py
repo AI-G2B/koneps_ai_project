@@ -18,8 +18,6 @@ pipeline_status 값:
 
 from datetime import date, datetime, timedelta, timezone
 
-KST = timezone(timedelta(hours=9))
-
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -33,7 +31,6 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.collector.naramarket import fetch_bids, fetch_bids_by_query
-
 from backend.collector.service import collect_and_save, save_bids
 from backend.db.crud import (
     count_notices,
@@ -47,8 +44,10 @@ from backend.db.crud import (
     set_in_progress,
     upsert_memo,
 )
-from backend.db.models import Attachment, Notice
 from backend.db.database import get_db
+from backend.db.models import Attachment, Notice
+
+KST = timezone(timedelta(hours=9))
 
 router = APIRouter()
 
@@ -312,7 +311,7 @@ async def type_stats(
 
 @router.get("", summary="공고 목록 조회", response_model=BidListResponse)
 async def list_bids(
-    limit: int = Query(20, ge=1, le=100, description="페이지당 건수"),
+    limit: int = Query(20, ge=1, le=500, description="페이지당 건수"),
     offset: int = Query(0, ge=0, description="건너뛸 건수"),
     isp_ismp_only: bool = Query(False, description="ISP/ISMP 공고만 조회"),
     bookmarked_only: bool = Query(False, description="관심 표시한 공고만 조회"),

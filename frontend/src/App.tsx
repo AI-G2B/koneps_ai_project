@@ -19,11 +19,16 @@ import { StrategyReportPage } from './components/StrategyReportPage';
 import { ProposalPage } from './components/ProposalPage';
 import { ProposalOutlinePage } from './components/ProposalOutlinePage';
 import { AdminConsole } from './components/AdminConsole';
+import { HelpPage } from './components/HelpPage';
+import { AdminLLMPage } from './components/AdminLLMPage';
+import { AdminPoisonPage } from './components/AdminPoisonPage';
+import { AdminStatusPage } from './components/AdminStatusPage';
 import {
   fetchBids,
   fetchBidById,
   toggleBookmarkApi,
   toggleInProgressApi,
+  updateBidManagersApi,
   requestAnalysisApi,
   fetchAnalysisStatus,
   uploadAttachmentApi,
@@ -45,8 +50,9 @@ import {
 } from './services/api';
 
 const CEO_ALLOWED_PAGES: PageType[] = ['대시보드', '진행 프로젝트', '전략 리포트', '설정'];
+const ADMIN_ALLOWED_PAGES: PageType[] = ['대시보드', 'LLM 설정', '독소조항 설정', '시스템 현황'];
 
-export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '제안목차' | '목차 현황' | '현황 요약' | '전략 리포트' | '설정';
+export type PageType = '대시보드' | '공고 목록' | '관심 공고' | '진행 프로젝트' | 'AI 분석' | '진행 프로젝트 현황' | '현황 요약' | '전략 리포트' | '설정' | '도움말' | 'LLM 설정' | '독소조항 설정' | '시스템 현황';
 
 export interface AgencySettings {
   preferred: string[];
@@ -55,7 +61,7 @@ export interface AgencySettings {
 
 export interface NotificationItem {
   id: string;
-  type: 'sync' | 'analysis_complete' | 'analysis_fail' | 'bookmark' | 'inprogress';
+  type: 'sync' | 'analysis_complete' | 'analysis_fail' | 'bookmark' | 'inprogress' | 'outline_complete' | 'outline_fail';
   title: string;
   message: string;
   createdAt: Date;
@@ -85,13 +91,21 @@ export default function App() {
     }
     setLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
   };
+  const CACHE_VERSION = 'v2';
+
   const [bids, setBids] = useState<Bid[]>(() => {
     try {
+      const version = sessionStorage.getItem('koneps_bids_version');
+      if (version !== CACHE_VERSION) {
+        sessionStorage.removeItem('koneps_bids');
+        sessionStorage.removeItem('koneps_bids_time');
+        sessionStorage.removeItem('koneps_bidflags');
+        return [];
+      }
       const cached = sessionStorage.getItem('koneps_bids');
       const cachedTime = sessionStorage.getItem('koneps_bids_time');
       if (cached && cachedTime) {
         const age = Date.now() - Number(cachedTime);
-        // 30분 이내 캐시는 재사용
         if (age < 30 * 60 * 1000) {
           return JSON.parse(cached);
         }
@@ -204,6 +218,7 @@ export default function App() {
       sessionStorage.setItem('koneps_bids', JSON.stringify(fetchedBids));
       const now = Date.now();
       sessionStorage.setItem('koneps_bids_time', String(now));
+      sessionStorage.setItem('koneps_bids_version', CACHE_VERSION);
       setLastSyncTime(new Date(now));
       setBidFlags(prev => {
         const merged = { ...prev };
@@ -422,6 +437,7 @@ export default function App() {
             outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: 'complete' };
             setOutlineStatusMap(prev => ({ ...prev, [bidId]: 'complete' }));
             showToast('success', force ? '제안목차 재생성 완료' : '제안목차 생성 완료');
+            addNotification({ type: 'outline_complete', title: '제안목차 생성 완료', message: `${bid.title} 제안목차가 생성되었습니다` });
             delete outlineTimers.current[bidId];
             return;
           }
@@ -433,6 +449,7 @@ export default function App() {
           outlineStatusRef.current = { ...outlineStatusRef.current, [bidId]: restoreTo };
           setOutlineStatusMap(prev => ({ ...prev, [bidId]: restoreTo }));
           showToast('warning', '제안목차 생성 실패 — 로그를 확인하세요');
+          addNotification({ type: 'outline_fail', title: '제안목차 생성 실패', message: `${bid?.title ?? bidId} 제안목차 생성에 실패했습니다` });
           delete outlineTimers.current[bidId];
           return;
         }
@@ -512,6 +529,13 @@ const toggleBookmark = (bidId: string) => {
     } else if (!current.bookmarked) {
       resetAnalysis(bidId);
     }
+  };
+
+  const updateBidManagers = async (bidId: string, salesManager: string, projectPm: string) => {
+    const bid = bids.find(b => b.id === bidId);
+    if (!bid) return;
+    setBids(prev => prev.map(b => b.id === bidId ? { ...b, salesManager, projectPm } : b));
+    await updateBidManagersApi(bid.number, salesManager, projectPm);
   };
 
   const [analysisDetailBid, setAnalysisDetailBid] = useState<Bid | null>(null);
@@ -594,6 +618,11 @@ const toggleBookmark = (bidId: string) => {
     if (!CEO_ALLOWED_PAGES.includes(activePage)) setActivePage('대시보드');
   }, [user, activePage]);
 
+  useEffect(() => {
+    if (!user || user.role !== 'admin') return;
+    if (!ADMIN_ALLOWED_PAGES.includes(activePage)) setActivePage('대시보드');
+  }, [user, activePage]);
+
   const syncAiStatus = (bid: Bid) => {
     // 서버 분석 상태(pipeline_status 기반 bid.aiStatus)를 런타임 aiStatuses에 반영.
     // 이미 분석된 공고를 목록/검색에서 열었을 때 분석 결과가 보이도록 한다.
@@ -640,8 +669,21 @@ const toggleBookmark = (bidId: string) => {
     }
   };
 
+  const handleLogout = () => {
+    sessionStorage.removeItem('koneps_user');
+    sessionStorage.removeItem('koneps_bids');
+    sessionStorage.removeItem('koneps_bids_time');
+    sessionStorage.removeItem('koneps_bidflags');
+    setUser(null);
+  };
+
+  const handleDirectLogin = (adminUser: User) => {
+    sessionStorage.setItem('koneps_user', JSON.stringify(adminUser));
+    setUser(adminUser);
+  };
+
   if (!user) {
-    return <LoginPage onLogin={handleLogin} loginError={loginError} />;
+    return <LoginPage onLogin={handleLogin} loginError={loginError} onDirectLogin={handleDirectLogin} />;
   }
 
   // 관리자 계정은 대시보드 우회 — 콘솔만 노출.
@@ -656,6 +698,7 @@ const toggleBookmark = (bidId: string) => {
   }
 
   const isCeo = user.role === 'ceo';
+  const isAdmin = user.role === 'admin';
   const inProgressBids = bids.filter(b => bidFlags[b.id]?.inProgress ?? false);
   const analysisCompleteCount = Object.values(aiStatuses).filter(s => s === 'complete').length;
   const activeBidCount = bids.filter(b => getDaysUntilDeadline(b.deadline) >= 0).length;
@@ -704,7 +747,9 @@ const toggleBookmark = (bidId: string) => {
             scrollbarColor: 'var(--dash-scrollbar) transparent',
           }}
         >
-          {activePage === '설정' ? (
+          {activePage === '도움말' ? (
+            <HelpPage />
+          ) : activePage === '설정' ? (
             <SettingsPage
               settings={agencySettings}
               onSave={async (newSettings) => {
@@ -735,6 +780,7 @@ const toggleBookmark = (bidId: string) => {
               outlineStatusMap={outlineStatusMap}
               onRequestOutline={requestOutline}
               onDownloadOutline={downloadOutlineExcel}
+              onUpdateManagers={updateBidManagers}
             />
           ) : activePage === 'AI 분석' ? (
             <AnalysisListPage
@@ -754,7 +800,7 @@ const toggleBookmark = (bidId: string) => {
               onSelectBid={handleSelectBid}
               selectedBid={selectedBid}
             />
-          ) : activePage === '제안목차' ? (
+          ) : activePage === '진행 프로젝트 현황' ? (
             <ProposalPage
               bids={bids}
               bidFlags={bidFlags}
@@ -763,16 +809,6 @@ const toggleBookmark = (bidId: string) => {
               aiStatuses={aiStatuses}
               onOpenAnalysisDetail={openAnalysisDetail}
               onRequestOutline={requestOutline}
-            />
-          ) : activePage === '목차 현황' ? (
-            <ProposalOutlinePage
-              bids={bids}
-              bidFlags={bidFlags}
-              outlinesMap={outlinesMap}
-              outlineStatusMap={outlineStatusMap}
-              onOpenAnalysisDetail={openAnalysisDetail}
-              onRequestOutline={requestOutline}
-              onDownloadOutline={downloadOutlineExcel}
             />
           ) : activePage === '전략 리포트' ? (
             <StrategyReportPage bids={bids} bidFlags={bidFlags} aiStatuses={aiStatuses} />
@@ -787,16 +823,25 @@ const toggleBookmark = (bidId: string) => {
               onToggleInProgress={toggleInProgress}
               onOpenAnalysisDetail={openAnalysisDetail}
               onRequestAnalysis={requestAnalysis}
+              onUpdateManagers={updateBidManagers}
               ceoMode={isCeo}
               currentUser={user}
             />
+          ) : activePage === 'LLM 설정' ? (
+            <AdminLLMPage />
+          ) : activePage === '독소조항 설정' ? (
+            <AdminPoisonPage />
+          ) : activePage === '시스템 현황' ? (
+            <AdminStatusPage dashboardStats={dashboardStats} totalBidCount={bids.length} />
+          ) : isAdmin ? (
+            <AdminStatusPage dashboardStats={dashboardStats} totalBidCount={bids.length} />
           ) : isCeo ? (
             <>
               <KpiCards bids={inProgressBids} bidsLoading={isFetching} ceoMode={true} aiStatuses={aiStatuses} dashboardStats={dashboardStats} />
               {inProgressBids.length === 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', borderRadius: '10px', backgroundColor: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
                   <Info style={{ width: '16px', height: '16px', color: '#7C3AED', flexShrink: 0 }} />
-                  <span style={{ fontSize: '13px', color: '#7C3AED' }}>담당자 모드에서 공고에 진행하기를 설정하면 이곳에 표시됩니다</span>
+                  <span style={{ fontSize: '13px', color: '#7C3AED' }}>담당자 모드에서 공고에 진행 등록을 하면 이곳에 표시됩니다</span>
                 </div>
               )}
               <div className="flex gap-4" style={{ minHeight: '440px' }}>
@@ -812,7 +857,7 @@ const toggleBookmark = (bidId: string) => {
                   onRequestAnalysis={requestAnalysis}
                   showBidNumber={true}
                 />
-                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} ceoMode={true} analysisLogs={selectedBid ? analysisLogsMap[selectedBid.id] : undefined} outlineStatus={selectedBid ? outlineStatusMap[selectedBid.id] : 'none'} onRequestOutline={requestOutline} onDownloadOutline={downloadOutlineExcel} />
+                <BidDetailPanel bid={selectedBid} detailLoading={detailLoading} aiStatuses={aiStatuses} onOpenAnalysisDetail={openAnalysisDetail} onRequestAnalysis={requestAnalysis} ceoMode={true} analysisLogs={selectedBid ? analysisLogsMap[selectedBid.id] : undefined} outlineStatus={selectedBid ? outlineStatusMap[selectedBid.id] : 'none'} onRequestOutline={requestOutline} onDownloadOutline={downloadOutlineExcel} bidFlags={bidFlags} onToggleInProgress={toggleInProgress} onUpdateManagers={updateBidManagers} />
               </div>
               <BottomWidgets
                 bids={inProgressBids}
@@ -844,6 +889,7 @@ const toggleBookmark = (bidId: string) => {
                   outlineStatusMap={outlineStatusMap}
                   onRequestOutline={requestOutline}
                   onDownloadOutline={downloadOutlineExcel}
+                  onUpdateManagers={updateBidManagers}
                 />
               </div>
               <BottomWidgets
@@ -877,6 +923,8 @@ const toggleBookmark = (bidId: string) => {
             onRegenerateOutline={regenerateOutline}
             onDownloadOutline={downloadOutlineExcel}
             onUploadAttachment={uploadAttachment}
+            bidFlags={bidFlags}
+            onToggleInProgress={toggleInProgress}
           />
         </div>
       )}

@@ -76,6 +76,8 @@ export interface ApiBidListItem {
   pipeline_status: string;
   parse_error_msg: string | null;
   bid_ntce_dtl_url: string | null;
+  sales_manager: string | null;
+  project_pm: string | null;
 }
 
 export interface ApiPoisonItem {
@@ -245,6 +247,9 @@ export function mapApiBidListItemToBid(item: ApiBidListItem): Bid {
     type: mapBidType(item),
     dangerCount: 0,
     collectedAt: normalizeDate(item.collected_at),
+    ntceDate: item.bid_ntce_dt ? item.bid_ntce_dt.slice(0, 10) : undefined,
+    salesManager: item.sales_manager ?? undefined,
+    projectPm: item.project_pm ?? undefined,
     is_bookmarked: item.is_bookmarked,
     is_in_progress: item.is_in_progress,
     is_expired: item.is_expired,
@@ -273,6 +278,9 @@ export function mapApiBidDetailToBid(res: ApiBidDetailResponse): Bid {
     type: mapBidType(res),
     dangerCount: riskFactors.filter((r) => r.severity === 'danger').length,
     collectedAt: normalizeDate(res.collected_at),
+    ntceDate: res.bid_ntce_dt ? res.bid_ntce_dt.slice(0, 10) : undefined,
+    salesManager: res.sales_manager ?? undefined,
+    projectPm: res.project_pm ?? undefined,
     is_bookmarked: res.is_bookmarked,
     is_in_progress: res.is_in_progress,
     is_expired: res.is_expired,
@@ -437,6 +445,28 @@ export async function toggleInProgressApi(
     return true;
   } catch (err) {
     console.warn('[api] toggleInProgressApi 실패:', err);
+    return false;
+  }
+}
+
+export async function updateBidManagersApi(
+  bid_ntce_no: string,
+  salesManager: string,
+  projectPm: string
+): Promise<boolean> {
+  try {
+    const res = await authFetch(
+      `${BASE_URL}/bids/${encodeURIComponent(bid_ntce_no)}/managers`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sales_manager: salesManager, project_pm: projectPm }),
+        signal: AbortSignal.timeout(10_000),
+      }
+    );
+    return res.ok;
+  } catch (err) {
+    console.warn('[api] updateBidManagersApi 실패:', err);
     return false;
   }
 }

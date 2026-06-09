@@ -20,9 +20,10 @@ const TEST_ACCOUNTS = [
 interface LoginPageProps {
   onLogin: (username: string, password: string) => Promise<void>;
   loginError?: string;
+  onDirectLogin?: (user: User) => void;
 }
 
-export function LoginPage({ onLogin, loginError }: LoginPageProps) {
+export function LoginPage({ onLogin, loginError, onDirectLogin }: LoginPageProps) {
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -81,6 +82,21 @@ export function LoginPage({ onLogin, loginError }: LoginPageProps) {
                 </div>
               </div>
             ))}
+            <div
+              className="flex items-center gap-3 rounded-xl"
+              style={{ padding: '14px 16px', backgroundColor: 'rgba(71,85,105,0.08)', border: '1px solid rgba(71,85,105,0.25)', cursor: onDirectLogin ? 'pointer' : 'default', transition: 'opacity 0.15s' }}
+              onClick={() => onDirectLogin?.({ id: 0, username: 'admin', name: '관리자', role: 'admin' })}
+              onMouseEnter={(e) => { if (onDirectLogin) (e.currentTarget as HTMLDivElement).style.opacity = '0.8'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}
+            >
+              <div className="rounded-lg flex items-center justify-center flex-shrink-0" style={{ width: '36px', height: '36px', backgroundColor: 'rgba(71,85,105,0.15)' }}>
+                <ShieldCheck style={{ width: '18px', height: '18px', color: '#475569' }} />
+              </div>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>어드민</div>
+                <div style={{ fontSize: '12px', color: '#64748b' }}>시스템 설정 및 관리</div>
+              </div>
+            </div>
           </div>
         </div>
 

@@ -4,7 +4,7 @@ import {
   Circle, CheckCircle2, XCircle, Loader2, ScrollText,
   AlertTriangle, Upload, ChevronUp, ChevronDown, FileText,
 } from 'lucide-react';
-import { type Bid, type AiStatusType, type AnalysisLog, formatBudget, getDaysUntilDeadline } from '../types';
+import { type Bid, type BidFlags, type AiStatusType, type AnalysisLog, formatBudget, getDaysUntilDeadline } from '../types';
 import { RiskBadge } from './BidTable';
 import { useToast } from './ToastProvider';
 
@@ -22,6 +22,8 @@ interface AnalysisDetailPageProps {
   onRegenerateOutline?: (bidId: string) => void;
   onDownloadOutline?: (bidId: string) => void;
   onUploadAttachment?: (bidId: string, file: File) => Promise<boolean>;
+  bidFlags?: Record<string, BidFlags>;
+  onToggleInProgress?: (bidId: string) => void;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -122,13 +124,91 @@ const POISON_CATEGORIES: Array<{
   { code: 'L4', group: '법무/지재권', name: '징벌적 지연배상금', criteria: '1일 0.25% 이상 (법정 0.125% 초과) 또는 상한선(30%) 미설정', level: 'caution' },
 ];
 
-export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequestAnalysis, onDeleteAnalysis, analysisLogs: analysisLogsProp, outline, outlineStatus = 'none', outlineLogs, onRequestOutline, onRegenerateOutline, onDownloadOutline, onUploadAttachment }: AnalysisDetailPageProps) {
+function generateReportHTML(bid: Bid): string {
+  const detail = bid.detail;
+  const riskFactors = bid.riskFactors ?? [];
+  let html = '';
+
+  if (detail) {
+    html += '<h2>AI 추출 핵심항목</h2>';
+    const items = [
+      { label: '예산규모',   value: detail.budget },
+      { label: '수행기간',   value: detail.execPeriod },
+      { label: '평가방식',   value: detail.evalMethod },
+      { label: '사업목적',   value: detail.purpose },
+      { label: '납품방식',   value: detail.deliveryMethod },
+      { label: '기술요건',   value: detail.techRequirement },
+      { label: '입찰방식',   value: detail.bidMethod },
+      { label: '보안요건',   value: detail.securityRequirement },
+    ];
+    html += '<table>';
+    items.forEach((item) => {
+      html += `<tr><th>${item.label}</th><td>${item.value ?? '-'}</td></tr>`;
+    });
+    html += '</table>';
+
+    if (detail.requirements && detail.requirements.length > 0) {
+      html += '<h2>요구사항</h2>';
+      html += '<table><tr><th>분류</th><th>코드</th><th>항목명</th><th>내용</th></tr>';
+      detail.requirements.forEach((req) => {
+        html += `<tr><td>${req.category ?? '-'}</td><td>${req.code ?? '-'}</td><td>${req.name ?? '-'}</td><td>${req.detail ?? '-'}</td></tr>`;
+      });
+      html += '</table>';
+    }
+  }
+
+  if (riskFactors.length > 0) {
+    html += '<h2>독소조항 분석</h2>';
+    html += '<table><tr><th>항목</th><th>위험도</th><th>조항 내용</th><th>판단근거</th></tr>';
+    riskFactors.forEach((rf) => {
+      html += `<tr><td>${rf.category ?? '-'}</td><td>${rf.severity ?? '-'}</td><td>${rf.clause ?? '-'}</td><td>${rf.reason ?? '-'}</td></tr>`;
+    });
+    html += '</table>';
+  }
+
+  return html;
+}
+
+export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequestAnalysis, onDeleteAnalysis, analysisLogs: analysisLogsProp, outline, outlineStatus = 'none', outlineLogs, onRequestOutline, onRegenerateOutline, onDownloadOutline, onUploadAttachment, bidFlags, onToggleInProgress }: AnalysisDetailPageProps) {
   const { showToast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showInProgressConfirm, setShowInProgressConfirm] = useState<'add' | 'remove' | null>(null);
   const [activeTab, setActiveTab] = useState<DetailTab>('analysis');
   const [uploading, setUploading] = useState(false);
   const [logsExpanded, setLogsExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDownload = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${bid.title} - AI 분석 리포트</title>
+  <style>
+    body { font-family: 'Malgun Gothic', sans-serif; padding: 20px; color: #1e293b; }
+    h1 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+    h2 { font-size: 15px; font-weight: 600; margin: 20px 0 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+    h3 { font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
+    p, li { font-size: 12px; line-height: 1.6; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+    th, td { border: 1px solid #e2e8f0; padding: 6px 10px; font-size: 12px; text-align: left; }
+    th { background: #f8fafc; font-weight: 600; }
+    .meta { color: #64748b; font-size: 12px; margin-bottom: 16px; }
+    @media print { body { padding: 0; } button { display: none; } }
+  </style>
+</head>
+<body>
+  <h1>${bid.title}</h1>
+  <div class="meta">발주기관: ${bid.agency ?? '-'} | 공고번호: ${bid.number} | 마감일: ${bid.deadline?.slice(0, 10) ?? '-'}</div>
+  ${generateReportHTML(bid)}
+</body>
+</html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+  };
 
   const aiStatus: AiStatusType = aiStatusProp ?? bid.aiStatus ?? 'none';
   const detail = bid.detail;
@@ -197,6 +277,7 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
     { label: '추정가격', value: formatAmt(bid.presmptPrce) },
     { label: '배정예산', value: formatAmt(bid.asignBdgtAmt) },
     { label: '공고번호', value: bid.number },
+    { label: '공고일', value: bid.ntceDate ? bid.ntceDate.replace(/-/g, '.') : '-' },
     { label: '상태', value: statusLabel },
   ];
 
@@ -204,7 +285,7 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--dash-bg)', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
       {/* 1. 상단 네비게이션 */}
-      <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button
           onClick={onBack}
           style={{
@@ -218,6 +299,20 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
         >
           <ArrowLeft style={{ width: '14px', height: '14px' }} />
           뒤로
+        </button>
+        <button
+          onClick={handleDownload}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '6px',
+            padding: '6px 12px', border: '1px solid var(--dash-border)',
+            borderRadius: '8px', background: 'var(--dash-card)',
+            color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer',
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; }}
+        >
+          <Download style={{ width: '14px', height: '14px' }} />
+          리포트 다운로드
         </button>
       </div>
 
@@ -295,6 +390,17 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
             </span>
           )}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {onToggleInProgress && (() => {
+              const flags = bidFlags?.[bid.id] ?? { bookmarked: false, inProgress: false };
+              return (
+                <button
+                  onClick={() => setShowInProgressConfirm(flags.inProgress ? 'remove' : 'add')}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: `1px solid ${flags.inProgress ? 'rgba(34,197,94,0.4)' : 'rgba(37,99,235,0.4)'}`, backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.1)' : 'rgba(37,99,235,0.08)', color: flags.inProgress ? '#22C55E' : '#2563EB', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+                >
+                  {flags.inProgress ? '진행 프로젝트 등록됨' : '진행 프로젝트로 등록'}
+                </button>
+              );
+            })()}
             <button
               onClick={() => {
                 onRequestAnalysis?.(bid.id, { rerun: true });
@@ -353,6 +459,36 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
                 style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#EF4444', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
               >
                 삭제
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 진행하기 확인 다이얼로그 */}
+      {showInProgressConfirm && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '24px', maxWidth: '360px', width: '100%', margin: '0 16px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px' }}>
+              {showInProgressConfirm === 'add' ? '진행 프로젝트로 등록하시겠습니까?' : '진행 프로젝트에서 제거하시겠습니까?'}
+            </h3>
+            {showInProgressConfirm === 'add' && (
+              <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: '0 0 20px', lineHeight: 1.6 }}>
+                등록하면 AI 분석이 자동으로 시작됩니다.
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: showInProgressConfirm === 'remove' ? '20px' : 0 }}>
+              <button
+                onClick={() => setShowInProgressConfirm(null)}
+                style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={() => { onToggleInProgress?.(bid.id); setShowInProgressConfirm(null); }}
+                style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: showInProgressConfirm === 'add' ? '#2563EB' : '#EF4444', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+              >
+                {showInProgressConfirm === 'add' ? '등록' : '제거'}
               </button>
             </div>
           </div>

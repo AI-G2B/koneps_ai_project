@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -82,6 +82,19 @@ def _apply_notice_filters(
     return query
 
 
+def _latest_ord_subquery():
+    """공고번호별 최신 차수(bid_ntce_ord)만 남기는 서브쿼리를 반환한다.
+    정정공고로 동일 bid_ntce_no가 복수 수집되는 경우 중복을 제거한다."""
+    return (
+        select(
+            Notice.bid_ntce_no.label("bno"),
+            func.max(Notice.bid_ntce_ord).label("max_ord"),
+        )
+        .group_by(Notice.bid_ntce_no)
+        .subquery()
+    )
+
+
 async def get_notices(
     db: AsyncSession,
     limit: int = 20,
@@ -95,8 +108,12 @@ async def get_notices(
     date_to: datetime | None = None,
     search: str | None = None,
 ) -> list[Notice]:
-    """공고 목록을 입찰마감일 오름차순으로 반환한다."""
-    query = select(Notice)
+    """공고 목록을 수집일 내림차순으로 반환한다. 동일 공고번호는 최신 차수만 포함한다."""
+    sq = _latest_ord_subquery()
+    query = (
+        select(Notice)
+        .join(sq, and_(Notice.bid_ntce_no == sq.c.bno, Notice.bid_ntce_ord == sq.c.max_ord))
+    )
     query = _apply_notice_filters(
         query,
         isp_ismp_only,
@@ -124,8 +141,13 @@ async def count_notices(
     date_to: datetime | None = None,
     search: str | None = None,
 ) -> int:
-    """페이지네이션용 공고 총 건수를 반환한다."""
-    query = select(func.count()).select_from(Notice)
+    """페이지네이션용 공고 총 건수를 반환한다. 동일 공고번호는 최신 차수만 집계한다."""
+    sq = _latest_ord_subquery()
+    query = (
+        select(func.count())
+        .select_from(Notice)
+        .join(sq, and_(Notice.bid_ntce_no == sq.c.bno, Notice.bid_ntce_ord == sq.c.max_ord))
+    )
     query = _apply_notice_filters(
         query, isp_ismp_only, bookmarked_only, in_progress_only, exclude_expired, ntce_kind, date_from, date_to, search
     )
@@ -157,14 +179,17 @@ async def set_in_progress(db: AsyncSession, bid_ntce_no: str, is_in_progress: bo
 
 
 async def search_notices(db: AsyncSession, query: str, limit: int = 20) -> list[Notice]:
-    """공고번호, 공고명, 기관명에서 query를 포함하는 공고를 반환한다."""
+    """공고번호, 공고명, 기관명에서 query를 포함하는 공고를 반환한다. 최신 차수만 반환한다."""
+    sq = _latest_ord_subquery()
+    like = f"%{query}%"
     result = await db.execute(
         select(Notice)
+        .join(sq, and_(Notice.bid_ntce_no == sq.c.bno, Notice.bid_ntce_ord == sq.c.max_ord))
         .where(
             or_(
-                Notice.bid_ntce_no.ilike(f"%{query}%"),
-                Notice.bid_ntce_nm.ilike(f"%{query}%"),
-                Notice.ntce_instt_nm.ilike(f"%{query}%"),
+                Notice.bid_ntce_no.ilike(like),
+                Notice.bid_ntce_nm.ilike(like),
+                Notice.ntce_instt_nm.ilike(like),
             )
         )
         .order_by(Notice.bid_clse_dt.asc())
@@ -174,9 +199,12 @@ async def search_notices(db: AsyncSession, query: str, limit: int = 20) -> list[
 
 
 async def get_notices_isp_ismp(db: AsyncSession, limit: int = 20):
+    """ISP/ISMP 공고 목록을 마감일 오름차순으로 반환한다. 동일 공고번호는 최신 차수만 포함한다."""
+    sq = _latest_ord_subquery()
     result = await db.execute(
         select(Notice)
-        .where(Notice.is_isp_ismp == True)
+        .join(sq, and_(Notice.bid_ntce_no == sq.c.bno, Notice.bid_ntce_ord == sq.c.max_ord))
+        .where(Notice.is_isp_ismp.is_(True))
         .order_by(Notice.bid_clse_dt.asc())
         .limit(limit)
     )
@@ -252,12 +280,19 @@ async def delete_analysis_by_notice_id(db: AsyncSession, notice_id: int) -> bool
 
 
 async def get_type_stats(db: AsyncSession) -> list[dict]:
-    """공고 유형별 건수와 비율을 반환한다. (도넛 차트용)"""
-    total = await db.scalar(select(func.count()).select_from(Notice)) or 0
+    """공고 유형별 건수와 비율을 반환한다. (도넛 차트용) 동일 공고번호는 최신 차수만 집계한다."""
+    sq = _latest_ord_subquery()
+    # 최신 차수만 남긴 서브쿼리와 JOIN 후 집계
+    deduped = (
+        select(Notice.isp_ismp_type)
+        .join(sq, and_(Notice.bid_ntce_no == sq.c.bno, Notice.bid_ntce_ord == sq.c.max_ord))
+        .subquery()
+    )
+    total = await db.scalar(select(func.count()).select_from(deduped)) or 0
 
     rows = await db.execute(
-        select(Notice.isp_ismp_type, func.count().label("cnt")).group_by(
-            Notice.isp_ismp_type
+        select(deduped.c.isp_ismp_type, func.count().label("cnt")).group_by(
+            deduped.c.isp_ismp_type
         )
     )
 
@@ -284,14 +319,22 @@ async def get_dashboard_stats(db: AsyncSession) -> dict:
     three_days_later = now + timedelta(days=3)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    # 오늘 신규 공고 수 (나라장터 공고 등록일 기준)
+    sq = _latest_ord_subquery()
+
+    # 오늘 신규 공고 수 (나라장터 공고 등록일 기준, 최신 차수만)
     today_count = await db.scalar(
-        select(func.count()).where(Notice.bid_ntce_dt >= today_start)
+        select(func.count())
+        .select_from(Notice)
+        .join(sq, and_(Notice.bid_ntce_no == sq.c.bno, Notice.bid_ntce_ord == sq.c.max_ord))
+        .where(Notice.bid_ntce_dt >= today_start)
     )
 
-    # 마감 임박 공고 수 (3일 이내)
+    # 마감 임박 공고 수 (3일 이내, 최신 차수만)
     deadline_count = await db.scalar(
-        select(func.count()).where(
+        select(func.count())
+        .select_from(Notice)
+        .join(sq, and_(Notice.bid_ntce_no == sq.c.bno, Notice.bid_ntce_ord == sq.c.max_ord))
+        .where(
             Notice.bid_clse_dt >= now,
             Notice.bid_clse_dt <= three_days_later,
         )
@@ -317,7 +360,7 @@ async def get_dashboard_stats(db: AsyncSession) -> dict:
 async def get_active_outline(db: AsyncSession, notice_id: int):
     result = await db.execute(
         select(ProposalOutline).where(
-            ProposalOutline.notice_id == notice_id, ProposalOutline.is_active == True
+            ProposalOutline.notice_id == notice_id, ProposalOutline.is_active.is_(True)
         )
     )
     return result.scalar_one_or_none()
