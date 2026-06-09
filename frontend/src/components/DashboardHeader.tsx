@@ -533,8 +533,7 @@ export function DashboardHeader({ user, onLogout, onNavigate, notifications, onM
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-hover)'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
                 >
-                  <span style={{ fontSize: '15px' }}>👤</span>
-                  프로필 설정
+                프로필 설정
                 </button>
               </div>
 
