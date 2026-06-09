@@ -910,6 +910,7 @@ const toggleBookmark = (bidId: string) => {
                 bids={inProgressBids}
                 bidFlags={bidFlags}
                 aiStatuses={aiStatuses}
+                outlineStatusMap={outlineStatusMap}
                 onToggleBookmark={toggleBookmark}
                 onToggleInProgress={toggleInProgress}
                 onOpenAnalysisDetail={openAnalysisDetail}
@@ -944,6 +945,7 @@ const toggleBookmark = (bidId: string) => {
                 bids={bids}
                 bidFlags={bidFlags}
                 aiStatuses={aiStatuses}
+                outlineStatusMap={outlineStatusMap}
                 onToggleBookmark={toggleBookmark}
                 onToggleInProgress={toggleInProgress}
                 onOpenAnalysisDetail={openAnalysisDetail}
