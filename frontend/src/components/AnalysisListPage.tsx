@@ -18,18 +18,59 @@ interface AnalysisListPageProps {
   onOpenAnalysisDetail: (bid: Bid) => void;
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
+  onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
 }
 
-export function AnalysisListPage({ bids, aiStatuses, bidFlags, onOpenAnalysisDetail, onToggleBookmark, onToggleInProgress }: AnalysisListPageProps) {
+export function AnalysisListPage({ bids, aiStatuses, bidFlags, onOpenAnalysisDetail, onToggleBookmark, onToggleInProgress, onUpdateManagers }: AnalysisListPageProps) {
   const [activeTab, setActiveTab] = useState<TabType>('complete');
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [registerTargetBid, setRegisterTargetBid] = useState<Bid | null>(null);
+  const [regSalesManager, setRegSalesManager] = useState('');
+  const [regProjectPm, setRegProjectPm] = useState('');
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelTargetBid, setCancelTargetBid] = useState<Bid | null>(null);
+
+  // 마감됐고 진행 중이 아닌 공고는 제외
+  const visibleBids = bids.filter(b =>
+    getDaysUntilDeadline(b.deadline) >= 0 || (bidFlags[b.id]?.inProgress ?? false)
+  );
 
   const counts: Record<TabType, number> = {
-    complete:  bids.filter(b => (aiStatuses[b.id] ?? 'none') === 'complete').length,
-    analyzing: bids.filter(b => (aiStatuses[b.id] ?? 'none') === 'analyzing').length,
-    pending:   bids.filter(b => (aiStatuses[b.id] ?? 'none') === 'pending').length,
+    complete:  visibleBids.filter(b => (aiStatuses[b.id] ?? 'none') === 'complete').length,
+    analyzing: visibleBids.filter(b => (aiStatuses[b.id] ?? 'none') === 'analyzing').length,
+    pending:   visibleBids.filter(b => (aiStatuses[b.id] ?? 'none') === 'pending').length,
   };
 
-  const filteredBids = bids.filter(b => (aiStatuses[b.id] ?? 'none') === activeTab);
+  const filteredBids = visibleBids.filter(b => (aiStatuses[b.id] ?? 'none') === activeTab);
+
+  const handleRequestRegister = (bid: Bid) => {
+    setRegisterTargetBid(bid);
+    setRegSalesManager(bid.salesManager ?? '');
+    setRegProjectPm(bid.projectPm ?? '');
+    setShowRegisterModal(true);
+  };
+
+  const handleConfirmRegister = () => {
+    if (!registerTargetBid) return;
+    onToggleInProgress(registerTargetBid.id);
+    if (regSalesManager || regProjectPm) {
+      onUpdateManagers?.(registerTargetBid.id, regSalesManager, regProjectPm);
+    }
+    setShowRegisterModal(false);
+    setRegisterTargetBid(null);
+  };
+
+  const handleRequestCancel = (bid: Bid) => {
+    setCancelTargetBid(bid);
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancel = () => {
+    if (!cancelTargetBid) return;
+    onToggleInProgress(cancelTargetBid.id);
+    setShowCancelModal(false);
+    setCancelTargetBid(null);
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -86,22 +127,108 @@ export function AnalysisListPage({ bids, aiStatuses, bidFlags, onOpenAnalysisDet
               flags={bidFlags[bid.id] ?? { bookmarked: false, inProgress: false }}
               onOpenAnalysisDetail={onOpenAnalysisDetail}
               onToggleBookmark={onToggleBookmark}
-              onToggleInProgress={onToggleInProgress}
+              onRequestRegister={handleRequestRegister}
+              onRequestCancel={handleRequestCancel}
             />
           ))}
+        </div>
+      )}
+
+      {/* 진행 취소 확인 모달 */}
+      {showCancelModal && cancelTargetBid && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowCancelModal(false)}
+        >
+          <div
+            style={{ backgroundColor: 'var(--dash-card)', borderRadius: '12px', padding: '24px', maxWidth: '360px', width: '100%', margin: '0 16px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px' }}>진행 취소</h3>
+            <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: '0 0 20px', lineHeight: 1.6 }}>
+              진행 프로젝트에서 제거하시겠습니까?
+            </p>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowCancelModal(false)}
+                style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmCancel}
+                style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#EF4444', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+              >
+                확인
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 진행 등록 모달 */}
+      {showRegisterModal && registerTargetBid && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowRegisterModal(false)}
+        >
+          <div
+            style={{ backgroundColor: 'var(--dash-card)', borderRadius: '12px', padding: '24px', maxWidth: '360px', width: '100%', margin: '0 16px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px' }}>진행 프로젝트로 등록</h3>
+            <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: '0 0 16px', lineHeight: 1.6 }}>
+              등록하면 AI 분석이 자동으로 시작됩니다.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+              <div>
+                <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>영업담당자</div>
+                <input
+                  value={regSalesManager}
+                  onChange={(e) => setRegSalesManager(e.target.value)}
+                  placeholder="이름 입력 (선택)"
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--dash-border-med)', backgroundColor: 'var(--dash-input-bg)', color: 'var(--dash-text)', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>담당 PM</div>
+                <input
+                  value={regProjectPm}
+                  onChange={(e) => setRegProjectPm(e.target.value)}
+                  placeholder="이름 입력 (선택)"
+                  style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--dash-border-med)', backgroundColor: 'var(--dash-input-bg)', color: 'var(--dash-text)', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowRegisterModal(false)}
+                style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer' }}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleConfirmRegister}
+                style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#2563EB', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+              >
+                등록
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function BidCard({ bid, aiStatus, flags, onOpenAnalysisDetail, onToggleBookmark, onToggleInProgress }: {
+function BidCard({ bid, aiStatus, flags, onOpenAnalysisDetail, onToggleBookmark, onRequestRegister, onRequestCancel }: {
   bid: Bid;
   aiStatus: AiStatusType;
   flags: BidFlags;
   onOpenAnalysisDetail: (bid: Bid) => void;
   onToggleBookmark: (bidId: string) => void;
-  onToggleInProgress: (bidId: string) => void;
+  onRequestRegister: (bid: Bid) => void;
+  onRequestCancel: (bid: Bid) => void;
 }) {
   const daysLeft = getDaysUntilDeadline(bid.deadline);
   const urgent = isDeadlineUrgent(bid.deadline);
@@ -119,17 +246,17 @@ function BidCard({ bid, aiStatus, flags, onOpenAnalysisDetail, onToggleBookmark,
       onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'rgba(37,99,235,0.3)'; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--dash-border)'; }}
     >
-      {/* 상단: AI 상태 + 위험도 + 타입 + D-day */}
+      {/* 상단: ISP/ISMP 타입 → AI 상태 → 위험도 → D-day */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-        <AiStatusIndicator status={aiStatus} />
-        <RiskBadge risk={bid.risk} />
         {bid.type !== '기타' && (
           <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '4px', backgroundColor: 'rgba(37,99,235,0.1)', color: '#60A5FA', flexShrink: 0, fontWeight: 500 }}>
             {bid.type}
           </span>
         )}
+        <AiStatusIndicator status={aiStatus} />
+        <RiskBadge risk={bid.risk} />
         {urgent && (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
             <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />
             D-{daysLeft}
           </span>
@@ -143,8 +270,8 @@ function BidCard({ bid, aiStatus, flags, onOpenAnalysisDetail, onToggleBookmark,
         </div>
         <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>{bid.agency}</div>
         <div style={{ display: 'flex', gap: '12px', fontSize: '12px', color: 'var(--dash-text-4)' }}>
-          <span>{formatBudget(bid.budget)}</span>
-          <span style={{ color: urgent ? '#F27A75' : 'var(--dash-text-4)' }}>{bid.deadline.substring(5)}</span>
+          <span><span style={{ color: 'var(--dash-text-5)' }}>예산: </span>{formatBudget(bid.budget)}</span>
+          <span style={{ color: urgent ? '#F27A75' : 'var(--dash-text-4)' }}><span style={{ color: urgent ? '#F27A75' : 'var(--dash-text-5)' }}>마감일: </span>{bid.deadline.substring(5)}</span>
         </div>
       </div>
 
@@ -171,7 +298,7 @@ function BidCard({ bid, aiStatus, flags, onOpenAnalysisDetail, onToggleBookmark,
           }
         </button>
         <button
-          onClick={() => onToggleInProgress(bid.id)}
+          onClick={() => flags.inProgress ? onRequestCancel(bid) : onRequestRegister(bid)}
           style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '5px', padding: '7px 10px', borderRadius: '8px', border: `1px solid ${flags.inProgress ? 'rgba(34,197,94,0.3)' : 'var(--dash-border)'}`, backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.06)' : 'transparent', color: flags.inProgress ? '#22C55E' : 'var(--dash-text-3)', fontSize: '12px', cursor: 'pointer' }}
           onMouseEnter={(e) => { if (!flags.inProgress) (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(34,197,94,0.2)'; }}
           onMouseLeave={(e) => { if (!flags.inProgress) (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border)'; }}

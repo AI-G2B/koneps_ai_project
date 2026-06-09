@@ -4,12 +4,13 @@ import { searchBids, type SearchBidsResult } from '../services/api';
 import { useToast } from './ToastProvider';
 import { useTheme } from 'next-themes';
 import type { User } from './LoginPage';
-import type { NotificationItem } from '../App';
+import type { NotificationItem, PageType } from '../App';
 import type { Bid } from '../types';
 
 interface DashboardHeaderProps {
   user: User;
   onLogout: () => void;
+  onNavigate?: (page: PageType) => void;
   notifications: NotificationItem[];
   onMarkAllAsRead: () => void;
   onMarkAsRead: (id: string) => void;
@@ -50,7 +51,7 @@ const NOTIF_ICON: Record<NotificationItem['type'], { icon: React.ElementType; co
   outline_fail:      { icon: BookOpen,  color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
 };
 
-export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead, onMarkAsRead, onClearNotifications, onSync, isSyncing = false, onOpenAnalysisDetail }: DashboardHeaderProps) {
+export function DashboardHeader({ user, onLogout, onNavigate, notifications, onMarkAllAsRead, onMarkAsRead, onClearNotifications, onSync, isSyncing = false, onOpenAnalysisDetail }: DashboardHeaderProps) {
   const { showToast, dismissToast } = useToast();
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
@@ -118,12 +119,29 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
   }, []);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const unread = notifications.filter(n => !n.isRead).length;
-  const roleLabel = user.role === 'ceo' ? '대표이사' : '담당자';
+  const ROLE_LABELS: Record<string, string> = {
+    ceo: '대표이사', pm: 'PM', 영업담당자: '영업담당자', 입찰담당자: '입찰담당자',
+    manager: '담당자', proposal: '제안담당자', admin: '관리자',
+  };
+  const roleLabel = ROLE_LABELS[user.role] ?? '담당자';
   const avatarGradient = user.role === 'ceo'
     ? 'linear-gradient(135deg, #7C3AED, #5B21B6)'
     : 'linear-gradient(135deg, #2563EB, #1D4ED8)';
+
+  useEffect(() => {
+    if (!isProfileOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [isProfileOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -418,18 +436,135 @@ export function DashboardHeader({ user, onLogout, notifications, onMarkAllAsRead
         <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--dash-border-btn)' }} />
 
         {/* User */}
-        <div className="flex items-center gap-2.5 rounded-lg" style={{ padding: '5px 10px' }}>
-          <div
-            className="rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ width: '30px', height: '30px', background: avatarGradient, fontSize: '12px', color: 'white', fontWeight: 600 }}
+        <div ref={profileRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            className="flex items-center gap-2.5 rounded-lg"
+            style={{
+              padding: '5px 10px',
+              backgroundColor: isProfileOpen ? 'var(--dash-hover)' : 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'background-color 0.15s',
+            }}
+            onMouseEnter={(e) => { if (!isProfileOpen) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-hover)'; }}
+            onMouseLeave={(e) => { if (!isProfileOpen) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
           >
-            {user.name[0]}
-          </div>
-          <div className="text-left">
-            <div style={{ fontSize: '12px', color: 'var(--dash-text)', lineHeight: 1.2 }}>{user.name}</div>
-            <div style={{ fontSize: '10px', color: 'var(--dash-text-4)', lineHeight: 1.2 }}>{roleLabel}</div>
-          </div>
-          <ChevronDown style={{ width: '13px', height: '13px', color: 'var(--dash-text-4)' }} />
+            <div
+              className="rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ width: '30px', height: '30px', background: avatarGradient, fontSize: '12px', color: 'white', fontWeight: 600 }}
+            >
+              {user.name[0]}
+            </div>
+            <div className="text-left">
+              <div style={{ fontSize: '12px', color: 'var(--dash-text)', lineHeight: 1.2 }}>{user.name}</div>
+              <div style={{ fontSize: '10px', color: 'var(--dash-text-4)', lineHeight: 1.2 }}>{roleLabel}</div>
+            </div>
+            <ChevronDown
+              style={{
+                width: '13px',
+                height: '13px',
+                color: 'var(--dash-text-4)',
+                transform: isProfileOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.2s',
+              }}
+            />
+          </button>
+
+          {isProfileOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 8px)',
+                right: 0,
+                width: '220px',
+                backgroundColor: 'var(--dash-card)',
+                border: '1px solid var(--dash-border)',
+                borderRadius: '12px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                zIndex: 50,
+                overflow: 'hidden',
+              }}
+            >
+              {/* 프로필 요약 */}
+              <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', borderBottom: '1px solid var(--dash-border)' }}>
+                <div
+                  className="rounded-full flex items-center justify-center"
+                  style={{ width: '44px', height: '44px', background: avatarGradient, fontSize: '18px', color: 'white', fontWeight: 700 }}
+                >
+                  {user.name[0]}
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '2px' }}>{user.name}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>@{user.username}</div>
+                </div>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 500,
+                    padding: '2px 10px',
+                    borderRadius: '9999px',
+                    backgroundColor: user.role === 'ceo' ? 'rgba(124,58,237,0.12)' : 'rgba(37,99,235,0.12)',
+                    color: user.role === 'ceo' ? '#7C3AED' : '#2563EB',
+                  }}
+                >
+                  {roleLabel}
+                </span>
+              </div>
+
+              {/* 메뉴 항목 */}
+              <div style={{ padding: '6px' }}>
+                <button
+                  onClick={() => { setIsProfileOpen(false); onNavigate?.('설정'); }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    color: 'var(--dash-text-2)',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-hover)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
+                >
+                프로필 설정
+                </button>
+              </div>
+
+              <div style={{ height: '1px', backgroundColor: 'var(--dash-border)', margin: '0 6px' }} />
+
+              <div style={{ padding: '6px' }}>
+                <button
+                  onClick={() => { setIsProfileOpen(false); onLogout(); }}
+                  style={{
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    color: '#EF4444',
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(239,68,68,0.08)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
+                >
+                  <LogOut style={{ width: '14px', height: '14px' }} />
+                  로그아웃
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 로그아웃 */}

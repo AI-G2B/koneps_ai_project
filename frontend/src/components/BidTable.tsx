@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Calendar, Star, Ban, Inbox, RefreshCw } from 'lucide-react';
+import { Loader2, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Calendar, Inbox, RefreshCw } from 'lucide-react';
 import { formatBudget, isDeadlineUrgent, getDaysUntilDeadline, type Bid, type RiskLevel, type BidFlags, type AiStatusType, TODAY } from '../types';
 import type { AgencySettings } from '../App';
 
@@ -31,18 +31,19 @@ export function RiskBadge({ risk }: { risk: RiskLevel }) {
   };
   const c = config[risk];
   return (
-    <span style={badge(c.bg, c.text)}>
+    <span style={badge(c.bg, c.text, 'sm')}>
       {DOT(c.dot)}{c.label}
     </span>
   );
 }
 
 export function AiStatusIndicator({ status }: { status: AiStatusType }) {
-  if (status === 'none')     return <span style={badge('var(--badge-gray-bg)',   '#81878F')}>{DOT('#81878F')}분석 전</span>;
-  if (status === 'pending')  return <span style={badge('var(--badge-gray-bg)',   '#81878F')}>{DOT('#81878F', true)}대기중</span>;
-  if (status === 'analyzing')return <span style={badge('var(--badge-orange-bg)', '#FFC379')}>{DOT('#FFC379', true)}분석중</span>;
-  if (status === 'failed')   return <span style={badge('rgba(239,68,68,0.12)',   '#EF4444')}>{DOT('#EF4444')}분석 실패</span>;
-  return                            <span style={badge('var(--badge-green-bg)',  '#5BC37E')}>{DOT('#5BC37E')}완료</span>;
+  if (status === 'none')     return <span style={badge('var(--badge-gray-bg)',   '#81878F', 'sm')}>{DOT('#81878F')}분석 전</span>;
+  if (status === 'pending')  return <span style={badge('var(--badge-gray-bg)',   '#81878F', 'sm')}>{DOT('#81878F', true)}대기중</span>;
+  if (status === 'analyzing')return <span style={badge('var(--badge-orange-bg)', '#FFC379', 'sm')}>{DOT('#FFC379', true)}분석중</span>;
+  if (status === 'failed')   return <span style={badge('rgba(239,68,68,0.12)',   '#EF4444', 'sm')}>{DOT('#EF4444')}분석 실패</span>;
+  if (status === 'no_docs')  return <span style={badge('var(--badge-gray-bg)',   '#81878F', 'sm')}>{DOT('#81878F')}문서 없음</span>;
+  return                            <span style={badge('var(--badge-green-bg)',  '#5BC37E', 'sm')}>{DOT('#5BC37E')}완료</span>;
 }
 
 type SortKey = 'budget' | 'deadline' | null;
@@ -357,14 +358,10 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', display: 'block', wordBreak: 'keep-all', overflowWrap: 'break-word', maxWidth: '80px', lineHeight: 1.5 }}>{bid.agency}</span>
         {isPreferred && (
-          <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', marginTop: '2px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#2563EB', display: 'inline-flex' }}>
-            <Star style={{ width: '9px', height: '9px' }} />선호
-          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: '#2563EB', fontWeight: 500, marginTop: '2px' }}>★ 선호기관</span>
         )}
         {isAvoided && (
-          <span className="flex items-center gap-0.5 rounded" style={{ fontSize: '10px', padding: '0 4px', marginTop: '2px', backgroundColor: 'rgba(239,68,68,0.12)', color: '#EF4444', display: 'inline-flex' }}>
-            <Ban style={{ width: '9px', height: '9px' }} />기피
-          </span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: '#EF4444', fontWeight: 500, marginTop: '2px' }}>★ 기피기관</span>
         )}
       </td>
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>

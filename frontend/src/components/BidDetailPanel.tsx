@@ -66,6 +66,7 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
   const aiStatus: AiStatusType = aiStatuses?.[bid.id] ?? bid.aiStatus ?? 'none';
   const isNoneOrPending = aiStatus === 'none' || aiStatus === 'pending';
   const isAnalyzing = aiStatus === 'analyzing';
+  const isNoDocs = aiStatus === 'no_docs';
   const showLoadingOverlay = detailLoading;
 
   const AI_ITEMS = detail ? [
@@ -95,9 +96,9 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
       {/* 헤더 */}
       <div className="flex-shrink-0" style={{ padding: ceoMode ? '10px 20px 12px' : '16px 20px', borderBottom: '1px solid var(--dash-border)', background: 'var(--dash-panel-header)' }}>
         <div className="flex items-center gap-2 mb-2.5">
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: isAnalyzing ? 'var(--badge-orange-bg)' : isNoneOrPending ? 'var(--badge-gray-bg)' : 'var(--badge-green-bg)', color: isAnalyzing ? '#FFC379' : isNoneOrPending ? '#81878F' : '#5BC37E', whiteSpace: 'nowrap', flexShrink: 0 }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: isAnalyzing ? '#FFC379' : isNoneOrPending ? '#81878F' : '#5BC37E', flexShrink: 0, display: 'inline-block', ...(isAnalyzing || aiStatus === 'pending' ? { animation: 'pulse 1.2s ease-in-out infinite' } : {}) }} />
-            {isAnalyzing ? 'AI 분석 중' : isNoneOrPending ? '분석 전' : 'AI 분석 완료'}
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: isAnalyzing ? 'var(--badge-orange-bg)' : (isNoneOrPending || isNoDocs) ? 'var(--badge-gray-bg)' : 'var(--badge-green-bg)', color: isAnalyzing ? '#FFC379' : (isNoneOrPending || isNoDocs) ? '#81878F' : '#5BC37E', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: isAnalyzing ? '#FFC379' : (isNoneOrPending || isNoDocs) ? '#81878F' : '#5BC37E', flexShrink: 0, display: 'inline-block', ...(isAnalyzing || aiStatus === 'pending' ? { animation: 'pulse 1.2s ease-in-out infinite' } : {}) }} />
+            {isAnalyzing ? 'AI 분석 중' : isNoDocs ? '문서 없음' : isNoneOrPending ? '분석 전' : 'AI 분석 완료'}
           </span>
           <RiskBadge risk={bid.risk} />
           <div className="flex items-center gap-1.5 ml-auto">
@@ -170,8 +171,8 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
           <InfoCell label="사업 유형" value={bid.type} />
           <InfoCell label="추정가격" value={bid.presmptPrce != null ? formatBudget(bid.presmptPrce) : '-'} valueStyle={{ fontSize: '14px', fontWeight: 700, color: '#F59E0B' }} />
           <InfoCell label="배정예산" value={bid.asignBdgtAmt != null ? formatBudget(bid.asignBdgtAmt) : '-'} valueStyle={{ fontSize: '14px', fontWeight: 700, color: '#F59E0B' }} />
-          <InfoCell label="마감일" value={bid.deadline ? `${bid.deadline.substring(5)} ${isNaN(daysLeft) ? '(기간 미정)' : `(${daysLeft}일 후)`}` : '기간 미정'} valueStyle={{ color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }} />
           <InfoCell label="공고일" value={bid.ntceDate ? bid.ntceDate.replace(/-/g, '.') : '-'} />
+          <InfoCell label="마감일" value={bid.deadline ? `${bid.deadline.substring(5)} ${isNaN(daysLeft) ? '(기간 미정)' : `(${daysLeft}일 후)`}` : '기간 미정'} valueStyle={{ color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }} />
         </div>
       </div>
 

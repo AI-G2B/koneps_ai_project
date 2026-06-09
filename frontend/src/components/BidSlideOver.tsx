@@ -316,15 +316,15 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                   : { fontSize: '13px', fontWeight: 700, color: '#F59E0B' }}
               />
               <InfoCell
+                label="공고일"
+                value={bid.ntceDate ? bid.ntceDate.replace(/-/g, '.') : '-'}
+              />
+              <InfoCell
                 label="마감일"
                 value={`${bid.deadline.substring(5)} (${daysLeft}일 후)`}
                 valueStyle={ceoMode
                   ? { fontSize: '16px', fontWeight: 700, color: isUrgent ? '#EF4444' : 'var(--dash-text-2)' }
                   : { color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }}
-              />
-              <InfoCell
-                label="공고일"
-                value={bid.ntceDate ? bid.ntceDate.replace(/-/g, '.') : '-'}
               />
             </div>
           </div>

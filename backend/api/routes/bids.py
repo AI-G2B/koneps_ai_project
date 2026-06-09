@@ -208,6 +208,7 @@ class BidDetailResponse(BaseModel):
     openg_dt: datetime | None  # 개찰일시
     bid_ntce_dtl_url: str | None  # 나라장터 공고 원문 URL
     pipeline_status: str
+    parse_error_msg: str | None = None
     collected_at: datetime | None
     attachments: list[AttachmentSchema] = []
     analysis_result: AnalysisResultSchema | None = None

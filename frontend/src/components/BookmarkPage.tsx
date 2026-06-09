@@ -13,7 +13,7 @@ interface BookmarkPageProps {
 }
 
 export function BookmarkPage({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onSelectBid, selectedBid }: BookmarkPageProps) {
-  const bookmarkedBids = bids.filter((b) => bidFlags[b.id]?.bookmarked ?? false);
+  const bookmarkedBids = bids.filter((b) => (bidFlags[b.id]?.bookmarked ?? false) && getDaysUntilDeadline(b.deadline) >= 0);
 
   return (
     <div className="flex gap-4" style={{ flex: 1, minHeight: 0 }}>

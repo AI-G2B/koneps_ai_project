@@ -45,6 +45,7 @@ import {
   setAuthToken,
   fetchAgencySettings,
   saveAgencySettings,
+  updateProfileApi,
   type ApiDashboardStats,
   type ApiTypeStatItem,
 } from './services/api';
@@ -181,6 +182,7 @@ export default function App() {
 
   const handleSync = async () => {
     setIsFetching(true);
+    const prevBidIds = new Set(bids.map(b => b.id));
     try {
       await collectBidsApi();
       const [{ bids: fetchedBids, flags }, stats, types] = await Promise.all([
@@ -190,6 +192,12 @@ export default function App() {
       ]);
       setBids(fetchedBids);
       syncAiStatusesFromList(fetchedBids);
+      // 신규 수집 공고 중 아직 'none'인 것: 백엔드 async task가 분석을 시작하면 폴링으로 감지
+      for (const bid of fetchedBids) {
+        if (!prevBidIds.has(bid.id) && (aiStatusesRef.current[bid.id] ?? 'none') === 'none') {
+          requestAnalysis(bid.id, { force: true });
+        }
+      }
       setBidFlags(prev => {
         const merged = { ...prev };
         Object.entries(flags).forEach(([id, flag]) => {
@@ -332,8 +340,17 @@ export default function App() {
           return;
         }
         if (pipelineStatus === 'failed') {
-          aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: 'none' };
-          setAiStatuses(prev => ({ ...prev, [bidId]: 'none' }));
+          try {
+            const detailed = await fetchBidById(bidId);
+            setBids(prev => prev.map(b => b.id === bidId ? { ...b, ...detailed } : b));
+            setSelectedBid(prev => (prev && prev.id === bidId) ? detailed : prev);
+            setAnalysisDetailBid(prev => (prev && prev.id === bidId) ? detailed : prev);
+            aiStatusesRef.current = { ...aiStatusesRef.current, [bidId]: detailed.aiStatus };
+            setAiStatuses(prev => ({ ...prev, [bidId]: detailed.aiStatus }));
+          } catch {
+            delete aiStatusesRef.current[bidId];
+            setAiStatuses(prev => { const next = { ...prev }; delete next[bidId]; return next; });
+          }
           showToast('warning', `AI 분석이 실패했습니다 — ${bids.find(b => b.id === bidId)?.title ?? bidId}`);
           delete analysisTimers.current[bidId];
           return;
@@ -681,6 +698,21 @@ const toggleBookmark = (bidId: string) => {
     setUser(null);
   };
 
+  const handleUpdateProfile = async (name: string, currentPw?: string, newPw?: string, position?: string) => {
+    const result = await updateProfileApi(
+      name !== user?.name ? name : undefined,
+      currentPw,
+      newPw,
+      position,
+    );
+    if (result === 'timeout') throw new Error('서버 응답 시간이 초과되었습니다.');
+    if ('error' in result) throw new Error(result.error);
+    const updated = { ...user!, name: result.name, role: result.role as typeof user.role };
+    setUser(updated);
+    sessionStorage.setItem('koneps_user', JSON.stringify(updated));
+    showToast('success', '프로필이 업데이트되었습니다');
+  };
+
   if (!user) {
     return <LoginPage onLogin={handleLogin} loginError={loginError} />;
   }
@@ -716,6 +748,7 @@ const toggleBookmark = (bidId: string) => {
         <DashboardHeader
           user={user}
           onLogout={() => { setAuthToken(null); sessionStorage.removeItem('koneps_user'); sessionStorage.removeItem('koneps_analysis_logs'); setUser(null); }}
+          onNavigate={setActivePage}
           notifications={notifications}
           onMarkAllAsRead={markAllAsRead}
           onMarkAsRead={markAsRead}
@@ -765,6 +798,8 @@ const toggleBookmark = (bidId: string) => {
                 }
               }}
               agencyList={[...new Set(bids.map(b => b.agency).filter(Boolean))].sort()}
+              user={user}
+              onUpdateProfile={handleUpdateProfile}
             />
           ) : activePage === '공고 목록' ? (
             <BidListPage
@@ -780,6 +815,7 @@ const toggleBookmark = (bidId: string) => {
               onRequestOutline={requestOutline}
               onDownloadOutline={downloadOutlineExcel}
               onUpdateManagers={updateBidManagers}
+              agencySettings={agencySettings}
             />
           ) : activePage === 'AI 분석' ? (
             <AnalysisListPage
@@ -789,6 +825,7 @@ const toggleBookmark = (bidId: string) => {
               onOpenAnalysisDetail={openAnalysisDetail}
               onToggleBookmark={toggleBookmark}
               onToggleInProgress={toggleInProgress}
+              onUpdateManagers={updateBidManagers}
             />
           ) : activePage === '관심 공고' ? (
             <BookmarkPage
@@ -889,6 +926,7 @@ const toggleBookmark = (bidId: string) => {
                   onRequestOutline={requestOutline}
                   onDownloadOutline={downloadOutlineExcel}
                   onUpdateManagers={updateBidManagers}
+                  agencySettings={agencySettings}
                 />
               </div>
               <BottomWidgets
