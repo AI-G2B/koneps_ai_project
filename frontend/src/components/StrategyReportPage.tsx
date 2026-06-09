@@ -1,6 +1,6 @@
 import { AlertTriangle, Briefcase, TrendingUp, Clock, DollarSign } from 'lucide-react';
 import { type Bid, type BidFlags, formatBudget, getDaysUntilDeadline } from '../types';
-import { RiskBadge } from './BidTable';
+
 
 interface StrategyReportPageProps {
   bids: Bid[];
@@ -81,8 +81,11 @@ export function StrategyReportPage({ bids, bidFlags }: StrategyReportPageProps) 
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ backgroundColor: 'var(--dash-card-deep)' }}>
-                {['공고명', '발주기관', '예산', '마감일', '위험도'].map(col => (
+                {['공고명', '발주기관', '예산', '마감일'].map(col => (
                   <th key={col} style={{ padding: '9px 14px', textAlign: 'left', fontSize: '11px', color: 'var(--dash-text-4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', borderBottom: '1px solid var(--dash-border)' }}>{col}</th>
+                ))}
+                {['진행 담당자', 'PM', '시작일'].map((col, i) => (
+                  <th key={col} style={{ padding: '9px 14px', textAlign: 'left', fontSize: '11px', color: 'var(--dash-text-4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', borderBottom: '1px solid var(--dash-border)', backgroundColor: 'rgba(124,58,237,0.04)', borderLeft: i === 0 ? '1px solid var(--dash-border)' : undefined }}>{col}</th>
                 ))}
               </tr>
             </thead>
@@ -100,7 +103,9 @@ export function StrategyReportPage({ bids, bidFlags }: StrategyReportPageProps) 
                     <td style={{ padding: '10px 14px', fontSize: '12px', color: daysLeft < 0 ? 'var(--dash-text-4)' : urgent ? '#F27A75' : 'var(--dash-text-2)', fontWeight: daysLeft < 0 ? 400 : urgent ? 600 : 400, whiteSpace: 'nowrap' }}>
                       {!bid.deadline || daysLeft >= 9999 ? '기간미정' : `${bid.deadline.substring(5)}${daysLeft < 0 ? ' (마감)' : urgent ? ` (D-${daysLeft})` : ''}`}
                     </td>
-                    <td style={{ padding: '10px 14px' }}><RiskBadge risk={bid.risk} /></td>
+                    <td style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--dash-text-3)', whiteSpace: 'nowrap', width: '80px', backgroundColor: 'rgba(124,58,237,0.03)', borderLeft: '1px solid var(--dash-border)' }}>{bid.salesManager ?? '-'}</td>
+                    <td style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--dash-text-3)', whiteSpace: 'nowrap', width: '80px', backgroundColor: 'rgba(124,58,237,0.03)' }}>{bid.projectPm ?? '-'}</td>
+                    <td style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--dash-text-3)', whiteSpace: 'nowrap', width: '80px', backgroundColor: 'rgba(124,58,237,0.03)' }}>{bid.inProgressAt ? bid.inProgressAt.substring(5) : '-'}</td>
                   </tr>
                 );
               })}
