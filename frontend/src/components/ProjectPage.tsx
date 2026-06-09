@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Briefcase, Building2, Banknote, Calendar, ChevronLeft, ChevronRight, X, FileText } from 'lucide-react';
+import { Briefcase, Building2, Banknote, Calendar, ChevronLeft, ChevronRight, X, FileText, ChevronUp, ChevronDown } from 'lucide-react';
 import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from '../types';
 import { RiskBadge, AiStatusIndicator } from './BidTable';
 import { BidDetailPanel } from './BidDetailPanel';
@@ -100,6 +100,9 @@ export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedB
   );
 }
 
+type SortKey = 'deadline' | 'ntceDate';
+type SortDir = 'asc' | 'desc';
+
 function CardList({ inProgressBids, onSelectBid, selectedBid, aiStatuses, onUpdateManagers }: {
   inProgressBids: Bid[];
   onSelectBid: (bid: Bid) => void;
@@ -107,6 +110,34 @@ function CardList({ inProgressBids, onSelectBid, selectedBid, aiStatuses, onUpda
   aiStatuses?: Record<string, AiStatusType>;
   onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
 }) {
+  const [sortKey, setSortKey] = useState<SortKey>('deadline');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  const sorted = [...inProgressBids].sort((a, b) => {
+    const aVal = sortKey === 'deadline' ? a.deadline : (a.ntceDate ?? a.collectedAt ?? '');
+    const bVal = sortKey === 'deadline' ? b.deadline : (b.ntceDate ?? b.collectedAt ?? '');
+    const cmp = aVal.localeCompare(bVal);
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  const SortBtn = ({ k, label }: { k: SortKey; label: string }) => {
+    const active = sortKey === k;
+    return (
+      <button
+        onClick={() => handleSort(k)}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '3px 8px', borderRadius: '6px', border: `1px solid ${active ? 'rgba(34,197,94,0.4)' : 'var(--dash-border)'}`, backgroundColor: active ? 'rgba(34,197,94,0.08)' : 'transparent', color: active ? '#22C55E' : 'var(--dash-text-4)', fontSize: '11px', cursor: 'pointer', fontWeight: active ? 600 : 400 }}
+      >
+        {label}
+        {active ? (sortDir === 'asc' ? <ChevronUp style={{ width: '11px', height: '11px' }} /> : <ChevronDown style={{ width: '11px', height: '11px' }} />) : null}
+      </button>
+    );
+  };
+
   return (
     <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', borderRadius: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', overflow: 'hidden' }}>
       {/* 헤더 */}
@@ -116,15 +147,19 @@ function CardList({ inProgressBids, onSelectBid, selectedBid, aiStatuses, onUpda
         <span style={{ fontSize: '11px', padding: '1px 8px', borderRadius: '9999px', backgroundColor: 'rgba(34,197,94,0.15)', color: '#22C55E' }}>
           {inProgressBids.length}건
         </span>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+          <SortBtn k="deadline" label="마감일" />
+          <SortBtn k="ntceDate" label="공고일" />
+        </div>
       </div>
 
       {/* 목록 */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '12px', scrollbarWidth: 'thin', scrollbarColor: 'var(--dash-scrollbar) transparent' }}>
-        {inProgressBids.length === 0 ? (
+        {sorted.length === 0 ? (
           <EmptyState />
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {inProgressBids.map((bid) => (
+            {sorted.map((bid) => (
               <ProjectCard
                 key={bid.id}
                 bid={bid}
@@ -254,11 +289,11 @@ function ProjectCard({ bid, isSelected, onSelect, aiStatus, onUpdateManagers }: 
           <Banknote style={{ width: '12px', height: '12px', color: 'var(--dash-icon-off)', flexShrink: 0 }} />
           {formatBudget(bid.budget)}
         </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: isNaN(daysLeft) ? 'var(--dash-text-3)' : daysLeft < 0 ? 'var(--dash-text-3)' : urgent ? '#EF4444' : 'var(--dash-text-3)', fontWeight: isNaN(daysLeft) ? 400 : daysLeft < 0 ? 400 : urgent ? 600 : 400 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: (isNaN(daysLeft) || daysLeft >= 9999) ? 'var(--dash-text-3)' : daysLeft < 0 ? 'var(--dash-text-3)' : urgent ? '#EF4444' : 'var(--dash-text-3)', fontWeight: (isNaN(daysLeft) || daysLeft >= 9999) ? 400 : daysLeft < 0 ? 400 : urgent ? 600 : 400 }}>
           <Calendar style={{ width: '12px', height: '12px', flexShrink: 0 }} />
           {bid.deadline ? bid.deadline.substring(5) : ''}
-          <span style={{ fontSize: '10px', padding: '0 5px', marginLeft: '2px', borderRadius: '9999px', backgroundColor: isNaN(daysLeft) ? 'rgba(129,135,143,0.12)' : daysLeft < 0 ? 'rgba(129,135,143,0.12)' : urgent ? 'rgba(239,68,68,0.15)' : 'rgba(37,99,235,0.1)', color: isNaN(daysLeft) ? '#81878F' : daysLeft < 0 ? '#81878F' : urgent ? '#EF4444' : '#60A5FA' }}>
-            {isNaN(daysLeft) ? '기간 미정' : daysLeft < 0 ? '마감' : `D-${daysLeft}`}
+          <span style={{ fontSize: '10px', padding: '0 5px', marginLeft: '2px', borderRadius: '9999px', backgroundColor: (isNaN(daysLeft) || daysLeft >= 9999) ? 'rgba(129,135,143,0.12)' : daysLeft < 0 ? 'rgba(129,135,143,0.12)' : urgent ? 'rgba(239,68,68,0.15)' : 'rgba(37,99,235,0.1)', color: (isNaN(daysLeft) || daysLeft >= 9999) ? '#81878F' : daysLeft < 0 ? '#81878F' : urgent ? '#EF4444' : '#60A5FA' }}>
+            {(isNaN(daysLeft) || daysLeft >= 9999) ? '기간 미정' : daysLeft < 0 ? '마감' : `D-${daysLeft}`}
           </span>
         </span>
         <AiStatusIndicator status={aiStatus} />

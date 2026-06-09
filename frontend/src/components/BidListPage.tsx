@@ -6,7 +6,9 @@ import {
 } from 'lucide-react';
 import { type Bid, type BidFlags, type AiStatusType, type AnalysisLog, formatBudget, getDaysUntilDeadline, isDeadlineUrgent, TODAY } from '../types';
 import { BidSlideOver } from './BidSlideOver';
+import { AiStatusIndicator } from './BidTable';
 import { fetchBidById } from '../services/api';
+import type { AgencySettings } from '../App';
 
 type DateFilter = 'today' | 'yesterday' | '3days' | '1week' | 'all';
 type StatusFilter = 'all' | 'urgent' | 'danger';
@@ -41,9 +43,10 @@ interface BidListPageProps {
   onDownloadOutline?: (bidId: string) => void;
   onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
   showBidNumber?: boolean;
+  agencySettings?: AgencySettings;
 }
 
-export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false, analysisLogsMap, outlineStatusMap, onRequestOutline, onDownloadOutline, onUpdateManagers, showBidNumber = false }: BidListPageProps) {
+export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, hideTargetList = false, analysisLogsMap, outlineStatusMap, onRequestOutline, onDownloadOutline, onUpdateManagers, showBidNumber = false, agencySettings }: BidListPageProps) {
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [isSlideOpen, setIsSlideOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('bookmarked');
@@ -115,6 +118,8 @@ export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onTo
           selectedBid={selectedBid}
           onOpenSlide={openSlide}
           showBidNumber={showBidNumber}
+          agencySettings={agencySettings}
+          aiStatuses={aiStatuses}
         />
         {!hideTargetList && (
           <>
@@ -129,6 +134,7 @@ export function BidListPage({ bids, bidFlags, aiStatuses, onToggleBookmark, onTo
               setActiveTab={setActiveTab}
               focusBidId={focusBidId}
               removingIds={removingIds}
+              agencySettings={agencySettings}
             />
           </>
         )}
@@ -161,7 +167,7 @@ interface LeftPanelProps extends BidListPageProps {
   onOpenSlide: (bid: Bid) => void;
 }
 
-function LeftPanel({ bids, bidFlags, selectedBid, onOpenSlide, showBidNumber = false }: LeftPanelProps) {
+function LeftPanel({ bids, bidFlags, selectedBid, onOpenSlide, showBidNumber = false, agencySettings, aiStatuses }: LeftPanelProps) {
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const excludeExpired = true;
@@ -257,6 +263,7 @@ function LeftPanel({ bids, bidFlags, selectedBid, onOpenSlide, showBidNumber = f
                 { label: '발주기관', width: '96px' },
                 { label: '예산', width: '68px' },
                 { label: '마감일', width: '82px' },
+                { label: 'AI분석', width: '80px' },
               ].map((col) => (
                 <th
                   key={col.label}
@@ -294,6 +301,8 @@ function LeftPanel({ bids, bidFlags, selectedBid, onOpenSlide, showBidNumber = f
                   flags={bidFlags[bid.id] ?? { bookmarked: false, inProgress: false }}
                   onSelect={() => onOpenSlide(bid)}
                   showBidNumber={showBidNumber}
+                  agencySettings={agencySettings}
+                  aiStatus={aiStatuses?.[bid.id] ?? 'none'}
                 />
               ))
             )}
@@ -308,17 +317,21 @@ function LeftPanel({ bids, bidFlags, selectedBid, onOpenSlide, showBidNumber = f
   );
 }
 
-function LeftRow({ bid, isSelected, flags, onSelect, showBidNumber = false }: {
+function LeftRow({ bid, isSelected, flags, onSelect, showBidNumber = false, agencySettings, aiStatus }: {
   bid: Bid;
   isSelected: boolean;
   flags: BidFlags;
   onSelect: () => void;
   showBidNumber?: boolean;
+  agencySettings?: AgencySettings;
+  aiStatus?: AiStatusType;
 }) {
   const [hovered, setHovered] = useState(false);
   const [tooltip, setTooltip] = useState<{ x: number; y: number } | null>(null);
   const urgent = isDeadlineUrgent(bid.deadline);
   const daysLeft = getDaysUntilDeadline(bid.deadline);
+  const isPreferred = agencySettings?.preferred?.includes(bid.agency ?? '') ?? false;
+  const isAvoided = agencySettings?.avoided?.includes(bid.agency ?? '') ?? false;
   const rowBg = isSelected ? 'rgba(37,99,235,0.08)' : hovered ? 'var(--dash-row-hover)' : 'transparent';
 
   return (
@@ -374,7 +387,15 @@ function LeftRow({ bid, isSelected, flags, onSelect, showBidNumber = false }: {
         </div>
       </td>
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>
-        <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', display: 'block', wordBreak: 'keep-all', overflowWrap: 'break-word', maxWidth: '96px', lineHeight: 1.5 }}>{bid.agency}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+          <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', display: 'block', wordBreak: 'keep-all', overflowWrap: 'break-word', maxWidth: '96px', lineHeight: 1.5 }}>{bid.agency ?? '-'}</span>
+          {isPreferred && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: '#2563EB', fontWeight: 500 }}>★ 선호기관</span>
+          )}
+          {isAvoided && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '10px', color: '#EF4444', fontWeight: 500 }}>★ 기피기관</span>
+          )}
+        </div>
       </td>
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <span style={{ fontSize: '13px', color: 'var(--dash-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>{formatBudget(bid.budget)}</span>
@@ -396,6 +417,9 @@ function LeftRow({ bid, isSelected, flags, onSelect, showBidNumber = false }: {
             </span>
           </div>
         ) : null}
+      </td>
+      <td style={{ padding: '8px 12px', verticalAlign: 'middle', width: '80px' }}>
+        <AiStatusIndicator status={aiStatus ?? 'none'} />
       </td>
     </tr>
     {tooltip && createPortal(
@@ -433,10 +457,10 @@ interface RightPanelProps extends BidListPageProps {
   removingIds: Set<string>;
 }
 
-function RightPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onOpenSlide, activeTab, setActiveTab, focusBidId, removingIds }: RightPanelProps) {
+function RightPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onOpenSlide, activeTab, setActiveTab, focusBidId, removingIds, agencySettings }: RightPanelProps) {
   const cardListRef = useRef<HTMLDivElement>(null);
 
-  const bookmarkedBids = bids.filter((b) => bidFlags[b.id]?.bookmarked ?? false);
+  const bookmarkedBids = bids.filter((b) => (bidFlags[b.id]?.bookmarked ?? false) && getDaysUntilDeadline(b.deadline) >= 0);
   const inProgressBids = bids.filter((b) => bidFlags[b.id]?.inProgress ?? false);
   const listBids = activeTab === 'bookmarked' ? bookmarkedBids : inProgressBids;
 
@@ -514,6 +538,7 @@ function RightPanel({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onOp
                 onToggleBookmark={onToggleBookmark}
                 onToggleInProgress={onToggleInProgress}
                 onOpenSlide={onOpenSlide}
+                agencySettings={agencySettings}
               />
             ))}
           </div>
@@ -553,7 +578,7 @@ function RightEmptyState({ tab }: { tab: TabType }) {
   );
 }
 
-function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInProgress, onOpenSlide }: {
+function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInProgress, onOpenSlide, agencySettings }: {
   bid: Bid;
   flags: BidFlags;
   tab: TabType;
@@ -561,9 +586,12 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
   onOpenSlide: (bid: Bid) => void;
+  agencySettings?: AgencySettings;
 }) {
   const daysLeft = getDaysUntilDeadline(bid.deadline);
   const urgent = isDeadlineUrgent(bid.deadline);
+  const isPreferred = agencySettings?.preferred?.includes(bid.agency ?? '') ?? false;
+  const isAvoided = agencySettings?.avoided?.includes(bid.agency ?? '') ?? false;
 
   return (
     <div
@@ -605,7 +633,9 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
       <div className="flex items-center flex-wrap" style={{ gap: '8px', marginBottom: '8px' }}>
         <span className="flex items-center gap-1" style={{ fontSize: '11px', color: 'var(--dash-text-3)' }}>
           <Building2 style={{ width: '10px', height: '10px', color: 'var(--dash-text-4)', flexShrink: 0 }} />
-          {bid.agency}
+          {bid.agency ?? '-'}
+          {isPreferred && <span style={{ fontSize: '10px', color: '#2563EB', fontWeight: 500, marginLeft: '2px' }}>★</span>}
+          {isAvoided && <span style={{ fontSize: '10px', color: '#EF4444', fontWeight: 500, marginLeft: '2px' }}>★</span>}
         </span>
         <span className="flex items-center gap-1" style={{ fontSize: '11px', color: 'var(--dash-text-3)' }}>
           <Banknote style={{ width: '10px', height: '10px', color: 'var(--dash-text-4)', flexShrink: 0 }} />
@@ -619,7 +649,8 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
           {bid.deadline.substring(5)}
           {urgent && (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />D-{daysLeft}
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />
+              {daysLeft >= 0 ? `D-${daysLeft}` : `D+${Math.abs(daysLeft)}`}
             </span>
           )}
         </span>

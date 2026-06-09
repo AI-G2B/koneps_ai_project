@@ -181,6 +181,7 @@ export default function App() {
 
   const handleSync = async () => {
     setIsFetching(true);
+    const prevBidIds = new Set(bids.map(b => b.id));
     try {
       await collectBidsApi();
       const [{ bids: fetchedBids, flags }, stats, types] = await Promise.all([
@@ -190,6 +191,12 @@ export default function App() {
       ]);
       setBids(fetchedBids);
       syncAiStatusesFromList(fetchedBids);
+      // 신규 수집 공고 중 아직 'none'인 것: 백엔드 async task가 분석을 시작하면 폴링으로 감지
+      for (const bid of fetchedBids) {
+        if (!prevBidIds.has(bid.id) && (aiStatusesRef.current[bid.id] ?? 'none') === 'none') {
+          requestAnalysis(bid.id, { force: true });
+        }
+      }
       setBidFlags(prev => {
         const merged = { ...prev };
         Object.entries(flags).forEach(([id, flag]) => {
@@ -780,6 +787,7 @@ const toggleBookmark = (bidId: string) => {
               onRequestOutline={requestOutline}
               onDownloadOutline={downloadOutlineExcel}
               onUpdateManagers={updateBidManagers}
+              agencySettings={agencySettings}
             />
           ) : activePage === 'AI 분석' ? (
             <AnalysisListPage
@@ -789,6 +797,7 @@ const toggleBookmark = (bidId: string) => {
               onOpenAnalysisDetail={openAnalysisDetail}
               onToggleBookmark={toggleBookmark}
               onToggleInProgress={toggleInProgress}
+              onUpdateManagers={updateBidManagers}
             />
           ) : activePage === '관심 공고' ? (
             <BookmarkPage
@@ -889,6 +898,7 @@ const toggleBookmark = (bidId: string) => {
                   onRequestOutline={requestOutline}
                   onDownloadOutline={downloadOutlineExcel}
                   onUpdateManagers={updateBidManagers}
+                  agencySettings={agencySettings}
                 />
               </div>
               <BottomWidgets
