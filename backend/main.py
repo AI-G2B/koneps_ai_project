@@ -195,7 +195,8 @@ async def lifespan(app: FastAPI):
              WHERE pipeline_status = 'analyzing'
         """))
 
-    scheduler = AsyncIOScheduler()
+    # tzlocal이 못 잡거나 컨테이너 환경에서 UTC로 잡히는 케이스 방어 — 명시적 KST 지정.
+    scheduler = AsyncIOScheduler(timezone="Asia/Seoul")
     # 매일 정해진 시간 자동 수집
     for hour in SCHEDULE_HOURS:
         scheduler.add_job(collect_today, "cron", hour=hour, minute=0, id=f"collect_{hour}")
