@@ -558,8 +558,6 @@ const toggleBookmark = (bidId: string) => {
       const bid = bids.find(b => b.id === bidId);
       if (bid) addNotification({ type: 'inprogress', title: '진행 프로젝트 추가', message: `${bid.title}을 진행 프로젝트에 추가했습니다` });
       requestAnalysis(bidId);
-    } else if (!current.bookmarked) {
-      resetAnalysis(bidId);
     }
   };
 
