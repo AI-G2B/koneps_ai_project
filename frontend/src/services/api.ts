@@ -322,7 +322,7 @@ export async function fetchBids(params?: FetchBidsParams): Promise<{ bids: Bid[]
   try {
     // BASE_URL이 상대경로("/api")일 수도 있어 base 인자를 명시 (절대 URL이면 base는 무시됨).
     const url = new URL(`${BASE_URL}/bids`, window.location.origin);
-    url.searchParams.set('limit', String(params?.limit ?? 100));
+    url.searchParams.set('limit', String(params?.limit ?? 500));
     if (params?.offset != null)
       url.searchParams.set('offset', String(params.offset));
     if (params?.date_from) url.searchParams.set('date_from', params.date_from);
@@ -550,19 +550,20 @@ export interface ApiLoginResponse extends ApiUser {
   token_type: string;
 }
 
-export async function loginApi(username: string, password: string): Promise<ApiLoginResponse | null> {
+export async function loginApi(username: string, password: string): Promise<ApiLoginResponse | null | 'timeout'> {
   try {
     // 로그인은 토큰 없이 호출해야 하므로 raw fetch 사용.
     const res = await fetch(`${BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(30_000),
     });
     if (!res.ok) return null;
     return await res.json();
   } catch (err) {
     console.warn('[api] loginApi 실패:', err);
+    if (err instanceof DOMException && err.name === 'TimeoutError') return 'timeout';
     return null;
   }
 }

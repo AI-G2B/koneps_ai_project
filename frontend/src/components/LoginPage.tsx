@@ -11,19 +11,19 @@ export interface User {
 }
 
 const TEST_ACCOUNTS = [
-  { label: '담당자', username: 'manager01', password: '1234' },
-  { label: '담당자', username: 'manager02', password: '1234' },
-  { label: '담당자', username: 'manager03', password: '1234' },
-  { label: 'CEO',   username: 'ceo01',     password: '1234' },
+  { label: "담당자", username: "manager01", password: "1234" },
+  { label: "담당자", username: "manager02", password: "1234" },
+  { label: "담당자", username: "manager03", password: "1234" },
+  { label: "CEO", username: "ceo01", password: "1234" },
+  { label: "관리자", username: "admin01", password: "1234" },
 ];
 
 interface LoginPageProps {
   onLogin: (username: string, password: string) => Promise<void>;
   loginError?: string;
-  onDirectLogin?: (user: User) => void;
 }
 
-export function LoginPage({ onLogin, loginError, onDirectLogin }: LoginPageProps) {
+export function LoginPage({ onLogin, loginError }: LoginPageProps) {
   const [id, setId] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -32,6 +32,15 @@ export function LoginPage({ onLogin, loginError, onDirectLogin }: LoginPageProps
   const handleLogin = async () => {
     setLoading(true);
     await onLogin(id, password);
+    setLoading(false);
+  };
+
+  const handleAdminLogin = async () => {
+    if (loading) return;
+    setId('admin01');
+    setPassword('1234');
+    setLoading(true);
+    await onLogin('admin01', '1234');
     setLoading(false);
   };
 
@@ -84,10 +93,10 @@ export function LoginPage({ onLogin, loginError, onDirectLogin }: LoginPageProps
             ))}
             <div
               className="flex items-center gap-3 rounded-xl"
-              style={{ padding: '14px 16px', backgroundColor: 'rgba(71,85,105,0.08)', border: '1px solid rgba(71,85,105,0.25)', cursor: onDirectLogin ? 'pointer' : 'default', transition: 'opacity 0.15s' }}
-              onClick={() => onDirectLogin?.({ id: 0, username: 'admin', name: '관리자', role: 'admin' })}
-              onMouseEnter={(e) => { if (onDirectLogin) (e.currentTarget as HTMLDivElement).style.opacity = '0.8'; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}
+              style={{ padding: '14px 16px', backgroundColor: 'rgba(71,85,105,0.08)', border: '1px solid rgba(71,85,105,0.25)', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1, transition: 'opacity 0.15s' }}
+              onClick={handleAdminLogin}
+              onMouseEnter={(e) => { if (!loading) (e.currentTarget as HTMLDivElement).style.opacity = '0.8'; }}
+              onMouseLeave={(e) => { if (!loading) (e.currentTarget as HTMLDivElement).style.opacity = '1'; }}
             >
               <div className="rounded-lg flex items-center justify-center flex-shrink-0" style={{ width: '36px', height: '36px', backgroundColor: 'rgba(71,85,105,0.15)' }}>
                 <ShieldCheck style={{ width: '18px', height: '18px', color: '#475569' }} />
@@ -124,7 +133,7 @@ export function LoginPage({ onLogin, loginError, onDirectLogin }: LoginPageProps
               type="text"
               value={id}
               onChange={(e) => setId(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !loading) handleLogin(); }}
               placeholder="아이디를 입력하세요"
               style={{
                 padding: '10px 14px',
@@ -146,7 +155,7 @@ export function LoginPage({ onLogin, loginError, onDirectLogin }: LoginPageProps
                 type={showPw ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !loading) handleLogin(); }}
                 placeholder="비밀번호를 입력하세요"
                 style={{
                   width: '100%',
