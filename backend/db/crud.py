@@ -427,6 +427,28 @@ async def create_user(db: AsyncSession, username: str, hashed_pw: str, name: str
     return user
 
 
+async def update_user_profile(
+    db: AsyncSession,
+    user_id: int,
+    name: str | None,
+    hashed_pw: str | None,
+    role: str | None = None,
+) -> User | None:
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        return None
+    if name is not None:
+        user.name = name
+    if hashed_pw is not None:
+        user.password = hashed_pw
+    if role is not None:
+        user.role = role
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
 # notice_memos
 async def get_memo_by_notice_id(db: AsyncSession, notice_id: int) -> NoticeMemo | None:
     result = await db.execute(

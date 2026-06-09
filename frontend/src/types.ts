@@ -1,5 +1,5 @@
 export type RiskLevel = 'danger' | 'caution' | 'good';
-export type AiStatusType = 'none' | 'pending' | 'analyzing' | 'complete' | 'failed';
+export type AiStatusType = 'none' | 'pending' | 'analyzing' | 'complete' | 'failed' | 'no_docs';
 export type BidType = 'ISP' | 'ISMP' | '기타';
 
 export interface BidFlags {

@@ -14,6 +14,7 @@ from backend.db.crud import (
     get_agency_settings,
     get_user_by_username,
     save_agency_settings,
+    update_user_profile,
 )
 from backend.db.database import get_db
 from backend.db.models import User
@@ -53,15 +54,14 @@ class RegisterRequest(BaseModel):
     username: str
     password: str
     name: str
-    position: str  # CEO | PM | 영업담당자 | 입찰담당자 | 법무담당자
+    position: str  # CEO | PM | 영업담당자 | 입찰담당자
 
 
 POSITION_TO_ROLE = {
     "CEO": "ceo",
-    "PM": "manager",
-    "영업담당자": "manager",
-    "입찰담당자": "manager",
-    "법무담당자": "manager",
+    "PM": "pm",
+    "영업담당자": "영업담당자",
+    "입찰담당자": "입찰담당자",
 }
 
 
@@ -133,3 +133,51 @@ async def register(request: Request, body: RegisterRequest, db: AsyncSession = D
 async def me(current: User = Depends(get_current_user)) -> UserInfo:
     """토큰 검증 + 현재 사용자 정보 반환 (프런트 부팅 시 토큰 유효성 확인용)."""
     return UserInfo(id=current.id, username=current.username, name=current.name, role=current.role)
+
+
+class UpdateProfileRequest(BaseModel):
+    name: str | None = None
+    current_password: str | None = None
+    new_password: str | None = None
+    position: str | None = None  # CEO | PM | 영업담당자 | 입찰담당자 | 법무담당자
+
+
+@router.patch("/profile", response_model=UserInfo)
+async def update_profile(
+    body: UpdateProfileRequest,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """이름, 비밀번호, 직급을 변경한다."""
+    new_name = None
+    new_hashed = None
+    new_role = None
+
+    if body.name is not None:
+        body.name = body.name.strip()
+        if not body.name:
+            raise HTTPException(status_code=400, detail="이름은 비워둘 수 없습니다.")
+        new_name = body.name
+
+    if body.new_password is not None:
+        if not body.current_password:
+            raise HTTPException(status_code=400, detail="현재 비밀번호를 입력해주세요.")
+        if not verify_password(body.current_password, current.password):
+            raise HTTPException(status_code=400, detail="현재 비밀번호가 올바르지 않습니다.")
+        if len(body.new_password) < 4:
+            raise HTTPException(status_code=400, detail="새 비밀번호는 4자 이상이어야 합니다.")
+        new_hashed = hash_password(body.new_password)
+
+    if body.position is not None:
+        mapped = POSITION_TO_ROLE.get(body.position)
+        if mapped is None:
+            raise HTTPException(status_code=400, detail="유효하지 않은 직급입니다.")
+        new_role = mapped
+
+    if new_name is None and new_hashed is None and new_role is None:
+        raise HTTPException(status_code=400, detail="변경할 정보를 입력해주세요.")
+
+    updated = await update_user_profile(db, current.id, new_name, new_hashed, new_role)
+    if not updated:
+        raise HTTPException(status_code=404, detail="사용자를 찾을 수 없습니다.")
+    return UserInfo(id=updated.id, username=updated.username, name=updated.name, role=updated.role)

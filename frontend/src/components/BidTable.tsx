@@ -42,6 +42,7 @@ export function AiStatusIndicator({ status }: { status: AiStatusType }) {
   if (status === 'pending')  return <span style={badge('var(--badge-gray-bg)',   '#81878F', 'sm')}>{DOT('#81878F', true)}대기중</span>;
   if (status === 'analyzing')return <span style={badge('var(--badge-orange-bg)', '#FFC379', 'sm')}>{DOT('#FFC379', true)}분석중</span>;
   if (status === 'failed')   return <span style={badge('rgba(239,68,68,0.12)',   '#EF4444', 'sm')}>{DOT('#EF4444')}분석 실패</span>;
+  if (status === 'no_docs')  return <span style={badge('var(--badge-gray-bg)',   '#81878F', 'sm')}>{DOT('#81878F')}문서 없음</span>;
   return                            <span style={badge('var(--badge-green-bg)',  '#5BC37E', 'sm')}>{DOT('#5BC37E')}완료</span>;
 }
 

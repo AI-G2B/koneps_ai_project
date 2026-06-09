@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Building2, Eye, EyeOff, ShieldCheck, BarChart3 } from 'lucide-react';
 import { SignUpForm } from './SignUpForm';
 
-export type UserRole = 'manager' | 'ceo' | 'proposal' | 'admin';
+export type UserRole = 'manager' | 'ceo' | 'pm' | '영업담당자' | '입찰담당자' | 'proposal' | 'admin';
 
 export interface User {
   id: number;

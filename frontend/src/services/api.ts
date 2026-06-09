@@ -151,10 +151,15 @@ function mapBidType(item: ApiBidListItem): BidType {
   return '기타';
 }
 
-function mapPipelineStatus(status: string | null): AiStatusType {
+const NO_DOCS_PATTERNS = ['is_rfp 첨부 없음', '첨부파일이 없습니다', '분석 가능한 첨부파일이 없습니다'];
+
+function mapPipelineStatus(status: string | null, failReason?: string | null): AiStatusType {
   if (status === 'analyzed') return 'complete';
   if (status === 'analyzing' || status === 'parsing') return 'analyzing';
-  if (status === 'failed') return 'failed';
+  if (status === 'failed') {
+    if (failReason && NO_DOCS_PATTERNS.some(p => failReason.includes(p))) return 'no_docs';
+    return 'failed';
+  }
   return 'none';
 }
 
@@ -243,7 +248,7 @@ export function mapApiBidListItemToBid(item: ApiBidListItem): Bid {
     asignBdgtAmt: item.asign_bdgt_amt ?? null,
     deadline: normalizeDate(item.bid_clse_dt),
     risk: 'good' as RiskLevel,
-    aiStatus: mapPipelineStatus(item.pipeline_status),
+    aiStatus: mapPipelineStatus(item.pipeline_status, item.parse_error_msg),
     type: mapBidType(item),
     dangerCount: 0,
     collectedAt: normalizeDate(item.collected_at),
@@ -274,7 +279,7 @@ export function mapApiBidDetailToBid(res: ApiBidDetailResponse): Bid {
     asignBdgtAmt: res.asign_bdgt_amt ?? null,
     deadline: normalizeDate(res.bid_clse_dt),
     risk,
-    aiStatus: mapPipelineStatus(res.pipeline_status),
+    aiStatus: mapPipelineStatus(res.pipeline_status, res.parse_error_msg),
     type: mapBidType(res),
     dangerCount: riskFactors.filter((r) => r.severity === 'danger').length,
     collectedAt: normalizeDate(res.collected_at),
@@ -565,6 +570,35 @@ export async function loginApi(username: string, password: string): Promise<ApiL
     console.warn('[api] loginApi 실패:', err);
     if (err instanceof DOMException && err.name === 'TimeoutError') return 'timeout';
     return null;
+  }
+}
+
+export async function updateProfileApi(
+  name?: string,
+  currentPassword?: string,
+  newPassword?: string,
+  position?: string,
+): Promise<{ id: number; username: string; name: string; role: string } | { error: string } | 'timeout'> {
+  try {
+    const body: Record<string, string> = {};
+    if (name !== undefined) body.name = name;
+    if (currentPassword !== undefined) body.current_password = currentPassword;
+    if (newPassword !== undefined) body.new_password = newPassword;
+    if (position !== undefined) body.position = position;
+    const res = await authFetch(`${BASE_URL}/auth/profile`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { error: data.detail ?? '프로필 업데이트에 실패했습니다.' };
+    }
+    return await res.json();
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') return 'timeout';
+    return { error: '서버에 연결할 수 없습니다.' };
   }
 }
 

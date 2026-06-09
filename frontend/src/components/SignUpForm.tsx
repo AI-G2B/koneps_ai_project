@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import { registerApi } from '../services/api';
 
-const POSITIONS = ['CEO', 'PM', '영업담당자', '입찰담당자', '법무담당자'] as const;
+const POSITIONS = ['CEO', 'PM', '영업담당자', '입찰담당자'] as const;
 
 const POSITION_LABELS: Record<string, string> = {
   CEO: '최고경영자 — 전략 리포트·KPI 확인',
   PM: '프로젝트 매니저 — 입찰 전략 수립 총괄',
   영업담당자: '영업담당자 — 신규 입찰 기회 발굴',
   입찰담당자: '입찰담당자 — 공고 분석·서류 작성',
-  법무담당자: '법무담당자 — 계약서·독소조항 검토',
 };
 
 interface SignUpFormProps {

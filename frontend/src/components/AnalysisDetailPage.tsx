@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, type ChangeEvent } from 'react';
 import {
   ArrowLeft, Sparkles, Trash2, RefreshCw, Download,
   Circle, CheckCircle2, XCircle, Loader2, ScrollText,
-  AlertTriangle, Upload, ChevronUp, ChevronDown, FileText,
+  AlertTriangle, Upload, ChevronUp, ChevronDown, FileText, FileX,
 } from 'lucide-react';
 import { type Bid, type BidFlags, type AiStatusType, type AnalysisLog, formatBudget, getDaysUntilDeadline } from '../types';
 import { RiskBadge } from './BidTable';
@@ -538,7 +538,15 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
       )}
 
       {/* 5. 분석 결과 영역 - aiStatus에 따라 분기 */}
-      {aiStatus === 'failed' ? (
+      {aiStatus === 'no_docs' ? (
+        <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '60px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+          <FileX style={{ width: '40px', height: '40px', color: '#81878F', marginBottom: '4px' }} />
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--dash-text)', margin: 0 }}>분석 가능한 문서가 없습니다</p>
+          <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: 0, textAlign: 'center', maxWidth: '520px', lineHeight: 1.55 }}>
+            제안요청서(RFP) 또는 첨부파일이 등록되지 않아 AI 분석을 진행할 수 없습니다.
+          </p>
+        </div>
+      ) : aiStatus === 'failed' ? (
         <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '60px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
           <ScrollText style={{ width: '40px', height: '40px', color: '#EF4444', marginBottom: '4px' }} />
           <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--dash-text)', margin: 0 }}>AI 분석 실패</p>
