@@ -397,7 +397,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
         left: Math.min(titleTooltip.x, window.innerWidth - 420),
         zIndex: 9999,
         maxWidth: '400px',
-        backgroundColor: '#1e293b',
+        backgroundColor: 'var(--dash-tooltip-bg)',
         color: '#f1f5f9',
         fontSize: '12px',
         lineHeight: 1.6,

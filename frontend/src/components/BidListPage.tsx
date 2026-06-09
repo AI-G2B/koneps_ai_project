@@ -429,7 +429,7 @@ function LeftRow({ bid, isSelected, flags, onSelect, showBidNumber = false, agen
         left: Math.min(tooltip.x, window.innerWidth - 420),
         zIndex: 9999,
         maxWidth: '400px',
-        backgroundColor: '#1e293b',
+        backgroundColor: 'var(--dash-tooltip-bg)',
         color: '#f1f5f9',
         fontSize: '12px',
         lineHeight: 1.6,
