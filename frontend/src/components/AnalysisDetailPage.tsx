@@ -24,6 +24,7 @@ interface AnalysisDetailPageProps {
   onUploadAttachment?: (bidId: string, file: File) => Promise<boolean>;
   bidFlags?: Record<string, BidFlags>;
   onToggleInProgress?: (bidId: string) => void;
+  onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -169,10 +170,12 @@ function generateReportHTML(bid: Bid): string {
   return html;
 }
 
-export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequestAnalysis, onDeleteAnalysis, analysisLogs: analysisLogsProp, outline, outlineStatus = 'none', outlineLogs, onRequestOutline, onRegenerateOutline, onDownloadOutline, onUploadAttachment, bidFlags, onToggleInProgress }: AnalysisDetailPageProps) {
+export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequestAnalysis, onDeleteAnalysis, analysisLogs: analysisLogsProp, outline, outlineStatus = 'none', outlineLogs, onRequestOutline, onRegenerateOutline, onDownloadOutline, onUploadAttachment, bidFlags, onToggleInProgress, onUpdateManagers }: AnalysisDetailPageProps) {
   const { showToast } = useToast();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showInProgressConfirm, setShowInProgressConfirm] = useState<'add' | 'remove' | null>(null);
+  const [regSalesManager, setRegSalesManager] = useState('');
+  const [regProjectPm, setRegProjectPm] = useState('');
   const [activeTab, setActiveTab] = useState<DetailTab>('analysis');
   const [uploading, setUploading] = useState(false);
   const [logsExpanded, setLogsExpanded] = useState(false);
@@ -388,25 +391,15 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
 
       {/* 3. 분석 액션 버튼 영역 - 분석 완료 시에만 표시 */}
       {aiStatus === 'complete' && (
-        <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-          {analysisModel && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-blue-bg)', color: '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0, marginRight: '4px' }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />
-              {analysisModel}
-            </span>
-          )}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {onToggleInProgress && (() => {
-              const flags = bidFlags?.[bid.id] ?? { bookmarked: false, inProgress: false };
-              return (
-                <button
-                  onClick={() => setShowInProgressConfirm(flags.inProgress ? 'remove' : 'add')}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: `1px solid ${flags.inProgress ? 'rgba(34,197,94,0.4)' : 'rgba(37,99,235,0.4)'}`, backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.1)' : 'rgba(37,99,235,0.08)', color: flags.inProgress ? '#22C55E' : '#2563EB', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
-                >
-                  {flags.inProgress ? '진행 프로젝트 등록됨' : '진행 프로젝트로 등록'}
-                </button>
-              );
-            })()}
+        <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+          {/* 왼쪽: 모델 배지 + 부가 버튼 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {analysisModel && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '4px 12px', borderRadius: '40px', fontSize: '13px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-blue-bg)', color: '#4A7FD4', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#4A7FD4', flexShrink: 0, display: 'inline-block' }} />
+                {analysisModel}
+              </span>
+            )}
             <button
               onClick={() => {
                 onRequestAnalysis?.(bid.id, { rerun: true });
@@ -425,6 +418,24 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
               분석 결과 삭제
             </button>
           </div>
+          {/* 오른쪽: 진행 프로젝트 버튼 */}
+          {onToggleInProgress && (() => {
+            const flags = bidFlags?.[bid.id] ?? { bookmarked: false, inProgress: false };
+            return (
+              <button
+                onClick={() => {
+                  if (!flags.inProgress) {
+                    setRegSalesManager(bid.salesManager ?? '');
+                    setRegProjectPm(bid.projectPm ?? '');
+                  }
+                  setShowInProgressConfirm(flags.inProgress ? 'remove' : 'add');
+                }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 18px', borderRadius: '8px', border: `1px solid ${flags.inProgress ? 'rgba(34,197,94,0.4)' : '#2563EB'}`, backgroundColor: flags.inProgress ? 'rgba(34,197,94,0.1)' : '#2563EB', color: flags.inProgress ? '#22C55E' : '#fff', fontSize: '13px', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+              >
+                {flags.inProgress ? '✓ 진행 등록됨' : '진행 프로젝트로 등록'}
+              </button>
+            );
+          })()}
         </div>
       )}
 
@@ -465,10 +476,23 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
       {showInProgressConfirm && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '24px', maxWidth: '360px', width: '100%', margin: '0 16px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px' }}>
-              {showInProgressConfirm === 'add' ? '진행 프로젝트로 등록하시겠습니까?' : '진행 프로젝트에서 제거하시겠습니까?'}
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px', textAlign: showInProgressConfirm === 'remove' ? 'center' : 'left' }}>
+              {showInProgressConfirm === 'add' ? '진행 프로젝트로 등록' : '진행 프로젝트에서 제거하시겠습니까?'}
             </h3>
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: showInProgressConfirm === 'remove' ? '20px' : 0 }}>
+            {showInProgressConfirm === 'add' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>영업담당자</div>
+                  <input value={regSalesManager} onChange={(e) => setRegSalesManager(e.target.value)} placeholder="이름 입력 (선택)" style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--dash-border-med)', backgroundColor: 'var(--dash-input-bg)', color: 'var(--dash-text)', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>담당 PM</div>
+                  <input value={regProjectPm} onChange={(e) => setRegProjectPm(e.target.value)} placeholder="이름 입력 (선택)" style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--dash-border-med)', backgroundColor: 'var(--dash-input-bg)', color: 'var(--dash-text)', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+            )}
+            {showInProgressConfirm === 'remove' && <div style={{ marginBottom: '20px' }} />}
+            <div style={{ display: 'flex', gap: '8px', justifyContent: showInProgressConfirm === 'remove' ? 'center' : 'flex-end' }}>
               <button
                 onClick={() => setShowInProgressConfirm(null)}
                 style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer' }}
@@ -476,7 +500,13 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
                 취소
               </button>
               <button
-                onClick={() => { onToggleInProgress?.(bid.id); setShowInProgressConfirm(null); }}
+                onClick={() => {
+                  onToggleInProgress?.(bid.id);
+                  if (showInProgressConfirm === 'add' && (regSalesManager || regProjectPm)) {
+                    onUpdateManagers?.(bid.id, regSalesManager, regProjectPm);
+                  }
+                  setShowInProgressConfirm(null);
+                }}
                 style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: showInProgressConfirm === 'add' ? '#2563EB' : '#EF4444', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
               >
                 {showInProgressConfirm === 'add' ? '등록' : '제거'}

@@ -979,6 +979,7 @@ const toggleBookmark = (bidId: string) => {
             onUploadAttachment={uploadAttachment}
             bidFlags={bidFlags}
             onToggleInProgress={toggleInProgress}
+            onUpdateManagers={updateBidManagers}
           />
         </div>
       )}
