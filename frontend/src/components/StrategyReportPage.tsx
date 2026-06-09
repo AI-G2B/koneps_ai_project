@@ -1,4 +1,4 @@
-import { AlertTriangle, Briefcase, TrendingUp, Clock, DollarSign } from 'lucide-react';
+import { AlertTriangle, Briefcase, TrendingUp, DollarSign } from 'lucide-react';
 import { type Bid, type BidFlags, formatBudget, getDaysUntilDeadline } from '../types';
 
 
@@ -33,9 +33,6 @@ export function StrategyReportPage({ bids, bidFlags }: StrategyReportPageProps) 
   }
 
   const totalBudget = inProgressBids.reduce((s, b) => s + b.budget, 0);
-  const avgDaysLeft = Math.round(
-    inProgressBids.reduce((s, b) => s + getDaysUntilDeadline(b.deadline), 0) / inProgressBids.length
-  );
   const dangerCount = inProgressBids.filter(b => b.risk === 'danger').length;
   const dangerPct = Math.round((dangerCount / inProgressBids.length) * 100);
 
@@ -47,7 +44,6 @@ export function StrategyReportPage({ bids, bidFlags }: StrategyReportPageProps) 
   const summaryCards = [
     { icon: Briefcase,   label: '총 진행 사업',      value: `${inProgressBids.length}건`,     color: CEO_COLOR,  bg: CEO_BG,                      border: CEO_BORDER },
     { icon: DollarSign,  label: '총 사업 예산',      value: formatBudget(totalBudget),        color: '#0891B2',  bg: 'rgba(8,145,178,0.08)',       border: 'rgba(8,145,178,0.2)' },
-    { icon: Clock,       label: '평균 마감까지',      value: `${avgDaysLeft}일`,               color: '#F59E0B',  bg: 'rgba(245,158,11,0.08)',      border: 'rgba(245,158,11,0.2)' },
     { icon: AlertTriangle, label: '위험 공고 비율',   value: `${dangerPct}%`,                  color: '#EF4444',  bg: 'rgba(239,68,68,0.08)',       border: 'rgba(239,68,68,0.2)' },
   ];
 
@@ -55,8 +51,8 @@ export function StrategyReportPage({ bids, bidFlags }: StrategyReportPageProps) 
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <PageHeader />
 
-      {/* 요약 카드 4개 */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+      {/* 요약 카드 3개 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
         {summaryCards.map((card) => (
           <div key={card.label} style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -96,7 +92,7 @@ export function StrategyReportPage({ bids, bidFlags }: StrategyReportPageProps) 
                 return (
                   <tr key={bid.id} style={{ borderBottom: '1px solid var(--dash-border-faint)' }}>
                     <td style={{ padding: '10px 14px', maxWidth: '260px' }}>
-                      <div style={{ fontSize: '13px', color: 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bid.title}</div>
+                      <div style={{ fontSize: '13px', color: 'var(--dash-text)', wordBreak: 'keep-all', overflowWrap: 'break-word', lineHeight: 1.4 }}>{bid.title}</div>
                     </td>
                     <td style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--dash-text-2)', whiteSpace: 'nowrap' }}>{bid.agency}</td>
                     <td style={{ padding: '10px 14px', fontSize: '13px', color: 'var(--dash-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>{formatBudget(bid.budget)}</td>

@@ -1,4 +1,4 @@
-import { FileText, Clock, Loader2, Inbox, Briefcase, Sparkles, BookOpen } from 'lucide-react';
+import { FileText, Clock, Loader2, Inbox, Briefcase, BookOpen } from 'lucide-react';
 import { motion } from 'motion/react';
 import { type Bid, type AiStatusType, isDeadlineUrgent, TODAY } from '../types';
 import { type ApiDashboardStats } from '../services/api';
@@ -97,7 +97,6 @@ export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuse
   const urgentCount = dashboardStats != null ? dashboardStats.deadline_soon : urgentBids.length;
 
   // CEO 모드 전용
-  const aiCompleteCount = Object.values(aiStatuses ?? {}).filter(s => s === 'complete').length;
   const outlineCompleteCount = Object.values(outlineStatusMap ?? {}).filter(s => s === 'complete').length;
 
   if (ceoMode) {
@@ -126,7 +125,7 @@ export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuse
     }
 
     return (
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }}>
           <KpiCard
             title="진행중 사업"
@@ -141,19 +140,6 @@ export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuse
           />
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}>
-          <KpiCard
-            title="AI 분석 완료"
-            value={String(aiCompleteCount)}
-            unit="건"
-            sub="분석 완료된 공고"
-            icon={Sparkles}
-            iconBgColor="rgba(37,99,235,0.06)"
-            iconColor="#2563EB"
-            accentColor="#2563EB"
-            loading={bidsLoading}
-          />
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.14 }}>
           <KpiCard
             title="제안목차 생성"
             value={String(outlineCompleteCount)}
