@@ -66,6 +66,35 @@ async def collect_gap():
         print(f"[갭 수집] 자동 분석 enqueue: {queued}건")
 
 
+async def _bootstrap_admin_account(db) -> None:
+    """첫 부팅 시 admin 계정이 하나도 없으면 기본 admin01/1234를 만든다.
+
+    이미 admin role 사용자가 있으면 건드리지 않는다 (idempotent).
+    운영 환경에선 ADMIN_BOOTSTRAP_USERNAME/PASSWORD 환경변수로 오버라이드 가능.
+    배포 후 admin01 비밀번호는 운영자가 seed_admin CLI로 즉시 바꾸는 걸 권장한다.
+    """
+    from sqlalchemy import select
+    from backend.api.security import hash_password
+    from backend.db.models import User
+
+    existing = (await db.execute(
+        select(User).where(User.role == "admin")
+    )).scalar_one_or_none()
+    if existing:
+        return
+
+    username = os.getenv("ADMIN_BOOTSTRAP_USERNAME", "admin01").strip() or "admin01"
+    password = os.getenv("ADMIN_BOOTSTRAP_PASSWORD", "1234")
+    db.add(User(
+        username=username,
+        password=hash_password(password),
+        name="관리자",
+        role="admin",
+    ))
+    await db.commit()
+    print(f"[bootstrap] 관리자 계정 자동 생성: {username} (기본 비밀번호는 즉시 변경 권장)")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from datetime import datetime, timedelta
@@ -184,6 +213,7 @@ async def lifespan(app: FastAPI):
     async with AsyncSessionLocal() as db:
         await seed_prompts(db)
         await seed_llm_config(db)
+        await _bootstrap_admin_account(db)
 
     async with engine.begin() as conn:
         # 서버 재시작·강제 종료로 'analyzing' 상태에 박혀 다시 풀리지 않는 공고 회복.
