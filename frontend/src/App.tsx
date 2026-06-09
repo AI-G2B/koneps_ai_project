@@ -159,12 +159,23 @@ export default function App() {
   const { showToast } = useToast();
 
   const addNotification = (item: Omit<NotificationItem, 'id' | 'createdAt' | 'isRead'>) => {
-    setNotifications(prev => [{
-      ...item,
-      id: crypto.randomUUID(),
-      createdAt: new Date(),
-      isRead: false,
-    }, ...prev].slice(0, 50));
+    setNotifications(prev => {
+      const now = Date.now();
+      const isDuplicate = prev.some(n =>
+        n.type === item.type &&
+        n.message === item.message &&
+        now - new Date(n.createdAt).getTime() < 3000
+      );
+      if (isDuplicate) return prev;
+
+      const newNotif: NotificationItem = {
+        ...item,
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+        isRead: false,
+      };
+      return [newNotif, ...prev].slice(0, 50);
+    });
   };
 
   const markAllAsRead = () => {
