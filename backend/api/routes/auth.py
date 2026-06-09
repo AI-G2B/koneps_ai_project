@@ -6,9 +6,11 @@ from backend.api.rate_limit import limiter
 from backend.api.security import (
     create_access_token,
     get_current_user,
+    hash_password,
     verify_password,
 )
 from backend.db.crud import (
+    create_user,
     get_agency_settings,
     get_user_by_username,
     save_agency_settings,
@@ -47,6 +49,29 @@ class AgencySettingsRequest(BaseModel):
     avoided: list[str]
 
 
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    name: str
+    position: str  # CEO | PM | 영업담당자 | 입찰담당자 | 법무담당자
+
+
+POSITION_TO_ROLE = {
+    "CEO": "ceo",
+    "PM": "manager",
+    "영업담당자": "manager",
+    "입찰담당자": "manager",
+    "법무담당자": "manager",
+}
+
+
+class RegisterResponse(BaseModel):
+    id: int
+    username: str
+    name: str
+    role: str
+
+
 @router.get("/agency-settings", response_model=AgencySettingsResponse)
 async def get_agency_settings_endpoint(user_id: int, db: AsyncSession = Depends(get_db)):
     """사용자의 선호/기피 기관 설정을 조회한다."""
@@ -83,6 +108,25 @@ async def login(request: Request, body: LoginRequest, db: AsyncSession = Depends
         role=user.role,
         access_token=token,
     )
+
+
+@router.post("/register", response_model=RegisterResponse, status_code=201)
+@limiter.limit("10/minute")
+async def register(request: Request, body: RegisterRequest, db: AsyncSession = Depends(get_db)):
+    role = POSITION_TO_ROLE.get(body.position)
+    if role is None:
+        raise HTTPException(status_code=400, detail="유효하지 않은 직급입니다.")
+    existing = await get_user_by_username(db, body.username)
+    if existing:
+        raise HTTPException(status_code=409, detail="이미 사용 중인 아이디입니다.")
+    if len(body.username) < 3 or len(body.username) > 50:
+        raise HTTPException(status_code=400, detail="아이디는 3~50자여야 합니다.")
+    if len(body.password) < 4:
+        raise HTTPException(status_code=400, detail="비밀번호는 4자 이상이어야 합니다.")
+    _ = request
+    hashed = hash_password(body.password)
+    user = await create_user(db, body.username, hashed, body.name, role)
+    return RegisterResponse(id=user.id, username=user.username, name=user.name, role=user.role)
 
 
 @router.get("/me", response_model=UserInfo)

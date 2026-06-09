@@ -568,6 +568,30 @@ export async function loginApi(username: string, password: string): Promise<ApiL
   }
 }
 
+export async function registerApi(
+  username: string,
+  password: string,
+  name: string,
+  position: string,
+): Promise<{ id: number; username: string; name: string; role: string } | { error: string } | 'timeout'> {
+  try {
+    const res = await fetch(`${BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, name, position }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { error: data.detail ?? '회원가입에 실패했습니다.' };
+    }
+    return await res.json();
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'TimeoutError') return 'timeout';
+    return { error: '서버에 연결할 수 없습니다.' };
+  }
+}
+
 const _emptyMemo: ApiMemo = { notice_id: 0, content: '', author_id: null, author_name: null, updated_at: null };
 
 export async function fetchMemo(bid_ntce_no: string): Promise<ApiMemo> {

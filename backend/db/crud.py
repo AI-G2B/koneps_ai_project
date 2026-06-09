@@ -419,6 +419,14 @@ async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
     return result.scalar_one_or_none()
 
 
+async def create_user(db: AsyncSession, username: str, hashed_pw: str, name: str, role: str) -> User:
+    user = User(username=username, password=hashed_pw, name=name, role=role)
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
 # notice_memos
 async def get_memo_by_notice_id(db: AsyncSession, notice_id: int) -> NoticeMemo | None:
     result = await db.execute(
