@@ -81,15 +81,19 @@ export default function App() {
 
   const handleLogin = async (username: string, password: string) => {
     setLoginError('');
-    const apiUser = await loginApi(username, password);
-    if (apiUser) {
-      const userInfo: User = { id: apiUser.id, username: apiUser.username, name: apiUser.name, role: apiUser.role as User['role'] };
-      setAuthToken(apiUser.access_token);
+    const result = await loginApi(username, password);
+    if (result && result !== 'timeout') {
+      const userInfo: User = { id: result.id, username: result.username, name: result.name, role: result.role as User['role'] };
+      setAuthToken(result.access_token);
       sessionStorage.setItem('koneps_user', JSON.stringify(userInfo));
       setUser(userInfo);
       return;
     }
-    setLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
+    if (result === 'timeout') {
+      setLoginError('서버 응답이 없습니다. 잠시 후 다시 시도해주세요.');
+    } else {
+      setLoginError('아이디 또는 비밀번호가 올바르지 않습니다.');
+    }
   };
   const CACHE_VERSION = 'v2';
 
@@ -677,13 +681,8 @@ const toggleBookmark = (bidId: string) => {
     setUser(null);
   };
 
-  const handleDirectLogin = (adminUser: User) => {
-    sessionStorage.setItem('koneps_user', JSON.stringify(adminUser));
-    setUser(adminUser);
-  };
-
   if (!user) {
-    return <LoginPage onLogin={handleLogin} loginError={loginError} onDirectLogin={handleDirectLogin} />;
+    return <LoginPage onLogin={handleLogin} loginError={loginError} />;
   }
 
   // 관리자 계정은 대시보드 우회 — 콘솔만 노출.

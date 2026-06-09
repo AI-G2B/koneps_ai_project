@@ -16,12 +16,18 @@ export function AdminLLMConfig() {
   const [draft, setDraft] = useState<LLMCfg | null>(null);
   const [msg, setMsg] = useState<{ type: 'ok' | 'err' | 'warn'; text: string } | null>(null);
   const [newModel, setNewModel] = useState<{ provider: string; model: string; label: string }>({ provider: 'gemini', model: '', label: '' });
+  const [loadErr, setLoadErr] = useState(false);
 
   const reload = async () => {
-    const [list, current] = await Promise.all([adminListProviders(), adminGetLLMConfig()]);
-    setProviders(list);
-    setCfg(current);
-    setDraft(current);
+    setLoadErr(false);
+    try {
+      const [list, current] = await Promise.all([adminListProviders(), adminGetLLMConfig()]);
+      setProviders(list);
+      setCfg(current);
+      setDraft(current);
+    } catch {
+      setLoadErr(true);
+    }
   };
   useEffect(() => { reload(); }, []);
 
@@ -82,6 +88,11 @@ export function AdminLLMConfig() {
   };
 
   if (!draft || !cfg) {
+    if (loadErr) return (
+      <div style={{ color: '#EF4444', textAlign: 'center', padding: '40px', fontSize: '13px' }}>
+        데이터를 불러오지 못했습니다. 관리자 계정으로 로그인 후 이용해주세요.
+      </div>
+    );
     return <div style={{ color: 'var(--dash-text-4)', textAlign: 'center', padding: '40px' }}>불러오는 중…</div>;
   }
 
