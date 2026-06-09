@@ -263,20 +263,21 @@ function ProjectCard({ bid, isSelected, onSelect, aiStatus, onUpdateManagers }: 
       onMouseEnter={(e) => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg-alt)'; }}
       onMouseLeave={(e) => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-surface)'; }}
     >
-      {/* 제목 행 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+      {/* 배지 행 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' }}>
         <RiskBadge risk={bid.risk} />
         {bid.type !== '기타' && (
           <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', backgroundColor: 'rgba(37,99,235,0.1)', color: '#60A5FA', flexShrink: 0, fontWeight: 500 }}>
             {bid.type}
           </span>
         )}
-        <span style={{ fontSize: '13px', fontWeight: 600, color: isSelected ? '#5BC37E' : 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
-          {bid.title}
-        </span>
-        <span style={{ flexShrink: 0, fontSize: '10px', padding: '1px 6px', borderRadius: '9999px', backgroundColor: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.25)' }}>
+        <span style={{ marginLeft: 'auto', flexShrink: 0, fontSize: '10px', padding: '1px 6px', borderRadius: '9999px', backgroundColor: 'rgba(34,197,94,0.12)', color: '#22C55E', border: '1px solid rgba(34,197,94,0.25)' }}>
           진행중
         </span>
+      </div>
+      {/* 제목 */}
+      <div style={{ fontSize: '13px', fontWeight: 600, color: isSelected ? '#5BC37E' : 'var(--dash-text)', lineHeight: 1.4, marginBottom: '8px', wordBreak: 'keep-all', overflowWrap: 'break-word' }}>
+        {bid.title}
       </div>
 
       {/* 메타 정보 행 */}
@@ -414,7 +415,7 @@ function MemoPanel({ selectedBid, currentUser }: { selectedBid: Bid | null; curr
   };
 
   return (
-    <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minHeight: '180px', maxHeight: '300px', overflow: 'hidden' }}>
+    <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0, height: '180px', overflow: 'hidden' }}>
       {/* 헤더 */}
       <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
         <FileText style={{ width: '13px', height: '13px', color: '#60A5FA', flexShrink: 0 }} />
@@ -518,7 +519,8 @@ function ProjectCalendar({ inProgressBids, onOpenSlideOver }: { inProgressBids: 
   const popupBids = selectedDay ? (deadlineMap.get(selectedDay) ?? []) : [];
 
   return (
-    <div style={{ flexShrink: 0, height: '560px', borderRadius: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '14px 8px', overflow: 'hidden' }}>
+    <div style={{ flex: '1 1 auto', minHeight: '280px', maxHeight: '560px', borderRadius: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '14px 8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flexShrink: 0 }}>
       {/* 헤더 */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', padding: '0 4px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
@@ -624,11 +626,12 @@ function ProjectCalendar({ inProgressBids, onOpenSlideOver }: { inProgressBids: 
           {calYear}년 {calMonth}월 {totalDeadlines}건 마감
         </span>
       </div>
+      </div>{/* /flexShrink:0 wrapper */}
 
       {/* 날짜 클릭 팝업 */}
       {selectedDay !== null && popupBids.length > 0 && (
-        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--dash-border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <div style={{ flex: 1, minHeight: 0, marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--dash-border)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: '#22C55E' }}>
               {calMonth}월 {selectedDay}일 마감 공고 ({popupBids.length}건)
             </span>
@@ -641,7 +644,7 @@ function ProjectCalendar({ inProgressBids, onOpenSlideOver }: { inProgressBids: 
               <X style={{ width: '13px', height: '13px' }} />
             </button>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '220px', overflowY: 'auto', paddingRight: '2px' }}>
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '6px', overflowY: 'auto', paddingRight: '2px' }}>
             {popupBids.map((bid) => (
               <div
                 key={bid.id}
