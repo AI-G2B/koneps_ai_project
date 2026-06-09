@@ -42,6 +42,7 @@ from backend.db.crud import (
     search_notices,
     set_bookmark,
     set_in_progress,
+    update_managers,
     upsert_memo,
 )
 from backend.db.database import get_db
@@ -131,6 +132,8 @@ class BidListItem(BaseModel):
     is_bookmarked: bool  # 관심 공고 여부
     is_in_progress: bool  # 진행 프로젝트 여부
     is_expired: bool = False  # 입찰마감일 경과 여부 (bid_clse_dt < 현재 KST)
+    sales_manager: str | None = None  # 영업담당자
+    project_pm: str | None = None  # 담당 PM
     presmpt_prce: float | None  # 추정가격
     asign_bdgt_amt: float | None  # 배정예산 (추정가격 없을 때 대체)
     bid_clse_dt: datetime | None  # 입찰마감일시
@@ -196,6 +199,8 @@ class BidDetailResponse(BaseModel):
     is_bookmarked: bool  # 관심 공고 여부
     is_in_progress: bool  # 진행 프로젝트 여부
     is_expired: bool = False  # 입찰마감일 경과 여부
+    sales_manager: str | None = None  # 영업담당자
+    project_pm: str | None = None  # 담당 PM
     asign_bdgt_amt: float | None
     presmpt_prce: float | None
     bid_clse_dt: datetime | None
@@ -396,6 +401,30 @@ async def toggle_in_progress(
 ) -> BidListItem:
     """공고 진행 여부를 설정한다. 진행 시 관심공고도 자동으로 설정된다."""
     notice = await set_in_progress(db, bid_ntce_no, is_in_progress)
+    if not notice:
+        raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
+    return _to_list_item(notice)
+
+
+class ManagerUpdateRequest(BaseModel):
+    """영업담당자·담당 PM 업데이트 요청 스키마"""
+
+    sales_manager: str = ""
+    project_pm: str = ""
+
+
+@router.patch(
+    "/{bid_ntce_no}/managers",
+    summary="영업담당자·담당 PM 저장",
+    response_model=BidListItem,
+)
+async def update_bid_managers(
+    bid_ntce_no: str,
+    body: ManagerUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+) -> BidListItem:
+    """공고의 영업담당자와 담당 PM을 저장한다."""
+    notice = await update_managers(db, bid_ntce_no, body.sales_manager, body.project_pm)
     if not notice:
         raise HTTPException(status_code=404, detail="공고를 찾을 수 없습니다.")
     return _to_list_item(notice)
