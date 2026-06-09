@@ -14,8 +14,8 @@ interface ProposalOutlinePageProps {
 
 function DdayBadge({ deadline }: { deadline: string }) {
   const days = getDaysUntilDeadline(deadline);
-  const label = days === 0 ? 'D-day' : days > 0 ? `D-${days}` : `D+${Math.abs(days)}`;
-  const color = days <= 0 ? '#EF4444' : days <= 3 ? '#F97316' : '#6B7280';
+  const label = days < 0 ? '마감' : days === 0 ? 'D-day' : `D-${days}`;
+  const color = days < 0 ? '#81878F' : days === 0 ? '#EF4444' : days <= 3 ? '#F97316' : '#6B7280';
   return (
     <span style={{ fontSize: '11px', fontWeight: 700, color, backgroundColor: `${color}18`, padding: '2px 7px', borderRadius: '10px', flexShrink: 0 }}>
       {label}

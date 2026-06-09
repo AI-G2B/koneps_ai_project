@@ -100,7 +100,7 @@ export function StrategyReportPage({ bids, bidFlags, aiStatuses }: StrategyRepor
                     <td style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--dash-text-2)', whiteSpace: 'nowrap' }}>{bid.agency}</td>
                     <td style={{ padding: '10px 14px', fontSize: '13px', color: 'var(--dash-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>{formatBudget(bid.budget)}</td>
                     <td style={{ padding: '10px 14px', fontSize: '12px', color: urgent ? '#F27A75' : 'var(--dash-text-2)', fontWeight: urgent ? 600 : 400, whiteSpace: 'nowrap' }}>
-                      {bid.deadline.substring(5)}{urgent && ` (D-${daysLeft})`}
+                      {bid.deadline.substring(5)}{urgent && (daysLeft < 0 ? ' (마감)' : ` (D-${daysLeft})`)}
                     </td>
                     <td style={{ padding: '10px 14px' }}><RiskBadge risk={bid.risk} /></td>
                     <td style={{ padding: '10px 14px' }}><AiStatusIndicator status={aiStatuses[bid.id] ?? 'none'} /></td>

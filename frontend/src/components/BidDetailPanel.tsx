@@ -86,7 +86,7 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
 
   const CEO_ITEMS = (ceoMode && detail) ? [
     { icon: Wallet,    label: '예산 규모',               value: detail.budget },
-    { icon: Clock,     label: '마감일',                  value: bid.deadline ? `${bid.deadline.substring(5)} ${isNaN(daysLeft) ? '(기간 미정)' : `(${daysLeft}일 후)`}` : '기간 미정' },
+    { icon: Clock,     label: '마감일',                  value: bid.deadline ? `${bid.deadline.substring(5)} ${(isNaN(daysLeft) || daysLeft >= 9999) ? '(기간 미정)' : daysLeft < 0 ? '(마감)' : `(${daysLeft}일 후)`}` : '기간 미정' },
     { icon: BarChart2, label: '평가방식 (기술/가격 배점)', value: detail.evalMethod },
     { icon: Phone,     label: '담당자 연락처',             value: detail.contactPerson },
   ] : [];
@@ -172,7 +172,7 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
           <InfoCell label="추정가격" value={bid.presmptPrce != null ? formatBudget(bid.presmptPrce) : '-'} valueStyle={{ fontSize: '14px', fontWeight: 700, color: '#F59E0B' }} />
           <InfoCell label="배정예산" value={bid.asignBdgtAmt != null ? formatBudget(bid.asignBdgtAmt) : '-'} valueStyle={{ fontSize: '14px', fontWeight: 700, color: '#F59E0B' }} />
           <InfoCell label="공고일" value={bid.ntceDate ? bid.ntceDate.replace(/-/g, '.') : '-'} />
-          <InfoCell label="마감일" value={bid.deadline ? `${bid.deadline.substring(5)} ${isNaN(daysLeft) ? '(기간 미정)' : `(${daysLeft}일 후)`}` : '기간 미정'} valueStyle={{ color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }} />
+          <InfoCell label="마감일" value={bid.deadline ? `${bid.deadline.substring(5)} ${(isNaN(daysLeft) || daysLeft >= 9999) ? '(기간 미정)' : daysLeft < 0 ? '(마감)' : `(${daysLeft}일 후)`}` : '기간 미정'} valueStyle={{ color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }} />
         </div>
       </div>
 
