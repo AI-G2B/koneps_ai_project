@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Search, Bell, ChevronDown, RefreshCw, Sun, Moon, LogOut, Sparkles, Bookmark, Play, Trash2, CheckCheck, Loader2, BookOpen } from 'lucide-react';
+import { Search, Bell, ChevronDown, RefreshCw, Sun, Moon, LogOut, Sparkles, Bookmark, Play, Trash2, CheckCheck, Loader2, BookOpen, PanelLeftOpen } from 'lucide-react';
 import { searchBids, type SearchBidsResult } from '../services/api';
 import { useToast } from './ToastProvider';
 import { useTheme } from 'next-themes';
@@ -18,6 +18,8 @@ interface DashboardHeaderProps {
   onSync?: () => Promise<void>;
   isSyncing?: boolean;
   onOpenAnalysisDetail?: (bid: Bid) => void;
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
 }
 
 const getTimeAgo = (date: Date): string => {
@@ -51,7 +53,7 @@ const NOTIF_ICON: Record<NotificationItem['type'], { icon: React.ElementType; co
   outline_fail:      { icon: BookOpen,  color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
 };
 
-export function DashboardHeader({ user, onLogout, onNavigate, notifications, onMarkAllAsRead, onMarkAsRead, onClearNotifications, onSync, isSyncing = false, onOpenAnalysisDetail }: DashboardHeaderProps) {
+export function DashboardHeader({ user, onLogout, onNavigate, notifications, onMarkAllAsRead, onMarkAsRead, onClearNotifications, onSync, isSyncing = false, onOpenAnalysisDetail, sidebarOpen = true, onToggleSidebar }: DashboardHeaderProps) {
   const { showToast, dismissToast } = useToast();
   const { theme, setTheme } = useTheme();
   const isDark = theme === 'dark';
@@ -159,6 +161,19 @@ export function DashboardHeader({ user, onLogout, onNavigate, notifications, onM
       className="h-14 flex items-center px-6 gap-4 flex-shrink-0"
       style={{ backgroundColor: 'var(--dash-surface)', borderBottom: '1px solid var(--dash-border)' }}
     >
+      {/* 사이드바 열기 버튼 (사이드바 숨겨진 경우에만 표시) */}
+      {!sidebarOpen && (
+        <button
+          onClick={onToggleSidebar}
+          className="flex items-center justify-center rounded-md flex-shrink-0"
+          style={{ width: '32px', height: '32px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border)', color: 'var(--dash-text-3)', cursor: 'pointer', transition: 'color 0.15s' }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; }}
+          title="사이드바 열기"
+        >
+          <PanelLeftOpen style={{ width: '15px', height: '15px' }} />
+        </button>
+      )}
       {/* Page title */}
       <div className="flex-shrink-0">
         <div className="flex items-center gap-2" style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>

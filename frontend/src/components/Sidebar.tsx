@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, FileText, Sparkles, BarChart2,
   Settings, HelpCircle, Building2, ChevronRight, TrendingUp,
-  Bookmark, Briefcase, ShieldCheck, AlertTriangle, Activity,
+  Bookmark, Briefcase, ShieldCheck, AlertTriangle, Activity, PanelLeftClose,
 } from 'lucide-react';
 import type { UserRole } from './LoginPage';
 import type { PageType } from '../App';
@@ -77,12 +77,13 @@ interface SidebarProps {
   role: UserRole;
   activePage: PageType;
   onNavigate: (page: PageType) => void;
+  onToggle?: () => void;
   analysisCompleteCount?: number;
   totalBidCount?: number;
   lastSyncTime?: Date | null;
 }
 
-export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 0, totalBidCount = 0, lastSyncTime }: SidebarProps) {
+export function Sidebar({ role, activePage, onNavigate, onToggle, analysisCompleteCount = 0, totalBidCount = 0, lastSyncTime }: SidebarProps) {
   const sections = role === 'admin' ? ADMIN_SECTIONS : role === 'ceo' ? CEO_SECTIONS : role === 'proposal' ? PROPOSAL_SECTIONS : MANAGER_SECTIONS;
   const accentColor = role === 'admin' ? '#475569' : role === 'ceo' ? '#7C3AED' : role === 'proposal' ? '#0891B2' : '#2563EB';
   const accentBg = role === 'admin' ? 'rgba(71,85,105,0.15)' : role === 'ceo' ? 'rgba(124,58,237,0.15)' : role === 'proposal' ? 'rgba(8,145,178,0.15)' : 'rgba(37,99,235,0.15)';
@@ -128,31 +129,25 @@ export function Sidebar({ role, activePage, onNavigate, analysisCompleteCount = 
 
   return (
     <div className="w-[220px] flex-shrink-0 flex flex-col h-full" style={{ backgroundColor: 'var(--dash-surface)', borderRight: '1px solid var(--dash-border)' }}>
-      {/* Logo */}
+      {/* Logo / 사이드바 토글 */}
       <button
-        onClick={() => onNavigate('대시보드')}
+        onClick={() => onToggle?.()}
         className="h-14 flex items-center px-4 gap-3 flex-shrink-0 w-full text-left"
-        style={{ borderBottom: '1px solid var(--dash-border)', cursor: 'pointer', background: 'none', transition: 'opacity 0.15s' }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.75'; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+        style={{ borderBottom: '1px solid var(--dash-border)', cursor: 'pointer', background: 'none', transition: 'background-color 0.15s' }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-item-bg-alt)'; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
+        title="사이드바 숨기기"
       >
         <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: logoGradient }}>
           <Building2 style={{ width: '16px', height: '16px', color: 'white' }} />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div style={{ fontSize: '10px', color: 'var(--dash-text-4)', lineHeight: 1 }}>나라장터</div>
           <div style={{ fontSize: '13px', color: 'var(--dash-text)', fontWeight: 600, lineHeight: 1.3 }}>AI 입찰 분석</div>
         </div>
+        <PanelLeftClose style={{ width: '15px', height: '15px', color: 'var(--dash-text-5)', flexShrink: 0 }} />
       </button>
 
-      {/* Role badge */}
-      {role !== 'manager' && (
-        <div style={{ padding: '10px 12px 4px' }}>
-          <span className="inline-flex items-center rounded-md" style={{ fontSize: '10px', padding: '3px 8px', backgroundColor: roleBadgeBg, color: accentColor, border: `1px solid ${roleBadgeBorder}`, fontWeight: 500 }}>
-            {roleLabel}
-          </span>
-        </div>
-      )}
 
       {/* Main Nav */}
       <nav className="flex-1 px-3 pt-2 overflow-y-auto">

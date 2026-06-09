@@ -127,6 +127,7 @@ export default function App() {
   });
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activePage, setActivePage] = useState<PageType>(() => {
     const saved = localStorage.getItem('koneps:activePage');
     return (saved as PageType) ?? '대시보드';
@@ -754,7 +755,7 @@ const toggleBookmark = (bidId: string) => {
         minWidth: '1200px',
       }}
     >
-      <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} analysisCompleteCount={analysisCompleteCount} totalBidCount={activeBidCount} lastSyncTime={lastSyncTime} />
+      {sidebarOpen && <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} onToggle={() => setSidebarOpen(false)} analysisCompleteCount={analysisCompleteCount} totalBidCount={activeBidCount} lastSyncTime={lastSyncTime} />}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <DashboardHeader
           user={user}
@@ -767,6 +768,8 @@ const toggleBookmark = (bidId: string) => {
           onSync={handleSync}
           isSyncing={isFetching}
           onOpenAnalysisDetail={openAnalysisDetail}
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen(v => !v)}
         />
         {isFetching && (
           <div style={{ height: '2px', backgroundColor: 'var(--dash-border)', flexShrink: 0 }}>
