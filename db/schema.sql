@@ -26,9 +26,6 @@ CREATE TABLE notices (
     exec_term_start_dt      DATE,
     exec_term_end_dt        DATE,
     bid_ntce_dtl_url                TEXT,
-    attach_file_url         TEXT,
-    raw_file_path           TEXT,
-    raw_file_ext            VARCHAR(10),
     pipeline_status         VARCHAR(20)     NOT NULL DEFAULT 'collected'
                                 CHECK (pipeline_status IN ('collected','downloaded','parsed','analyzed','completed','failed')),
     parse_error_msg         TEXT,
@@ -77,23 +74,6 @@ CREATE TABLE analysis_results (
 
 CREATE INDEX idx_analysis_notice_id ON analysis_results (notice_id);
 
-CREATE TABLE risk_factors (
-    id                      SERIAL PRIMARY KEY,
-    notice_id               INTEGER         NOT NULL REFERENCES notices(id) ON DELETE CASCADE,
-    risk_category           VARCHAR(50)     NOT NULL,
-    risk_level              VARCHAR(10)     NOT NULL DEFAULT 'medium' CHECK (risk_level IN ('high','medium','low')),
-    clause_title            VARCHAR(200),
-    clause_original         TEXT,
-    clause_summary          TEXT            NOT NULL,
-    page_no                 INTEGER,
-    mitigation_suggest      TEXT,
-    sort_order              INTEGER         NOT NULL DEFAULT 0,
-    created_at              TIMESTAMPTZ     NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_risk_factors_notice_id  ON risk_factors (notice_id);
-CREATE INDEX idx_risk_factors_risk_level ON risk_factors (risk_level);
-
 CREATE TABLE proposal_outlines (
     id                      SERIAL PRIMARY KEY,
     notice_id               INTEGER         NOT NULL REFERENCES notices(id) ON DELETE CASCADE,
@@ -108,23 +88,6 @@ CREATE TABLE proposal_outlines (
 
 CREATE INDEX idx_proposal_outlines_notice_id ON proposal_outlines (notice_id);
 CREATE INDEX idx_proposal_outlines_is_active ON proposal_outlines (notice_id, is_active);
-
-CREATE TABLE proposal_sections (
-    id                      SERIAL PRIMARY KEY,
-    outline_id              INTEGER         NOT NULL REFERENCES proposal_outlines(id) ON DELETE CASCADE,
-    level                   SMALLINT        NOT NULL CHECK (level BETWEEN 1 AND 4),
-    parent_id               INTEGER         REFERENCES proposal_sections(id) ON DELETE CASCADE,
-    sort_order              INTEGER         NOT NULL DEFAULT 0,
-    section_no              VARCHAR(20),
-    section_title           VARCHAR(300)    NOT NULL,
-    section_desc            TEXT,
-    pages_estimate          INTEGER,
-    is_mandatory            BOOLEAN         NOT NULL DEFAULT TRUE
-);
-
-CREATE INDEX idx_proposal_sections_outline_id ON proposal_sections (outline_id);
-CREATE INDEX idx_proposal_sections_parent_id  ON proposal_sections (parent_id);
-CREATE INDEX idx_proposal_sections_level      ON proposal_sections (outline_id, level, sort_order);
 
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
