@@ -387,9 +387,6 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
             </h3>
             {showInProgressConfirm === 'add' ? (
               <>
-                <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: '0 0 16px', lineHeight: 1.6 }}>
-                  등록하면 AI 분석이 자동으로 시작됩니다.
-                </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
                   <div>
                     <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>영업담당자</div>

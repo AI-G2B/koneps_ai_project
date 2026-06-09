@@ -472,11 +472,6 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
             <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px' }}>
               {showInProgressConfirm === 'add' ? '진행 프로젝트로 등록하시겠습니까?' : '진행 프로젝트에서 제거하시겠습니까?'}
             </h3>
-            {showInProgressConfirm === 'add' && (
-              <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: '0 0 20px', lineHeight: 1.6 }}>
-                등록하면 AI 분석이 자동으로 시작됩니다.
-              </p>
-            )}
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: showInProgressConfirm === 'remove' ? '20px' : 0 }}>
               <button
                 onClick={() => setShowInProgressConfirm(null)}
