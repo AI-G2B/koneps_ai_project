@@ -178,6 +178,20 @@ async def set_in_progress(db: AsyncSession, bid_ntce_no: str, is_in_progress: bo
     return notice
 
 
+async def update_managers(
+    db: AsyncSession, bid_ntce_no: str, sales_manager: str, project_pm: str
+) -> Notice | None:
+    """공고의 영업담당자와 담당 PM을 저장한다."""
+    notice = await get_notice_detail(db, bid_ntce_no)
+    if not notice:
+        return None
+    notice.sales_manager = sales_manager or None
+    notice.project_pm = project_pm or None
+    await db.commit()
+    await db.refresh(notice)
+    return notice
+
+
 async def search_notices(db: AsyncSession, query: str, limit: int = 20) -> list[Notice]:
     """공고번호, 공고명, 기관명에서 query를 포함하는 공고를 반환한다. 최신 차수만 반환한다."""
     sq = _latest_ord_subquery()

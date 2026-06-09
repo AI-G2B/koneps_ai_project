@@ -34,6 +34,8 @@ class Notice(Base):
     pipeline_status:      Mapped[str]            = mapped_column(String(20), default="collected")
     is_bookmarked:        Mapped[bool]           = mapped_column(Boolean, default=False)
     is_in_progress:       Mapped[bool]           = mapped_column(Boolean, default=False)
+    sales_manager:        Mapped[Optional[str]]  = mapped_column(String(50), nullable=True)
+    project_pm:           Mapped[Optional[str]]  = mapped_column(String(50), nullable=True)
     parse_error_msg:      Mapped[Optional[str]]  = mapped_column(Text, nullable=True)
     content_embedding:    Mapped[Optional[list]] = mapped_column(Vector(1536), nullable=True)
     collected_at:         Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
