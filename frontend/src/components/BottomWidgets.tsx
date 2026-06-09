@@ -7,19 +7,6 @@ import { type ApiTypeStatItem } from '../services/api';
 import { RiskBadge } from './BidTable';
 import { BidSlideOver } from './BidSlideOver';
 
-const BID_TYPE_DATA = [
-  { name: 'ISP', value: 47, color: '#2563EB', count: 16 },
-  { name: 'ISMP', value: 33, color: '#F59E0B', count: 12 },
-  { name: '기타', value: 20, color: '#8B5CF6', count: 7 },
-];
-
-const TYPE_COLORS: Record<string, string> = {
-  ISP: '#2563EB',
-  ISMP: '#F59E0B',
-  SI: '#22C55E',
-  기타: '#8B5CF6',
-};
-
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: any[] }) {
   if (active && payload && payload.length) {
     const data = payload[0].payload;

@@ -1,18 +1,16 @@
 """제안목차 생성 + 엑셀 변환 서비스"""
-import asyncio
 import json
 import logging
-import time as _time
 from io import BytesIO
 
-from google import genai
-from google.genai import errors as genai_errors
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
-from backend.config import get_settings
-from backend.prompts.outline_generation import OUTLINE_SYSTEM_PROMPT, build_outline_prompt
+from backend.prompts.outline_generation import build_outline_prompt_dynamic
+from backend.services.llm import LLMError, LLMRequest, call_with_fallback
+from backend.services.llm_config_store import get_active_config
+from backend.services.prompt_store import get_prompt
 from backend.services import progress_store
 from backend.services.outline_types import OUTLINE_TYPES, get_label, is_supported
 
@@ -21,11 +19,6 @@ logger = logging.getLogger(__name__)
 
 class UnsupportedProjectTypeError(Exception):
     """ISP/ISMP 등 지원되지 않는 사업 유형."""
-
-
-def _get_client():
-    settings = get_settings()
-    return genai.Client(api_key=settings.gemini_api_key)
 
 
 def _parse_json_response(text: str) -> dict:
@@ -64,7 +57,6 @@ async def generate_outline(notice_id: int, db) -> dict:
     from sqlalchemy import select
     from backend.db.models import AnalysisResult, ProposalOutline
 
-    settings = get_settings()
 
     # 1. 분석 결과 로드
     analysis = (await db.execute(
@@ -79,13 +71,24 @@ async def generate_outline(notice_id: int, db) -> dict:
 
     project_type = analysis.project_type
     if not is_supported(project_type):
-        labels = ", ".join(cfg["label"] for cfg in OUTLINE_TYPES.values())
-        msg = (
-            f"{get_label(project_type) or project_type or '미정'} 유형은 "
-            f"목차 생성을 지원하지 않습니다 (지원: {labels})"
-        )
-        progress_store.emit(notice_id, msg, level="error")
-        raise UnsupportedProjectTypeError(msg)
+        # Gemini가 본문 보고 "기타" 등으로 분류했더라도 수집기가 공고명으로 ISP/ISMP를 판별했으면 그걸 폴백으로 사용.
+        from backend.db.crud import get_notice_by_id
+        notice = await get_notice_by_id(db, notice_id)
+        fallback = notice.isp_ismp_type if notice else None
+        if is_supported(fallback):
+            progress_store.emit(
+                notice_id,
+                f"분석 결과 project_type={project_type or '미정'} 미지원 → 공고명 분류({fallback})로 폴백"
+            )
+            project_type = fallback
+        else:
+            labels = ", ".join(cfg["label"] for cfg in OUTLINE_TYPES.values())
+            msg = (
+                f"{get_label(project_type) or project_type or '미정'} 유형은 "
+                f"목차 생성을 지원하지 않습니다 (지원: {labels})"
+            )
+            progress_store.emit(notice_id, msg, level="error")
+            raise UnsupportedProjectTypeError(msg)
 
     progress_store.emit(notice_id, f"목차 생성 준비 ({get_label(project_type)})")
 
@@ -98,78 +101,66 @@ async def generate_outline(notice_id: int, db) -> dict:
         analysis_data = {}
 
     progress_store.emit(notice_id, "분석 결과 로드 완료")
-    prompt = build_outline_prompt(analysis_data, project_type)
+    prompt = await build_outline_prompt_dynamic(analysis_data, project_type, db)
 
-    # 2. Gemini 호출 (모델 fallback 포함)
-    client = _get_client()
-    gen_config = {
-        "system_instruction": OUTLINE_SYSTEM_PROMPT,
-        "response_mime_type": "application/json",
-        "temperature": 0.2,
-    }
+    # 2. LLM 호출 — provider 추상화 (Gemini/Claude/OpenAI).
+    outline_system = await get_prompt("outline.system", db)
+    llm_cfg = await get_active_config(db)
+    # outline은 분석 결과 + 가이드라인 + 샘플이 동봉돼 input이 크므로 분석보다 살짝 높은 temperature.
+    outline_temperature = max(0.0, min(2.0, llm_cfg.temperature + 0.1))
+    request = LLMRequest(
+        system=outline_system,
+        user_text=prompt,
+        model=llm_cfg.model,
+        temperature=outline_temperature,
+        response_json=True,
+    )
 
-    models_to_try = [settings.gemini_model]
-    if (
-        settings.gemini_fallback_model
-        and settings.gemini_fallback_model != settings.gemini_model
-    ):
-        models_to_try.append(settings.gemini_fallback_model)
+    # 모델별 응답 타임아웃 (초). preview 모델이 큰 input에서 무응답으로 hang하는 케이스 방어.
+    OUTLINE_LLM_TIMEOUT = 180
+    try:
+        response = await call_with_fallback(
+            llm_cfg,
+            request,
+            timeout=OUTLINE_LLM_TIMEOUT,
+            on_progress=lambda msg, lvl: progress_store.emit(notice_id, msg, level=lvl),
+        )
+    except LLMError as e:
+        raise RuntimeError(f"제안목차 LLM 호출 실패: {e}") from e
 
-    response = None
-    actual_model: str | None = None
-    last_error: Exception | None = None
-
-    for model_name in models_to_try:
-        progress_store.emit(notice_id, f"Gemini 호출 시작 (model={model_name})")
-        _t0 = _time.monotonic()
-        try:
-            for attempt in range(3):
-                try:
-                    response = await asyncio.to_thread(
-                        client.models.generate_content,
-                        model=model_name,
-                        contents=prompt,
-                        config=gen_config,
-                    )
-                    actual_model = model_name
-                    elapsed = _time.monotonic() - _t0
-                    progress_store.emit(
-                        notice_id,
-                        f"Gemini 응답 수신 ({elapsed:.1f}초, model={model_name})",
-                        level="success",
-                    )
-                    break
-                except (genai_errors.ClientError, genai_errors.ServerError) as e:
-                    err_str = str(e)
-                    if ("429" in err_str or "503" in err_str) and attempt < 2:
-                        wait = 20 * (attempt + 1)
-                        progress_store.emit(
-                            notice_id,
-                            f"재시도 대기 {wait}초 (시도 {attempt + 1}/3)",
-                            level="warning",
-                        )
-                        await asyncio.sleep(wait)
-                    else:
-                        raise
-            if response is not None:
-                break
-        except Exception as e:  # noqa: BLE001
-            last_error = e
-            if model_name != models_to_try[-1]:
-                progress_store.emit(
-                    notice_id,
-                    f"{model_name} 실패, fallback {models_to_try[-1]}로 전환",
-                    level="warning",
-                )
-                response = None
-                continue
-            raise
-
-    if response is None:
-        raise last_error or RuntimeError("Gemini 응답 없음")
-
-    progress_store.emit(notice_id, "응답 JSON 파싱")
+    actual_model = response.model_used
+    progress_store.emit(notice_id, f"응답 JSON 파싱 (model={actual_model})")
     outline_data = _parse_json_response(response.text)
+
+    # 2.5. RFP 원문 (요구사항 섹션 verbatim) 추출 — 별도 LLM 호출 + 코드 슬라이스.
+    rfp_raw_text: str | None = None
+    try:
+        from backend.db.models import Attachment
+        from backend.services.rfp_extract import (
+            build_rfp_text_from_attachments,
+            extract_requirements_section,
+        )
+
+        rfp_atts = (await db.execute(
+            select(Attachment).where(
+                Attachment.notice_id == notice_id,
+                Attachment.is_rfp.is_(True),
+            ).order_by(Attachment.file_name)
+        )).scalars().all()
+
+        if rfp_atts:
+            progress_store.emit(notice_id, f"RFP 원문 수집 ({len(rfp_atts)}건)")
+            combined = await build_rfp_text_from_attachments(rfp_atts, db, notice_id)
+            if combined:
+                progress_store.emit(notice_id, "요구사항 섹션 앵커 추출")
+                rfp_raw_text = await extract_requirements_section(combined, db, notice_id)
+            else:
+                progress_store.emit(notice_id, "RFP 첨부 변환 결과가 비어 원문 생략", level="warning")
+        else:
+            progress_store.emit(notice_id, "is_rfp 첨부 없음 — 원문 생략", level="warning")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"RFP 원문 추출 실패 (notice_id={notice_id}): {e}")
+        progress_store.emit(notice_id, f"RFP 원문 추출 실패: {str(e)[:80]}", level="warning")
 
     # 3. DB UPSERT — notice_id 기준 활성 outline 1건
     existing = (await db.execute(
@@ -184,6 +175,7 @@ async def generate_outline(notice_id: int, db) -> dict:
         existing.model_used = actual_model
         existing.guideline_base = guideline_base
         existing.generated_at = datetime.now()
+        existing.rfp_raw_text = rfp_raw_text
     else:
         db.add(ProposalOutline(
             notice_id=notice_id,
@@ -192,11 +184,14 @@ async def generate_outline(notice_id: int, db) -> dict:
             model_used=actual_model,
             generated_at=datetime.now(),
             is_active=True,
+            rfp_raw_text=rfp_raw_text,
         ))
     await db.commit()
 
     progress_store.emit(notice_id, "DB 저장 완료", level="success")
     logger.info(f"제안목차 생성 완료: notice_id={notice_id}, type={project_type}")
+    # 엑셀 빌더가 원문 시트를 만들 수 있도록 rfp_raw_text를 outline_data에 동봉해 반환.
+    outline_data = {**outline_data, "rfp_raw_text": rfp_raw_text}
     return outline_data
 
 
@@ -249,9 +244,45 @@ def build_outline_xlsx(outline_data: dict) -> bytes:
     ws_req = wb.create_sheet("RFP 요구사항")
     _build_requirements_sheet(ws_req, outline_data.get("requirements") or [])
 
+    raw_text = outline_data.get("rfp_raw_text") or ""
+    if raw_text.strip():
+        ws_raw = wb.create_sheet("RFP 원문")
+        _build_raw_text_sheet(ws_raw, raw_text)
+
     buf = BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
+# RFP 원문 시트 — 단일 컬럼 A, 문단 단위(\n\n) split, wrap_text, 파일/섹션 헤더 강조
+# ---------------------------------------------------------------------------
+
+
+def _build_raw_text_sheet(ws, raw_text: str) -> None:
+    ws.column_dimensions["A"].width = 100
+
+    title = ws.cell(row=1, column=1, value="RFP 원문 (요구사항 섹션 verbatim)")
+    title.font = _FONT_TITLE_14
+    title.alignment = _CENTER
+    title.fill = _FILL_HEADER_LIGHT
+    title.border = _BORDER
+    ws.row_dimensions[1].height = 30
+
+    row = 2
+    # \n\n 단위로 split — 빈 단락 제거
+    paragraphs = [p.rstrip() for p in raw_text.split("\n\n") if p.strip()]
+    for para in paragraphs:
+        cell = ws.cell(row=row, column=1, value=para)
+        cell.alignment = Alignment(horizontal="left", vertical="top", wrap_text=True)
+        # 파일 구분자 / 섹션 헤더 강조 (`---` 또는 `#` 로 시작)
+        if para.startswith("---") or para.startswith("# "):
+            cell.font = _FONT_HEADER_10_BOLD
+            cell.fill = _FILL_HEADER_LIGHT
+        else:
+            cell.font = _FONT_BODY_10
+        cell.border = _BORDER
+        row += 1
 
 
 # ---------------------------------------------------------------------------

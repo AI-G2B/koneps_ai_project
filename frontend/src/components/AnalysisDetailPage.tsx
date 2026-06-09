@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, type ChangeEvent } from 'react';
 import {
   ArrowLeft, Sparkles, Trash2, RefreshCw, Download,
   Circle, CheckCircle2, XCircle, Loader2, ScrollText,
-  AlertTriangle, Upload, ChevronUp, ChevronDown,
+  AlertTriangle, Upload, ChevronUp, ChevronDown, FileText,
 } from 'lucide-react';
 import { type Bid, type BidFlags, type AiStatusType, type AnalysisLog, formatBudget, getDaysUntilDeadline } from '../types';
 import { RiskBadge } from './BidTable';
@@ -338,6 +338,46 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
             </div>
           ))}
         </div>
+
+        {/* 첨부파일 다운로드 */}
+        {(bid.attachments && bid.attachments.length > 0) && (
+          <div style={{ marginTop: '14px', padding: '12px 14px', border: '1px solid var(--dash-border-faint)', borderRadius: '8px', backgroundColor: 'var(--dash-card-deep)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+              <FileText style={{ width: '14px', height: '14px', color: 'var(--dash-text-3)' }} />
+              <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--dash-text-2)' }}>첨부파일 ({bid.attachments.length}개)</span>
+              <span style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>· 파일명 클릭 시 새 탭에서 다운로드</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {bid.attachments.map((file, i) => {
+                const isRfp = /제안요청서|RFP|과업지시서|과업\s*지시서/i.test(file.fileName);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => window.open(file.fileUrl, '_blank', 'noopener')}
+                    title={file.fileName}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '7px 10px', borderRadius: '6px',
+                      border: isRfp ? '1px solid rgba(245,158,11,0.3)' : '1px solid transparent',
+                      backgroundColor: isRfp ? 'rgba(245,158,11,0.06)' : 'transparent',
+                      color: 'var(--dash-text)', fontSize: '12.5px', textAlign: 'left',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = isRfp ? 'rgba(245,158,11,0.12)' : 'var(--dash-row-hover)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = isRfp ? 'rgba(245,158,11,0.06)' : 'transparent'; }}
+                  >
+                    <Download style={{ width: '12px', height: '12px', color: isRfp ? '#D97706' : 'var(--dash-text-3)', flexShrink: 0 }} />
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.fileName}</span>
+                    {isRfp && (
+                      <span style={{ fontSize: '10px', color: '#D97706', backgroundColor: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '4px', padding: '1px 6px', fontWeight: 500, flexShrink: 0 }}>RFP</span>
+                    )}
+                    <span style={{ fontSize: '10.5px', color: 'var(--dash-text-5)', flexShrink: 0, textTransform: 'uppercase' }}>{file.fileType}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 3. 분석 액션 버튼 영역 - 분석 완료 시에만 표시 */}
@@ -372,18 +412,21 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
               AI 재분석
             </button>
             <button
+              onClick={async () => {
+                const { downloadAnalysisDocx } = await import('../services/api');
+                await downloadAnalysisDocx(bid.id);
+              }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2563EB', backgroundColor: 'transparent', color: '#2563EB', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+            >
+              <Download style={{ width: '14px', height: '14px' }} />
+              AI 분석 결과 다운
+            </button>
+            <button
               onClick={() => setShowDeleteConfirm(true)}
               style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid rgba(239,68,68,0.4)', backgroundColor: 'transparent', color: '#EF4444', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
             >
               <Trash2 style={{ width: '14px', height: '14px' }} />
               분석 결과 삭제
-            </button>
-            <button
-              onClick={() => showToast('info', '준비 중입니다')}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
-            >
-              <RefreshCw style={{ width: '14px', height: '14px' }} />
-              목차 재생성
             </button>
           </div>
         </div>
@@ -495,7 +538,23 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
       )}
 
       {/* 5. 분석 결과 영역 - aiStatus에 따라 분기 */}
-      {(aiStatus === 'none' || aiStatus === 'pending') ? (
+      {aiStatus === 'failed' ? (
+        <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '60px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+          <ScrollText style={{ width: '40px', height: '40px', color: '#EF4444', marginBottom: '4px' }} />
+          <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--dash-text)', margin: 0 }}>AI 분석 실패</p>
+          <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: 0, textAlign: 'center', maxWidth: '520px', lineHeight: 1.55 }}>
+            {bid.failReason ?? '분석 실행 중 오류가 발생했습니다.'}
+          </p>
+          <p style={{ fontSize: '12px', color: 'var(--dash-text-4)', margin: '4px 0 0' }}>아래 버튼으로 다시 시도할 수 있습니다.</p>
+          <button
+            onClick={() => onRequestAnalysis?.(bid.id, { rerun: true })}
+            style={{ marginTop: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '10px 22px', borderRadius: '8px', border: '1px solid #EF4444', backgroundColor: 'transparent', color: '#EF4444', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+          >
+            <RefreshCw style={{ width: '14px', height: '14px' }} />
+            다시 시도
+          </button>
+        </div>
+      ) : (aiStatus === 'none' || aiStatus === 'pending') ? (
         <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '72px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
           <Sparkles style={{ width: '44px', height: '44px', color: '#2563EB', marginBottom: '4px' }} />
           <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--dash-text)', margin: 0 }}>아직 AI 분석이 진행되지 않았습니다</p>
@@ -918,6 +977,37 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
                 ))}
               </div>
             </div>
+
+            {/* RFP 원문 (요구사항 섹션 verbatim) */}
+            {outline.rfpRawText && outline.rfpRawText.trim().length > 0 && (
+              <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', overflow: 'hidden' }}>
+                <div style={{ padding: '20px 28px', borderBottom: '1px solid var(--dash-border)' }}>
+                  <h2 style={{ fontSize: '17px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 4px' }}>RFP 원문</h2>
+                  <p style={{ fontSize: '13px', color: 'var(--dash-text-4)', margin: 0 }}>제안요청서 요구사항 섹션 원문 (가공·요약 없음)</p>
+                </div>
+                <div style={{ padding: '20px 28px' }}>
+                  <pre
+                    style={{
+                      margin: 0,
+                      padding: '16px 18px',
+                      maxHeight: '560px',
+                      overflowY: 'auto',
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      backgroundColor: 'var(--dash-card-deep)',
+                      border: '1px solid var(--dash-border-faint)',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      lineHeight: 1.7,
+                      color: 'var(--dash-text)',
+                      fontFamily: '"SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+                    }}
+                  >
+                    {outline.rfpRawText}
+                  </pre>
+                </div>
+              </div>
+            )}
             </>
           );
         })()}

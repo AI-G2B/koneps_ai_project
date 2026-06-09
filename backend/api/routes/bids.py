@@ -136,7 +136,8 @@ class BidListItem(BaseModel):
     bid_clse_dt: datetime | None  # 입찰마감일시
     bid_ntce_dt: datetime | None  # 나라장터 공고 등록일
     collected_at: datetime | None  # 우리 DB 수집 시각
-    pipeline_status: str  # collected / parsing / analyzed / failed
+    pipeline_status: str  # collected / parsing / analyzing / analyzed / failed / skipped
+    parse_error_msg: str | None = None  # 분석 실패/skip 사유 (skipped일 때 채워짐)
     bid_ntce_dtl_url: str | None = None  # 나라장터 공고 원문 URL
 
     class Config:
@@ -463,7 +464,9 @@ async def collect_bids(
     except (ValueError, RuntimeError) as e:
         raise HTTPException(status_code=502, detail=str(e))
 
-    return CollectResponse(**result)
+    from backend.services.analysis_queue import enqueue_auto_analysis
+    enqueue_auto_analysis(result.get("new_notice_ids", []))
+    return CollectResponse(saved=result["saved"], skipped=result["skipped"], errors=result["errors"])
 
 
 class SearchResponse(BaseModel):
@@ -506,8 +509,10 @@ async def search_bids(
     if not raw:
         return SearchResponse(source="empty", results=[], total=0)
 
-    # 3단계: 검색 결과 DB 저장 (중복 제외)
-    await save_bids(db, raw)
+    # 3단계: 검색 결과 DB 저장 (중복 제외) + 신규는 자동 분석 큐에 enqueue
+    save_result = await save_bids(db, raw)
+    from backend.services.analysis_queue import enqueue_auto_analysis
+    enqueue_auto_analysis(save_result.get("new_notice_ids", []))
 
     # 저장 후 DB에서 재조회하여 반환
     notices = await search_notices(db, q)

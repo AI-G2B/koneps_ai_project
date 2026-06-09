@@ -120,7 +120,8 @@ OUTLINE_PROMPT_TEMPLATE = """## 사업 유형
 """
 
 
-def build_outline_prompt(analysis_data: dict, project_type: str) -> str:
+def _format_outline_prompt(template: str, analysis_data: dict, project_type: str) -> str:
+    """outline 템플릿(정적 또는 DB)을 데이터로 포맷팅."""
     samples = load_samples(project_type)
     if samples:
         samples_text = "\n\n---\n\n".join(
@@ -152,7 +153,7 @@ def build_outline_prompt(analysis_data: dict, project_type: str) -> str:
             desc = (r.get("description") or "")[:140]
             req_text += f"- [{r.get('id', '')}] {r.get('name', '')}: {desc}\n"
 
-    return OUTLINE_PROMPT_TEMPLATE.format(
+    return template.format(
         type_label=get_label(project_type),
         guideline=get_guideline(project_type),
         samples=samples_text,
@@ -170,3 +171,16 @@ def build_outline_prompt(analysis_data: dict, project_type: str) -> str:
         allocated_budget=basic.get("allocated_budget", ""),
         contract_method=basic.get("contract_method", ""),
     )
+
+
+def build_outline_prompt(analysis_data: dict, project_type: str) -> str:
+    """제안목차 프롬프트 (정적 — 기본값 기반)."""
+    return _format_outline_prompt(OUTLINE_PROMPT_TEMPLATE, analysis_data, project_type)
+
+
+async def build_outline_prompt_dynamic(analysis_data: dict, project_type: str, db) -> str:
+    """제안목차 프롬프트 (DB 동적 로드)."""
+    from backend.services.prompt_store import get_prompt
+    template = await get_prompt("outline.template", db)
+    return _format_outline_prompt(template, analysis_data, project_type)
+
