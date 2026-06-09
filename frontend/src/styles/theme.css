@@ -66,6 +66,7 @@
   --dash-icon-off: #94A3B8;
   --dash-scrollbar: #CBD5E1;
   --dash-panel-header: linear-gradient(160deg, #FFFFFF 0%, #EFF6FF 100%);
+  --dash-tooltip-bg: #1e293b;
 
   /* Badge backgrounds (light) */
   --badge-green-bg: #F3F9F3;
@@ -111,39 +112,40 @@
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
 
-  /* Dashboard dark theme */
-  --dash-bg: #0D1B2A;
-  --dash-surface: #0B1929;
-  --dash-card: #132337;
-  --dash-card-deep: #0D1E2F;
-  --dash-input-bg: #122030;
-  --dash-hover: #1A3150;
-  --dash-row-hover: rgba(255, 255, 255, 0.025);
-  --dash-item-bg: rgba(255, 255, 255, 0.03);
-  --dash-item-bg-alt: rgba(255, 255, 255, 0.04);
-  --dash-border: rgba(255, 255, 255, 0.06);
-  --dash-border-faint: rgba(255, 255, 255, 0.04);
-  --dash-border-item: rgba(255, 255, 255, 0.05);
-  --dash-border-btn: rgba(255, 255, 255, 0.07);
-  --dash-border-med: rgba(255, 255, 255, 0.08);
-  --dash-border-strong: rgba(255, 255, 255, 0.1);
-  --dash-text: #FFFFFF;
-  --dash-text-2: #94A3B8;
-  --dash-text-3: #64748B;
-  --dash-text-4: #475569;
-  --dash-text-5: #3D5270;
-  --dash-text-6: #2D3F52;
-  --dash-text-detail: #CBD5E1;
-  --dash-icon-off: #4B6080;
-  --dash-scrollbar: #1E3A5F;
-  --dash-panel-header: linear-gradient(160deg, #132337 0%, #162D4A 100%);
+  /* Dashboard dark theme — neutral charcoal (Qount-style) */
+  --dash-bg: #0C0C0E;
+  --dash-surface: #101012;
+  --dash-card: #18181B;
+  --dash-card-deep: #111113;
+  --dash-input-bg: #1C1C1F;
+  --dash-hover: #27272A;
+  --dash-row-hover: rgba(255, 255, 255, 0.04);
+  --dash-item-bg: rgba(255, 255, 255, 0.04);
+  --dash-item-bg-alt: rgba(255, 255, 255, 0.07);
+  --dash-border: rgba(255, 255, 255, 0.09);
+  --dash-border-faint: rgba(255, 255, 255, 0.05);
+  --dash-border-item: rgba(255, 255, 255, 0.07);
+  --dash-border-btn: rgba(255, 255, 255, 0.09);
+  --dash-border-med: rgba(255, 255, 255, 0.11);
+  --dash-border-strong: rgba(255, 255, 255, 0.16);
+  --dash-text: #F4F4F5;
+  --dash-text-2: #A1A1AA;
+  --dash-text-3: #71717A;
+  --dash-text-4: #52525B;
+  --dash-text-5: #3F3F46;
+  --dash-text-6: #2D2D33;
+  --dash-text-detail: #D4D4D8;
+  --dash-icon-off: #52525B;
+  --dash-scrollbar: #27272A;
+  --dash-panel-header: linear-gradient(160deg, #18181B 0%, #1F1F23 100%);
+  --dash-tooltip-bg: #27272A;
 
   /* Badge backgrounds (dark) */
-  --badge-green-bg: rgba(91,195,126,0.12);
-  --badge-orange-bg: rgba(255,195,121,0.12);
-  --badge-red-bg: rgba(242,122,117,0.12);
-  --badge-gray-bg: rgba(129,135,143,0.12);
-  --badge-blue-bg: rgba(74,127,212,0.12);
+  --badge-green-bg: rgba(91,195,126,0.16);
+  --badge-orange-bg: rgba(255,195,121,0.16);
+  --badge-red-bg: rgba(242,122,117,0.16);
+  --badge-gray-bg: rgba(129,135,143,0.16);
+  --badge-blue-bg: rgba(74,127,212,0.16);
 }
 
 @theme inline {

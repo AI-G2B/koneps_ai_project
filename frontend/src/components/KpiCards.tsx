@@ -1,4 +1,4 @@
-import { FileText, Clock, Loader2, Inbox, Briefcase, ShieldAlert } from 'lucide-react';
+import { FileText, Clock, Loader2, Inbox, Briefcase, BookOpen } from 'lucide-react';
 import { motion } from 'motion/react';
 import { type Bid, type AiStatusType, isDeadlineUrgent, TODAY } from '../types';
 import { type ApiDashboardStats } from '../services/api';
@@ -8,6 +8,7 @@ interface KpiCardsProps {
   bidsLoading?: boolean;
   ceoMode?: boolean;
   aiStatuses?: Record<string, AiStatusType>;
+  outlineStatusMap?: Record<string, 'none' | 'generating' | 'complete'>;
   dashboardStats?: ApiDashboardStats | null;
 }
 
@@ -79,7 +80,7 @@ function KpiCard({ title, value, unit, sub, subColor, icon: Icon, iconBgColor, i
   );
 }
 
-export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuses: _aiStatuses, dashboardStats }: KpiCardsProps) {
+export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuses, outlineStatusMap, dashboardStats }: KpiCardsProps) {
   const todayStr = TODAY.toISOString().slice(0, 10);
 
   // 영업담당자 모드 전용 (fallback: bids 기반 계산)
@@ -96,7 +97,7 @@ export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuse
   const urgentCount = dashboardStats != null ? dashboardStats.deadline_soon : urgentBids.length;
 
   // CEO 모드 전용
-  const dangerBids = bids.filter((b) => b.risk === 'danger');
+  const outlineCompleteCount = Object.values(outlineStatusMap ?? {}).filter(s => s === 'complete').length;
 
   if (ceoMode) {
     if (bids.length === 0) {
@@ -140,16 +141,14 @@ export function KpiCards({ bids, bidsLoading = false, ceoMode = false, aiStatuse
         </motion.div>
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.07 }}>
           <KpiCard
-            title="위험 사업"
-            value={String(dangerBids.length)}
+            title="제안목차 생성"
+            value={String(outlineCompleteCount)}
             unit="건"
-            sub={dangerBids.length === 0 ? '위험 사업 없음 ✓' : '독소조항 포함 사업 확인 필요'}
-            subColor={dangerBids.length === 0 ? '#22C55E' : undefined}
-            icon={ShieldAlert}
-            iconBgColor={dangerBids.length === 0 ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)'}
-            iconColor={dangerBids.length === 0 ? '#22C55E' : '#F59E0B'}
-            accentColor={dangerBids.length === 0 ? '#22C55E' : '#F59E0B'}
-            alert={dangerBids.length > 0}
+            sub="목차 생성 완료"
+            icon={BookOpen}
+            iconBgColor="rgba(34,197,94,0.06)"
+            iconColor="#22C55E"
+            accentColor="#22C55E"
             loading={bidsLoading}
           />
         </motion.div>

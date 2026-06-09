@@ -101,7 +101,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
 
   const CEO_ITEMS = (ceoMode && bid && detail) ? [
     { icon: Wallet,    label: '예산 규모',               value: detail.budget },
-    { icon: Clock,     label: '마감일',                  value: bid.deadline ? `${bid.deadline.substring(5)} ${isNaN(daysLeft) ? '(기간 미정)' : `(${daysLeft}일 후)`}` : '기간 미정' },
+    { icon: Clock,     label: '마감일',                  value: bid.deadline ? `${bid.deadline.substring(5)} ${(isNaN(daysLeft) || daysLeft >= 9999) ? '(기간 미정)' : daysLeft < 0 ? '(마감)' : `(${daysLeft}일 후)`}` : '기간 미정' },
     { icon: BarChart2, label: '평가방식 (기술/가격 배점)', value: detail.evalMethod },
     { icon: Phone,     label: '담당자 연락처',             value: detail.contactPerson },
   ] : [];
@@ -231,7 +231,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                                 position: 'absolute',
                                 bottom: 'calc(100% + 6px)',
                                 left: 0,
-                                backgroundColor: '#1E293B',
+                                backgroundColor: 'var(--dash-tooltip-bg)',
                                 color: '#FFFFFF',
                                 fontSize: '11px',
                                 padding: '5px 8px',
@@ -321,7 +321,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
               />
               <InfoCell
                 label="마감일"
-                value={`${bid.deadline.substring(5)} (${daysLeft}일 후)`}
+                value={`${bid.deadline.substring(5)} ${(isNaN(daysLeft) || daysLeft >= 9999) ? '(기간 미정)' : daysLeft < 0 ? '(마감)' : `(${daysLeft}일 후)`}`}
                 valueStyle={ceoMode
                   ? { fontSize: '16px', fontWeight: 700, color: isUrgent ? '#EF4444' : 'var(--dash-text-2)' }
                   : { color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }}
@@ -524,7 +524,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
                               bottom: 'calc(100% + 6px)',
                               left: '50%',
                               transform: 'translateX(-50%)',
-                              backgroundColor: '#1E293B',
+                              backgroundColor: 'var(--dash-tooltip-bg)',
                               color: '#FFFFFF',
                               fontSize: '11px',
                               padding: '6px 10px',
@@ -682,14 +682,11 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
     {showConfirm && bid && (
       <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
         <div style={{ backgroundColor: 'var(--dash-card)', borderRadius: '12px', padding: '24px', maxWidth: '360px', width: '100%', margin: '0 16px', border: '1px solid var(--dash-border)' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px', textAlign: showConfirm === 'remove' ? 'center' : 'left' }}>
             {showConfirm === 'add' ? '진행 프로젝트로 등록' : '진행 프로젝트에서 제거하시겠습니까?'}
           </h3>
           {showConfirm === 'add' ? (
             <>
-              <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: '0 0 16px', lineHeight: 1.6 }}>
-                등록하면 AI 분석이 자동으로 시작됩니다.
-              </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
                 <div>
                   <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>영업담당자</div>
@@ -714,7 +711,7 @@ export function BidSlideOver({ bid, isOpen, onClose, bidFlags, aiStatuses, onTog
           ) : (
             <div style={{ marginBottom: '20px' }} />
           )}
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: showConfirm === 'remove' ? 'center' : 'flex-end' }}>
             <button
               onClick={() => setShowConfirm(null)}
               style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer' }}

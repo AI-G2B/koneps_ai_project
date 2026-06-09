@@ -198,12 +198,11 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
                 ...(showBidNumber ? [{ label: '공고번호', key: null as SortKey, width: '130px' }] : []),
                 { label: '공고일', key: null as SortKey, width: '64px', align: 'center' as const },
                 { label: '공고명', key: null as SortKey, width: undefined as string | undefined },
-                { label: '상태', key: null as SortKey, width: '72px' },
+                ...(!ceoMode ? [{ label: '상태', key: null as SortKey, width: '72px' }] : []),
                 { label: '발주기관', key: null as SortKey, width: '85px' },
                 { label: '예산', key: 'budget' as SortKey, width: '80px' },
                 { label: '마감일', key: 'deadline' as SortKey, width: '90px' },
-                { label: 'AI분석', key: null as SortKey, width: '90px' },
-                { label: '액션', key: null as SortKey, width: '70px' },
+                ...(!ceoMode ? [{ label: 'AI분석', key: null as SortKey, width: '90px' }, { label: '액션', key: null as SortKey, width: '70px' }] : []),
               ].map((col) => (
                 <th key={col.label} onClick={() => col.key && handleSort(col.key)}
                   style={{ padding: '8px 12px', textAlign: (col as any).align ?? 'left', fontSize: '11px', color: 'var(--dash-text-4)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 500, whiteSpace: 'nowrap', width: col.width, cursor: col.key ? 'pointer' : 'default', borderBottom: '1px solid var(--dash-border)', userSelect: 'none' }}>
@@ -214,14 +213,14 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={showBidNumber ? 9 : 8}>
+              <tr><td colSpan={showBidNumber ? (ceoMode ? 6 : 9) : (ceoMode ? 5 : 8)}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '8px' }}>
                   <Loader2 className="animate-spin" style={{ width: '24px', height: '24px', color: '#2563EB' }} />
                   <span style={{ fontSize: '13px', color: 'var(--dash-text-3)' }}>공고를 불러오는 중입니다...</span>
                 </div>
               </td></tr>
             ) : sortedBids.length === 0 ? (
-              <tr><td colSpan={showBidNumber ? 9 : 8} style={{ padding: '48px', textAlign: 'center' }}>
+              <tr><td colSpan={showBidNumber ? (ceoMode ? 6 : 9) : (ceoMode ? 5 : 8)} style={{ padding: '48px', textAlign: 'center' }}>
                 {ceoMode ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                     <Inbox style={{ width: '28px', height: '28px', color: 'var(--dash-text-4)' }} />
@@ -256,6 +255,7 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
                   aiStatus={aiStatuses?.[bid.id] ?? 'none'}
                   isPursued={pursuedBids?.has(bid.id) ?? false}
                   showBidNumber={showBidNumber}
+                  ceoMode={ceoMode}
                 />
               ))
             )}
@@ -264,7 +264,7 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
       </div>
 
       <div className="flex items-center justify-between flex-shrink-0" style={{ padding: '8px 16px', borderTop: '1px solid var(--dash-border)' }}>
-        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>{pagedBids.length}건 표시 중 (전체 {sortedBids.length}건)</span>
+        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>{pagedBids.length}건 표시 중 (수집 {sortedBids.length}건)</span>
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
             <button
@@ -302,13 +302,14 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
   );
 }
 
-function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, flags, aiStatus, isPursued, showBidNumber = false }: {
+function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAvoided, flags, aiStatus, isPursued, showBidNumber = false, ceoMode = false }: {
   bid: Bid; isSelected: boolean; urgent: boolean; daysLeft: number; onSelect: () => void;
   isPreferred: boolean; isAvoided: boolean;
   flags: BidFlags;
   aiStatus: AiStatusType;
   isPursued: boolean;
   showBidNumber?: boolean;
+  ceoMode?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
   const [titleTooltip, setTitleTooltip] = useState<{ x: number; y: number } | null>(null);
@@ -345,6 +346,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
           <span className="rounded" style={{ display: 'inline-block', marginTop: '4px', fontSize: '10px', padding: '1px 5px', backgroundColor: 'rgba(37,99,235,0.12)', color: '#60A5FA' }}>{bid.type}</span>
         )}
       </td>
+      {!ceoMode && (
       <td style={{ padding: '12px', verticalAlign: 'middle', width: '72px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
           {flags.bookmarked && (
@@ -355,6 +357,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
           )}
         </div>
       </td>
+      )}
       <td style={{ padding: '12px', verticalAlign: 'middle' }}>
         <span style={{ fontSize: '12px', color: 'var(--dash-text-2)', display: 'block', wordBreak: 'keep-all', overflowWrap: 'break-word', maxWidth: '80px', lineHeight: 1.5 }}>{bid.agency}</span>
         {isPreferred && (
@@ -381,9 +384,11 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
           ) : null}
         </div>
       </td>
+      {!ceoMode && (
       <td style={{ padding: '12px', whiteSpace: 'nowrap', verticalAlign: 'top' }}>
         <AiStatusIndicator status={aiStatus} />
       </td>
+      )}
     </tr>
     {titleTooltip && createPortal(
       <div style={{
@@ -392,7 +397,7 @@ function BidRow({ bid, isSelected, urgent, daysLeft, onSelect, isPreferred, isAv
         left: Math.min(titleTooltip.x, window.innerWidth - 420),
         zIndex: 9999,
         maxWidth: '400px',
-        backgroundColor: '#1e293b',
+        backgroundColor: 'var(--dash-tooltip-bg)',
         color: '#f1f5f9',
         fontSize: '12px',
         lineHeight: 1.6,

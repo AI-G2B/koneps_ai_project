@@ -76,6 +76,7 @@ export interface ApiBidListItem {
   pipeline_status: string;
   parse_error_msg: string | null;
   bid_ntce_dtl_url: string | null;
+  in_progress_at: string | null;
   sales_manager: string | null;
   project_pm: string | null;
 }
@@ -253,6 +254,7 @@ export function mapApiBidListItemToBid(item: ApiBidListItem): Bid {
     dangerCount: 0,
     collectedAt: normalizeDate(item.collected_at),
     ntceDate: item.bid_ntce_dt ? item.bid_ntce_dt.slice(0, 10) : undefined,
+    inProgressAt: item.in_progress_at ?? undefined,
     salesManager: item.sales_manager ?? undefined,
     projectPm: item.project_pm ?? undefined,
     is_bookmarked: item.is_bookmarked,

@@ -86,7 +86,7 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
 
   const CEO_ITEMS = (ceoMode && detail) ? [
     { icon: Wallet,    label: '예산 규모',               value: detail.budget },
-    { icon: Clock,     label: '마감일',                  value: bid.deadline ? `${bid.deadline.substring(5)} ${isNaN(daysLeft) ? '(기간 미정)' : `(${daysLeft}일 후)`}` : '기간 미정' },
+    { icon: Clock,     label: '마감일',                  value: bid.deadline ? `${bid.deadline.substring(5)} ${(isNaN(daysLeft) || daysLeft >= 9999) ? '(기간 미정)' : daysLeft < 0 ? '(마감)' : `(${daysLeft}일 후)`}` : '기간 미정' },
     { icon: BarChart2, label: '평가방식 (기술/가격 배점)', value: detail.evalMethod },
     { icon: Phone,     label: '담당자 연락처',             value: detail.contactPerson },
   ] : [];
@@ -172,7 +172,7 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
           <InfoCell label="추정가격" value={bid.presmptPrce != null ? formatBudget(bid.presmptPrce) : '-'} valueStyle={{ fontSize: '14px', fontWeight: 700, color: '#F59E0B' }} />
           <InfoCell label="배정예산" value={bid.asignBdgtAmt != null ? formatBudget(bid.asignBdgtAmt) : '-'} valueStyle={{ fontSize: '14px', fontWeight: 700, color: '#F59E0B' }} />
           <InfoCell label="공고일" value={bid.ntceDate ? bid.ntceDate.replace(/-/g, '.') : '-'} />
-          <InfoCell label="마감일" value={bid.deadline ? `${bid.deadline.substring(5)} ${isNaN(daysLeft) ? '(기간 미정)' : `(${daysLeft}일 후)`}` : '기간 미정'} valueStyle={{ color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }} />
+          <InfoCell label="마감일" value={bid.deadline ? `${bid.deadline.substring(5)} ${(isNaN(daysLeft) || daysLeft >= 9999) ? '(기간 미정)' : daysLeft < 0 ? '(마감)' : `(${daysLeft}일 후)`}` : '기간 미정'} valueStyle={{ color: isUrgent ? '#EF4444' : 'var(--dash-text-2)', fontWeight: isUrgent ? 600 : 400 }} />
         </div>
       </div>
 
@@ -382,14 +382,11 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
       {showInProgressConfirm && bid && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
           <div style={{ backgroundColor: 'var(--dash-card)', borderRadius: '12px', padding: '24px', maxWidth: '360px', width: '100%', margin: '0 16px', border: '1px solid var(--dash-border)' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px', textAlign: showInProgressConfirm === 'remove' ? 'center' : 'left' }}>
               {showInProgressConfirm === 'add' ? '진행 프로젝트로 등록' : '진행 프로젝트에서 제거하시겠습니까?'}
             </h3>
             {showInProgressConfirm === 'add' ? (
               <>
-                <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: '0 0 16px', lineHeight: 1.6 }}>
-                  등록하면 AI 분석이 자동으로 시작됩니다.
-                </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
                   <div>
                     <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>영업담당자</div>
@@ -414,7 +411,7 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
             ) : (
               <div style={{ marginBottom: '20px' }} />
             )}
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: showInProgressConfirm === 'remove' ? 'center' : 'flex-end' }}>
               <button
                 onClick={() => setShowInProgressConfirm(null)}
                 style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer' }}

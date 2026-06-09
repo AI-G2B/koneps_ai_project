@@ -127,6 +127,7 @@ export default function App() {
   });
   const [selectedBid, setSelectedBid] = useState<Bid | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activePage, setActivePage] = useState<PageType>(() => {
     const saved = localStorage.getItem('koneps:activePage');
     return (saved as PageType) ?? '대시보드';
@@ -159,12 +160,23 @@ export default function App() {
   const { showToast } = useToast();
 
   const addNotification = (item: Omit<NotificationItem, 'id' | 'createdAt' | 'isRead'>) => {
-    setNotifications(prev => [{
-      ...item,
-      id: crypto.randomUUID(),
-      createdAt: new Date(),
-      isRead: false,
-    }, ...prev].slice(0, 50));
+    setNotifications(prev => {
+      const now = Date.now();
+      const isDuplicate = prev.some(n =>
+        n.type === item.type &&
+        n.message === item.message &&
+        now - new Date(n.createdAt).getTime() < 3000
+      );
+      if (isDuplicate) return prev;
+
+      const newNotif: NotificationItem = {
+        ...item,
+        id: crypto.randomUUID(),
+        createdAt: new Date(),
+        isRead: false,
+      };
+      return [newNotif, ...prev].slice(0, 50);
+    });
   };
 
   const markAllAsRead = () => {
@@ -544,11 +556,11 @@ const toggleBookmark = (bidId: string) => {
       }
     });
     if (newInProgress) {
+      const today = new Date().toISOString().slice(0, 10);
+      setBids(prev => prev.map(b => b.id === bidId ? { ...b, inProgressAt: today } : b));
       const bid = bids.find(b => b.id === bidId);
       if (bid) addNotification({ type: 'inprogress', title: '진행 프로젝트 추가', message: `${bid.title}을 진행 프로젝트에 추가했습니다` });
       requestAnalysis(bidId);
-    } else if (!current.bookmarked) {
-      resetAnalysis(bidId);
     }
   };
 
@@ -743,7 +755,7 @@ const toggleBookmark = (bidId: string) => {
         minWidth: '1200px',
       }}
     >
-      <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} analysisCompleteCount={analysisCompleteCount} totalBidCount={activeBidCount} lastSyncTime={lastSyncTime} />
+      {sidebarOpen && <Sidebar role={user.role} activePage={activePage} onNavigate={setActivePage} onToggle={() => setSidebarOpen(false)} analysisCompleteCount={analysisCompleteCount} totalBidCount={activeBidCount} lastSyncTime={lastSyncTime} />}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <DashboardHeader
           user={user}
@@ -756,6 +768,8 @@ const toggleBookmark = (bidId: string) => {
           onSync={handleSync}
           isSyncing={isFetching}
           onOpenAnalysisDetail={openAnalysisDetail}
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen(v => !v)}
         />
         {isFetching && (
           <div style={{ height: '2px', backgroundColor: 'var(--dash-border)', flexShrink: 0 }}>
@@ -835,6 +849,7 @@ const toggleBookmark = (bidId: string) => {
               onToggleInProgress={toggleInProgress}
               onSelectBid={handleSelectBid}
               selectedBid={selectedBid}
+              onUpdateManagers={updateBidManagers}
             />
           ) : activePage === '진행 프로젝트 현황' ? (
             <ProposalPage
@@ -873,7 +888,7 @@ const toggleBookmark = (bidId: string) => {
             <AdminStatusPage dashboardStats={dashboardStats} totalBidCount={bids.length} />
           ) : isCeo ? (
             <>
-              <KpiCards bids={inProgressBids} bidsLoading={isFetching} ceoMode={true} aiStatuses={aiStatuses} dashboardStats={dashboardStats} />
+              <KpiCards bids={inProgressBids} bidsLoading={isFetching} ceoMode={true} aiStatuses={aiStatuses} outlineStatusMap={outlineStatusMap} dashboardStats={dashboardStats} />
               {inProgressBids.length === 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 16px', borderRadius: '10px', backgroundColor: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)' }}>
                   <Info style={{ width: '16px', height: '16px', color: '#7C3AED', flexShrink: 0 }} />
@@ -899,6 +914,7 @@ const toggleBookmark = (bidId: string) => {
                 bids={inProgressBids}
                 bidFlags={bidFlags}
                 aiStatuses={aiStatuses}
+                outlineStatusMap={outlineStatusMap}
                 onToggleBookmark={toggleBookmark}
                 onToggleInProgress={toggleInProgress}
                 onOpenAnalysisDetail={openAnalysisDetail}
@@ -933,6 +949,7 @@ const toggleBookmark = (bidId: string) => {
                 bids={bids}
                 bidFlags={bidFlags}
                 aiStatuses={aiStatuses}
+                outlineStatusMap={outlineStatusMap}
                 onToggleBookmark={toggleBookmark}
                 onToggleInProgress={toggleInProgress}
                 onOpenAnalysisDetail={openAnalysisDetail}
@@ -962,6 +979,7 @@ const toggleBookmark = (bidId: string) => {
             onUploadAttachment={uploadAttachment}
             bidFlags={bidFlags}
             onToggleInProgress={toggleInProgress}
+            onUpdateManagers={updateBidManagers}
           />
         </div>
       )}

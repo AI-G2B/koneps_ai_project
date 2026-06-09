@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { type Bid, type BidFlags, type AiStatusType, formatBudget, TODAY } from '../types';
+import { type Bid, type BidFlags, type AiStatusType, formatBudget, getDaysUntilDeadline, TODAY } from '../types';
 import { type ApiTypeStatItem } from '../services/api';
 import { RiskBadge } from './BidTable';
 import { BidSlideOver } from './BidSlideOver';
@@ -212,278 +212,182 @@ function BidTypeChart({ bids, ceoMode }: { bids: Bid[]; ceoMode: boolean; typeSt
   );
 }
 
-interface PopupState {
-  dateStr: string;
-  top?: number;
-  bottom?: number;
-  left: number;
-}
+const CAL_TODAY_YEAR = TODAY.getFullYear();
+const CAL_TODAY_MONTH = TODAY.getMonth() + 1;
+const CAL_TODAY_DAY = TODAY.getDate();
+const CAL_DAY_NAMES = ['월', '화', '수', '목', '금', '토', '일'];
+function calFirstDow(y: number, m: number) { return (new Date(y, m - 1, 1).getDay() + 6) % 7; }
+function calDaysInMonth(y: number, m: number) { return new Date(y, m, 0).getDate(); }
+
+interface CalPopup { day: number; top?: number; bottom?: number; left: number; }
 
 function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideOver: (bid: Bid) => void }) {
-  const [currentMonth, setCurrentMonth] = useState(
-    () => new Date(TODAY.getFullYear(), TODAY.getMonth(), 1)
-  );
-  const [popup, setPopup] = useState<PopupState | null>(null);
+  const [calYear, setCalYear] = useState(CAL_TODAY_YEAR);
+  const [calMonth, setCalMonth] = useState(CAL_TODAY_MONTH);
+  const [popup, setPopup] = useState<CalPopup | null>(null);
   const popupRef = useRef<HTMLDivElement>(null);
 
-  const bidsByDate = useMemo(() => {
-    // ISO 형식("2026-06-02T10:00:00+09:00") 대응을 위해 slice(0,10) 처리
-    const map = new Map<string, Bid[]>();
-    bids.forEach((bid) => {
-      if (!bid.deadline) return;
-      const dateKey = bid.deadline.slice(0, 10); // "YYYY-MM-DD"
-      const arr = map.get(dateKey) ?? [];
-      arr.push(bid);
-      map.set(dateKey, arr);
-    });
-    console.log('[DeadlineCalendar] bidsByDate keys:', [...map.keys()]);
-    return map;
-  }, [bids]);
+  const firstDow = calFirstDow(calYear, calMonth);
+  const daysInMonth = calDaysInMonth(calYear, calMonth);
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+  const weeks: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
-  const cells = useMemo(() => {
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const result: (string | null)[] = Array(firstDay).fill(null);
-    for (let d = 1; d <= daysInMonth; d++) {
-      result.push(
-        `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-      );
+  const deadlineMap = new Map<number, Bid[]>();
+  for (const bid of bids) {
+    if (!bid.deadline) continue;
+    const dateStr = bid.deadline.slice(0, 10);
+    const [y, m, d] = dateStr.split('-').map(Number);
+    if (y === calYear && m === calMonth) {
+      deadlineMap.set(d, [...(deadlineMap.get(d) ?? []), bid]);
     }
-    return result;
-  }, [currentMonth]);
+  }
+
+  const isThisMonth = calYear === CAL_TODAY_YEAR && calMonth === CAL_TODAY_MONTH;
+  const totalDeadlines = [...deadlineMap.values()].reduce((s, a) => s + a.length, 0);
+
+  const prevMonth = () => {
+    setPopup(null);
+    if (calMonth === 1) { setCalYear(y => y - 1); setCalMonth(12); } else setCalMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    setPopup(null);
+    if (calMonth === 12) { setCalYear(y => y + 1); setCalMonth(1); } else setCalMonth(m => m + 1);
+  };
 
   useEffect(() => {
     if (!popup) return;
     const handler = (e: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        setPopup(null);
-      }
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) setPopup(null);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [popup]);
 
-  const handleDayClick = (dateStr: string, e: React.MouseEvent<HTMLButtonElement>) => {
-    if (!bidsByDate.has(dateStr)) return;
-    if (popup?.dateStr === dateStr) {
-      setPopup(null);
-      return;
-    }
+  const handleDayClick = (day: number, e: React.MouseEvent<HTMLDivElement>) => {
+    if (!deadlineMap.has(day)) return;
+    if (popup?.day === day) { setPopup(null); return; }
     const rect = e.currentTarget.getBoundingClientRect();
-    const popupWidth = 288;
-    const popupHeight = 300;
-    const left = rect.left + rect.width / 2 - popupWidth / 2;
-    const clampedLeft = Math.max(8, Math.min(left, window.innerWidth - popupWidth - 8));
+    const pw = 280, ph = 300;
+    const left = Math.max(8, Math.min(rect.left + rect.width / 2 - pw / 2, window.innerWidth - pw - 8));
     const spaceBelow = window.innerHeight - rect.bottom;
-    if (spaceBelow < popupHeight) {
-      setPopup({ dateStr, bottom: window.innerHeight - rect.top + 8, left: clampedLeft });
-    } else {
-      setPopup({ dateStr, top: rect.bottom + 8, left: clampedLeft });
-    }
+    setPopup(spaceBelow < ph
+      ? { day, bottom: window.innerHeight - rect.top + 8, left }
+      : { day, top: rect.bottom + 8, left });
   };
 
-  const todayStr = TODAY.toISOString().slice(0, 10);
-  const popupBids = popup ? (bidsByDate.get(popup.dateStr) ?? []) : [];
+  const popupBids = popup ? (deadlineMap.get(popup.day) ?? []) : [];
 
   return (
-    <div
-      className="flex-1 rounded-xl"
-      style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '14px 16px' }}
-    >
-      {/* Header */}
-      <div className="flex items-center gap-2 mb-2">
-        <div
-          className="rounded-md flex items-center justify-center flex-shrink-0"
-          style={{ width: '20px', height: '20px', backgroundColor: 'rgba(239,68,68,0.15)' }}
-        >
-          <div className="rounded-sm" style={{ width: '10px', height: '10px', backgroundColor: '#EF4444' }} />
+    <div className="flex-1 rounded-xl" style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', padding: '14px 8px', overflow: 'hidden' }}>
+      {/* 헤더 */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', padding: '0 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(245,158,11,0.15)' }}>
+            <Calendar style={{ width: '11px', height: '11px', color: '#F59E0B' }} />
+          </div>
+          <h3 style={{ fontSize: '11px', fontWeight: 600, color: 'var(--dash-text)', whiteSpace: 'nowrap' }}>마감일 캘린더</h3>
         </div>
-        <h3 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--dash-text)' }}>마감일 캘린더</h3>
-        <div className="flex items-center gap-1 ml-auto">
-          <button
-            onClick={() => setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
-            className="flex items-center justify-center rounded-md"
-            style={{ width: '20px', height: '20px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
-          >
-            <ChevronLeft style={{ width: '12px', height: '12px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
+          <span style={{ fontSize: '11px', color: 'var(--dash-text-2)', whiteSpace: 'nowrap' }}>{calYear}년 {calMonth}월</span>
+          <button onClick={prevMonth} style={{ width: '20px', height: '20px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--dash-text-4)', background: 'none', border: 'none', cursor: 'pointer' }}
+            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)')}
+            onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-4)')}>
+            <ChevronLeft style={{ width: '13px', height: '13px' }} />
           </button>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--dash-text)', minWidth: '72px', textAlign: 'center' }}>
-            {currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월
-          </span>
-          <button
-            onClick={() => setCurrentMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
-            className="flex items-center justify-center rounded-md"
-            style={{ width: '20px', height: '20px', backgroundColor: 'var(--dash-item-bg-alt)', border: '1px solid var(--dash-border)', color: 'var(--dash-text-3)', cursor: 'pointer' }}
-          >
-            <ChevronRight style={{ width: '12px', height: '12px' }} />
+          <button onClick={nextMonth} style={{ width: '20px', height: '20px', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--dash-text-4)', background: 'none', border: 'none', cursor: 'pointer' }}
+            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)')}
+            onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-4)')}>
+            <ChevronRight style={{ width: '13px', height: '13px' }} />
           </button>
         </div>
       </div>
 
-      {/* Day of week headers */}
-      <div className="grid grid-cols-7 mb-1">
-        {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
-          <div
-            key={d}
-            className="text-center"
-            style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              color: i === 0 ? '#EF4444' : i === 6 ? '#60A5FA' : 'var(--dash-text-4)',
-              padding: '2px 0',
-            }}
-          >
-            {d}
+      {/* 요일 헤더 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: '4px' }}>
+        {CAL_DAY_NAMES.map((d, i) => (
+          <div key={d} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', color: i === 5 ? '#60A5FA' : i === 6 ? '#F87171' : 'var(--dash-text-4)', paddingBottom: '4px' }}>{d}</div>
+        ))}
+      </div>
+
+      {/* 날짜 그리드 */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+        {weeks.map((week, wi) => (
+          <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+            {week.map((day, di) => {
+              const isToday = isThisMonth && day === CAL_TODAY_DAY;
+              const bidsOnDay = day ? deadlineMap.get(day) : undefined;
+              const isDeadline = !!bidsOnDay;
+              const isUrgent = isDeadline && isThisMonth && day !== null && day >= CAL_TODAY_DAY && day <= CAL_TODAY_DAY + 3;
+              const isSelected = day === popup?.day;
+              const isSat = di === 5;
+              const isSun = di === 6;
+              return (
+                <div key={di} style={{ height: '28px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  {day !== null ? (
+                    <div
+                      onClick={(e) => handleDayClick(day, e)}
+                      style={{
+                        position: 'relative', width: '24px', height: '24px', borderRadius: '9999px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: isDeadline ? 'pointer' : 'default',
+                        fontSize: '11px', fontWeight: isToday || isDeadline ? 600 : 400,
+                        transition: 'background-color 0.15s',
+                        backgroundColor: isToday ? '#2563EB' : isSelected ? 'rgba(34,197,94,0.2)' : isUrgent ? 'rgba(239,68,68,0.12)' : isDeadline ? 'rgba(245,158,11,0.1)' : 'transparent',
+                        color: isToday ? 'white' : isSelected ? '#22C55E' : isUrgent ? '#EF4444' : isDeadline ? '#F59E0B' : isSat ? '#60A5FA' : isSun ? '#F87171' : isThisMonth && day < CAL_TODAY_DAY ? 'var(--dash-text-5)' : 'var(--dash-text-2)',
+                        border: isSelected ? '1px solid rgba(34,197,94,0.4)' : isUrgent && !isToday ? '1px solid rgba(239,68,68,0.3)' : 'none',
+                      }}
+                    >
+                      {day}
+                      {isDeadline && !isToday && (
+                        <span style={{ position: 'absolute', bottom: '1px', left: '50%', transform: 'translateX(-50%)', width: '4px', height: '4px', borderRadius: '9999px', backgroundColor: isSelected ? '#22C55E' : isUrgent ? '#EF4444' : '#F59E0B' }} />
+                      )}
+                    </div>
+                  ) : <div style={{ width: '24px', height: '24px' }} />}
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
 
-      {/* Day cells */}
-      <div className="grid grid-cols-7 gap-px">
-        {cells.map((dateStr, i) => {
-          if (!dateStr) return <div key={`empty-${i}`} />;
-          const hasBids = bidsByDate.has(dateStr);
-          const count = hasBids ? bidsByDate.get(dateStr)!.length : 0;
-          const isToday = dateStr === todayStr;
-          const isSelected = popup?.dateStr === dateStr;
-          const dayNum = parseInt(dateStr.slice(8), 10);
-          const dayOfWeek = new Date(dateStr).getDay();
-          const isPast = dateStr < todayStr;
-
-          return (
-            <button
-              key={dateStr}
-              onClick={(e) => handleDayClick(dateStr, e)}
-              className="relative flex flex-col items-center rounded-lg transition-colors"
-              style={{
-                padding: '2px 2px',
-                cursor: hasBids ? 'pointer' : 'default',
-                backgroundColor: isSelected
-                  ? 'rgba(37,99,235,0.15)'
-                  : isToday
-                  ? 'rgba(37,99,235,0.08)'
-                  : 'transparent',
-                border: isSelected
-                  ? '1px solid rgba(37,99,235,0.4)'
-                  : isToday
-                  ? '1px solid rgba(37,99,235,0.2)'
-                  : '1px solid transparent',
-              }}
-            >
-              <span
-                style={{
-                  fontSize: '12px',
-                  fontWeight: isToday ? 700 : 400,
-                  lineHeight: 1,
-                  color: isToday
-                    ? '#2563EB'
-                    : dayOfWeek === 0
-                    ? '#EF4444'
-                    : dayOfWeek === 6
-                    ? '#60A5FA'
-                    : isPast
-                    ? 'var(--dash-text-4)'
-                    : 'var(--dash-text-2)',
-                }}
-              >
-                {dayNum}
-              </span>
-              {hasBids && (
-                <span
-                  className="mt-0.5 rounded-full flex items-center justify-center"
-                  style={{
-                    width: '14px',
-                    height: '14px',
-                    backgroundColor: isSelected ? '#2563EB' : '#EF4444',
-                    fontSize: '9px',
-                    fontWeight: 700,
-                    color: 'white',
-                    flexShrink: 0,
-                  }}
-                >
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      {/* 범례 */}
+      <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px', marginTop: '8px', paddingTop: '8px', paddingLeft: '4px', paddingRight: '4px', borderTop: '1px solid var(--dash-border)' }}>
+        {[
+          { color: '#2563EB', label: '오늘', dot: false },
+          { color: '#EF4444', label: '마감 임박', dot: true },
+          { color: '#F59E0B', label: '마감일', dot: true },
+        ].map(item => (
+          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+            {item.dot
+              ? <span style={{ width: '5px', height: '5px', borderRadius: '9999px', backgroundColor: item.color, flexShrink: 0 }} />
+              : <span style={{ width: '12px', height: '12px', borderRadius: '9999px', backgroundColor: item.color, fontSize: '6px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{CAL_TODAY_DAY}</span>
+            }
+            <span style={{ fontSize: '10px', color: 'var(--dash-text-3)' }}>{item.label}</span>
+          </div>
+        ))}
+        <span style={{ fontSize: '10px', color: 'var(--dash-text-5)', marginLeft: 'auto', whiteSpace: 'nowrap' }}>{calYear}년 {calMonth}월 {totalDeadlines}건 마감</span>
       </div>
 
-      {/* Legend */}
-      <div
-        className="flex items-center gap-3 mt-2 pt-2"
-        style={{ borderTop: '1px solid var(--dash-border)' }}
-      >
-        {bids.length === 0 ? (
-          <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>진행 등록된 공고의 마감일이 표시됩니다</span>
-        ) : (
-          <>
-            <div className="flex items-center gap-1.5">
-              <span style={{ width: '8px', height: '8px', borderRadius: '9999px', backgroundColor: '#EF4444', display: 'inline-block' }} />
-              <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>마감일</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span style={{ width: '8px', height: '8px', borderRadius: '4px', backgroundColor: 'rgba(37,99,235,0.3)', display: 'inline-block', border: '1px solid rgba(37,99,235,0.4)' }} />
-              <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>오늘</span>
-            </div>
-            <span style={{ fontSize: '11px', color: 'var(--dash-text-5)', marginLeft: 'auto' }}>
-              이번달 {[...bidsByDate.keys()].filter(d => d.startsWith(`${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`)).length}일 마감
-            </span>
-          </>
-        )}
-      </div>
-
-      {/* Popup */}
+      {/* 플로팅 팝업 */}
       {popup && popupBids.length > 0 && createPortal(
-        <div
-          ref={popupRef}
-          style={{
-            position: 'fixed',
-            top: popup.top,
-            bottom: popup.bottom,
-            left: popup.left,
-            zIndex: 1000,
-            width: '288px',
-            maxHeight: '300px',
-            overflowY: 'auto',
-            backgroundColor: 'var(--dash-card)',
-            border: '1px solid var(--dash-border-strong)',
-            borderRadius: '10px',
-            padding: '12px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
-          }}
-        >
+        <div ref={popupRef} style={{ position: 'fixed', top: popup.top, bottom: popup.bottom, left: popup.left, zIndex: 1000, width: '280px', maxHeight: '300px', overflowY: 'auto', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border-strong)', borderRadius: '10px', padding: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}>
           <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--dash-text-3)', marginBottom: '8px' }}>
-            {popup.dateStr.substring(5).replace('-', '/')} 마감 공고 ({popupBids.length}건)
+            {calMonth}월 {popup.day}일 마감 공고 ({popupBids.length}건)
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {popupBids.map((bid) => (
-              <div
-                key={bid.id}
-                className="rounded-lg"
-                onClick={() => { onOpenSlideOver(bid); setPopup(null); }}
-                style={{ padding: '8px 10px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)', cursor: 'pointer', transition: 'background-color 0.15s' }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg-alt)')}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg)')}
-              >
-                <div
-                  style={{
-                    fontSize: '12px', fontWeight: 600, color: 'var(--dash-text)',
-                    lineHeight: 1.4, marginBottom: '5px',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}
-                  title={bid.title}
-                >
-                  {bid.title}
-                </div>
-                <div className="flex items-center justify-between">
+            {popupBids.map(bid => (
+              <div key={bid.id} onClick={() => { onOpenSlideOver(bid); setPopup(null); }}
+                style={{ padding: '8px 10px', borderRadius: '8px', backgroundColor: 'var(--dash-item-bg)', border: '1px solid var(--dash-border-item)', cursor: 'pointer', transition: 'background-color 0.15s' }}
+                onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg-alt)')}
+                onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'var(--dash-item-bg)')}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--dash-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: '4px' }}>{bid.title}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '11px', color: 'var(--dash-text-3)' }}>{bid.agency}</span>
-                  <div className="flex items-center gap-2">
-                    <span style={{ fontSize: '11px', color: '#F59E0B', fontWeight: 600 }}>{formatBudget(bid.budget)}</span>
-                    <RiskBadge risk={bid.risk} />
-                  </div>
+                  <span style={{ fontSize: '11px', color: '#F59E0B', fontWeight: 600 }}>{formatBudget(bid.budget)}</span>
                 </div>
               </div>
             ))}
@@ -495,10 +399,11 @@ function DeadlineCalendar({ bids, onOpenSlideOver }: { bids: Bid[]; onOpenSlideO
   );
 }
 
-export function BottomWidgets({ bids, bidFlags, aiStatuses, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, typeStats }: {
+export function BottomWidgets({ bids, bidFlags, aiStatuses, outlineStatusMap: _outlineStatusMap, onToggleBookmark, onToggleInProgress, onOpenAnalysisDetail, onRequestAnalysis, ceoMode = false, typeStats }: {
   bids: Bid[];
   bidFlags: Record<string, BidFlags>;
   aiStatuses?: Record<string, AiStatusType>;
+  outlineStatusMap?: Record<string, 'none' | 'generating' | 'complete'>;
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
   onOpenAnalysisDetail?: (bid: Bid) => void;
@@ -519,8 +424,12 @@ export function BottomWidgets({ bids, bidFlags, aiStatuses, onToggleBookmark, on
   return (
     <>
       <div className="flex gap-3">
-        <DeadlineCalendar bids={inProgressBids} onOpenSlideOver={openSlideOver} />
-        <BidTypeChart bids={bids} ceoMode={ceoMode} typeStats={typeStats} />
+        <div style={{ flex: 3, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <DeadlineCalendar bids={inProgressBids} onOpenSlideOver={openSlideOver} />
+        </div>
+        <div style={{ flex: 7, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <BidTypeChart bids={bids} ceoMode={ceoMode} typeStats={typeStats} />
+        </div>
       </div>
       <BidSlideOver
         bid={slideOverBid}

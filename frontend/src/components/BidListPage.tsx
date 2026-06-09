@@ -311,7 +311,7 @@ function LeftPanel({ bids, bidFlags, selectedBid, onOpenSlide, showBidNumber = f
       </div>
 
       <div className="flex-shrink-0 flex items-center" style={{ padding: '8px 16px', borderTop: '1px solid var(--dash-border)' }}>
-        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>{filtered.length}건 표시 중 (전체 {bids.length}건)</span>
+        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>{filtered.length}건 표시 중 (수집 {bids.length}건)</span>
       </div>
     </div>
   );
@@ -429,7 +429,7 @@ function LeftRow({ bid, isSelected, flags, onSelect, showBidNumber = false, agen
         left: Math.min(tooltip.x, window.innerWidth - 420),
         zIndex: 9999,
         maxWidth: '400px',
-        backgroundColor: '#1e293b',
+        backgroundColor: 'var(--dash-tooltip-bg)',
         color: '#f1f5f9',
         fontSize: '12px',
         lineHeight: 1.6,
@@ -646,12 +646,23 @@ function RightCard({ bid, flags, tab, isRemoving, onToggleBookmark, onToggleInPr
           style={{ fontSize: '11px', color: urgent ? '#EF4444' : 'var(--dash-text-3)', fontWeight: urgent ? 600 : 400 }}
         >
           <Calendar style={{ width: '10px', height: '10px', flexShrink: 0 }} />
-          {bid.deadline.substring(5)}
-          {urgent && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />
-              {daysLeft >= 0 ? `D-${daysLeft}` : `D+${Math.abs(daysLeft)}`}
-            </span>
+          {!bid.deadline ? (
+            <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>기간미정</span>
+          ) : (
+            <>
+              {bid.deadline.substring(5)}
+              {daysLeft < 0 ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-gray-bg)', color: '#81878F', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#81878F', flexShrink: 0, display: 'inline-block' }} />
+                  마감
+                </span>
+              ) : urgent ? (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', padding: '3px 8px', borderRadius: '40px', fontSize: '11px', fontWeight: 400, fontFamily: 'Inter, Noto Sans KR, sans-serif', backgroundColor: 'var(--badge-red-bg)', color: '#F27A75', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#F27A75', flexShrink: 0, display: 'inline-block' }} />
+                  D-{daysLeft}
+                </span>
+              ) : null}
+            </>
           )}
         </span>
       </div>
