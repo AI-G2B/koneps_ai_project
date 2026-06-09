@@ -135,16 +135,22 @@ function BidCard({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
             </span>
             <span className="flex items-center gap-1" style={{ fontSize: '12px', color: daysLeft < 0 ? 'var(--dash-text-3)' : urgent ? '#EF4444' : 'var(--dash-text-3)', fontWeight: daysLeft < 0 ? 400 : urgent ? 600 : 400 }}>
               <Calendar style={{ width: '12px', height: '12px', flexShrink: 0 }} />
-              {bid.deadline.substring(5)}
-              {daysLeft < 0 ? (
-                <span className="rounded-full" style={{ fontSize: '10px', padding: '0 5px', backgroundColor: 'rgba(129,135,143,0.12)', color: '#81878F', marginLeft: '2px' }}>
-                  마감
-                </span>
-              ) : urgent ? (
-                <span className="rounded-full" style={{ fontSize: '10px', padding: '0 5px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#EF4444', marginLeft: '2px' }}>
-                  D-{daysLeft}
-                </span>
-              ) : null}
+              {!bid.deadline ? (
+                <span style={{ fontSize: '11px', color: 'var(--dash-text-4)' }}>기간미정</span>
+              ) : (
+                <>
+                  {bid.deadline.substring(5)}
+                  {daysLeft < 0 ? (
+                    <span className="rounded-full" style={{ fontSize: '10px', padding: '0 5px', backgroundColor: 'rgba(129,135,143,0.12)', color: '#81878F', marginLeft: '2px' }}>
+                      마감
+                    </span>
+                  ) : urgent ? (
+                    <span className="rounded-full" style={{ fontSize: '10px', padding: '0 5px', backgroundColor: 'rgba(239,68,68,0.15)', color: '#EF4444', marginLeft: '2px' }}>
+                      D-{daysLeft}
+                    </span>
+                  ) : null}
+                </>
+              )}
             </span>
             <AiStatusIndicator status={bid.aiStatus} />
           </div>
