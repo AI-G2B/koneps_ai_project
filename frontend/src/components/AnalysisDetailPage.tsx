@@ -300,20 +300,26 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
           <ArrowLeft style={{ width: '14px', height: '14px' }} />
           뒤로
         </button>
-        <button
-          onClick={handleDownload}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: '6px',
-            padding: '6px 12px', border: '1px solid var(--dash-border)',
-            borderRadius: '8px', background: 'var(--dash-card)',
-            color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer',
-          }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)'; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; }}
-        >
-          <Download style={{ width: '14px', height: '14px' }} />
-          리포트 다운로드
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            onClick={handleDownload}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', border: '1px solid var(--dash-border)', borderRadius: '8px', background: 'var(--dash-card)', color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; }}
+          >
+            <Download style={{ width: '14px', height: '14px' }} />
+            PDF로 저장
+          </button>
+          <button
+            onClick={async () => { const { downloadAnalysisDocx } = await import('../services/api'); await downloadAnalysisDocx(bid.id); }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', border: '1px solid #2563EB', borderRadius: '8px', background: 'var(--dash-card)', color: '#2563EB', fontSize: '13px', cursor: 'pointer' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(37,99,235,0.06)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-card)'; }}
+          >
+            <Download style={{ width: '14px', height: '14px' }} />
+            Word(.docx) 다운
+          </button>
+        </div>
       </div>
 
       {/* 2. 공고 헤더 */}
@@ -410,16 +416,6 @@ export function AnalysisDetailPage({ bid, onBack, aiStatus: aiStatusProp, onRequ
             >
               <RefreshCw style={{ width: '13px', height: '13px' }} />
               AI 재분석
-            </button>
-            <button
-              onClick={async () => {
-                const { downloadAnalysisDocx } = await import('../services/api');
-                await downloadAnalysisDocx(bid.id);
-              }}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '7px 14px', borderRadius: '8px', border: '1px solid #2563EB', backgroundColor: 'transparent', color: '#2563EB', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
-            >
-              <Download style={{ width: '14px', height: '14px' }} />
-              AI 분석 결과 다운
             </button>
             <button
               onClick={() => setShowDeleteConfirm(true)}
