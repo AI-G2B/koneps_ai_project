@@ -73,6 +73,7 @@ export interface Bid {
   ntceDate?: string;
   salesManager?: string;
   projectPm?: string;
+  inProgressAt?: string;
   is_bookmarked?: boolean;
   is_in_progress?: boolean;
   is_expired?: boolean;
