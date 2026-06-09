@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Bookmark, BookmarkX, Play, Building2, Banknote, Calendar } from 'lucide-react';
 import { type Bid, type BidFlags, formatBudget, getDaysUntilDeadline, isDeadlineUrgent } from '../types';
 import { RiskBadge, AiStatusIndicator } from './BidTable';
@@ -10,9 +11,10 @@ interface BookmarkPageProps {
   onToggleInProgress: (bidId: string) => void;
   onSelectBid: (bid: Bid) => void;
   selectedBid: Bid | null;
+  onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
 }
 
-export function BookmarkPage({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onSelectBid, selectedBid }: BookmarkPageProps) {
+export function BookmarkPage({ bids, bidFlags, onToggleBookmark, onToggleInProgress, onSelectBid, selectedBid, onUpdateManagers }: BookmarkPageProps) {
   const bookmarkedBids = bids.filter((b) => (bidFlags[b.id]?.bookmarked ?? false) && getDaysUntilDeadline(b.deadline) >= 0);
 
   return (
@@ -43,6 +45,7 @@ export function BookmarkPage({ bids, bidFlags, onToggleBookmark, onToggleInProgr
                   onSelect={() => onSelectBid(bid)}
                   onToggleBookmark={onToggleBookmark}
                   onToggleInProgress={onToggleInProgress}
+                  onUpdateManagers={onUpdateManagers}
                 />
               ))}
             </div>
@@ -70,16 +73,20 @@ function EmptyState() {
   );
 }
 
-function BidCard({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleInProgress }: {
+function BidCard({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleInProgress, onUpdateManagers }: {
   bid: Bid;
   isSelected: boolean;
   flags: BidFlags;
   onSelect: () => void;
   onToggleBookmark: (bidId: string) => void;
   onToggleInProgress: (bidId: string) => void;
+  onUpdateManagers?: (bidId: string, salesManager: string, projectPm: string) => void;
 }) {
   const daysLeft = getDaysUntilDeadline(bid.deadline);
   const urgent = isDeadlineUrgent(bid.deadline);
+  const [showConfirm, setShowConfirm] = useState<'add' | 'remove' | null>(null);
+  const [regSalesManager, setRegSalesManager] = useState('');
+  const [regProjectPm, setRegProjectPm] = useState('');
 
   return (
     <div
@@ -170,7 +177,13 @@ function BidCard({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
             <span>관심공고 해제</span>
           </button>
           <button
-            onClick={() => onToggleInProgress(bid.id)}
+            onClick={() => {
+              if (!flags.inProgress) {
+                setRegSalesManager(bid.salesManager ?? '');
+                setRegProjectPm(bid.projectPm ?? '');
+              }
+              setShowConfirm(flags.inProgress ? 'remove' : 'add');
+            }}
             className="rounded-md flex items-center gap-1"
             style={{
               padding: '5px 10px',
@@ -182,13 +195,52 @@ function BidCard({ bid, isSelected, flags, onSelect, onToggleBookmark, onToggleI
             }}
             onMouseEnter={(e) => { if (!flags.inProgress) { (e.currentTarget as HTMLButtonElement).style.color = '#22C55E'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'rgba(34,197,94,0.1)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(34,197,94,0.3)'; } }}
             onMouseLeave={(e) => { if (!flags.inProgress) { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-3)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--dash-border-btn)'; } }}
-            title="진행 등록"
+            title={flags.inProgress ? '진행 취소' : '진행 등록'}
           >
             <Play style={{ width: '12px', height: '12px', fill: flags.inProgress ? 'currentColor' : 'none', flexShrink: 0 }} />
             <span>{flags.inProgress ? '진행' : '진행 등록'}</span>
           </button>
         </div>
       </div>
+
+      {/* 진행 등록/취소 확인 모달 */}
+      {showConfirm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }} onClick={() => setShowConfirm(null)}>
+          <div style={{ backgroundColor: 'var(--dash-card)', borderRadius: '12px', padding: '24px', maxWidth: '360px', width: '100%', margin: '0 16px', border: '1px solid var(--dash-border)' }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px', textAlign: showConfirm === 'remove' ? 'center' : 'left' }}>
+              {showConfirm === 'add' ? '진행 프로젝트로 등록' : '진행 프로젝트에서 제거하시겠습니까?'}
+            </h3>
+            {showConfirm === 'add' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>영업담당자</div>
+                  <input value={regSalesManager} onChange={(e) => setRegSalesManager(e.target.value)} placeholder="이름 입력 (선택)" style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--dash-border-med)', backgroundColor: 'var(--dash-input-bg)', color: 'var(--dash-text)', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>담당 PM</div>
+                  <input value={regProjectPm} onChange={(e) => setRegProjectPm(e.target.value)} placeholder="이름 입력 (선택)" style={{ width: '100%', padding: '8px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--dash-border-med)', backgroundColor: 'var(--dash-input-bg)', color: 'var(--dash-text)', outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+            )}
+            {showConfirm === 'remove' && <div style={{ marginBottom: '20px' }} />}
+            <div style={{ display: 'flex', gap: '8px', justifyContent: showConfirm === 'remove' ? 'center' : 'flex-end' }}>
+              <button onClick={() => setShowConfirm(null)} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--dash-border)', backgroundColor: 'transparent', color: 'var(--dash-text-3)', fontSize: '13px', cursor: 'pointer' }}>취소</button>
+              <button
+                onClick={() => {
+                  onToggleInProgress(bid.id);
+                  if (showConfirm === 'add' && (regSalesManager || regProjectPm)) {
+                    onUpdateManagers?.(bid.id, regSalesManager, regProjectPm);
+                  }
+                  setShowConfirm(null);
+                }}
+                style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: showConfirm === 'add' ? '#2563EB' : '#EF4444', color: '#fff', fontSize: '13px', fontWeight: 500, cursor: 'pointer' }}
+              >
+                {showConfirm === 'add' ? '등록' : '제거'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

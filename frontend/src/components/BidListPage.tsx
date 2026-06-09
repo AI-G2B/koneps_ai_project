@@ -311,7 +311,7 @@ function LeftPanel({ bids, bidFlags, selectedBid, onOpenSlide, showBidNumber = f
       </div>
 
       <div className="flex-shrink-0 flex items-center" style={{ padding: '8px 16px', borderTop: '1px solid var(--dash-border)' }}>
-        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>{filtered.length}건 표시 중 (전체 {bids.length}건)</span>
+        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>{filtered.length}건 표시 중 (수집 {bids.length}건)</span>
       </div>
     </div>
   );

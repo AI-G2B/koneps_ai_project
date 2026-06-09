@@ -80,7 +80,7 @@ export function ProjectPage({ bids, bidFlags, aiStatuses, onSelectBid, selectedB
         </div>
 
         {/* 오른쪽: 상세 패널 */}
-        <BidDetailPanel bid={selectedBid} aiStatuses={aiStatuses} onOpenAnalysisDetail={onOpenAnalysisDetail} onRequestAnalysis={onRequestAnalysis} ceoMode={ceoMode} showFullDetail={ceoMode} />
+        <BidDetailPanel bid={selectedBid} bidFlags={bidFlags} aiStatuses={aiStatuses} onToggleInProgress={onToggleInProgress} onUpdateManagers={onUpdateManagers} onOpenAnalysisDetail={onOpenAnalysisDetail} onRequestAnalysis={onRequestAnalysis} ceoMode={ceoMode} showFullDetail={ceoMode} />
       </div>
       <BidSlideOver
         bid={slideOverBid}

@@ -264,7 +264,7 @@ export function BidTable({ bids, isLoading = false, selectedBid, onSelectBid, ag
       </div>
 
       <div className="flex items-center justify-between flex-shrink-0" style={{ padding: '8px 16px', borderTop: '1px solid var(--dash-border)' }}>
-        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>{pagedBids.length}건 표시 중 (전체 {sortedBids.length}건)</span>
+        <span style={{ fontSize: '11px', color: 'var(--dash-text-5)' }}>{pagedBids.length}건 표시 중 (수집 {sortedBids.length}건)</span>
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
             <button

@@ -849,6 +849,7 @@ const toggleBookmark = (bidId: string) => {
               onToggleInProgress={toggleInProgress}
               onSelectBid={handleSelectBid}
               selectedBid={selectedBid}
+              onUpdateManagers={updateBidManagers}
             />
           ) : activePage === '진행 프로젝트 현황' ? (
             <ProposalPage
