@@ -25,7 +25,7 @@ export function StrategyReportPage({ bids, bidFlags }: StrategyReportPageProps) 
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '6px' }}>아직 진행 중인 사업이 없습니다</div>
-            <div style={{ fontSize: '13px', color: 'var(--dash-text-4)' }}>담당자가 공고에 진행 등록을 하면 여기에 표시됩니다</div>
+            <div style={{ fontSize: '13px', color: 'var(--dash-text-4)' }}>제안 PM이 공고에 진행 등록을 하면 여기에 표시됩니다</div>
           </div>
         </div>
       </div>
@@ -80,7 +80,7 @@ export function StrategyReportPage({ bids, bidFlags }: StrategyReportPageProps) 
                 {['공고명', '발주기관', '예산', '마감일'].map(col => (
                   <th key={col} style={{ padding: '9px 14px', textAlign: 'left', fontSize: '11px', color: 'var(--dash-text-4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', borderBottom: '1px solid var(--dash-border)' }}>{col}</th>
                 ))}
-                {['진행 담당자', 'PM', '시작일'].map((col, i) => (
+                {['영업대표', '제안 PM', '시작일'].map((col, i) => (
                   <th key={col} style={{ padding: '9px 14px', textAlign: 'left', fontSize: '11px', color: 'var(--dash-text-4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', borderBottom: '1px solid var(--dash-border)', backgroundColor: 'rgba(124,58,237,0.04)', borderLeft: i === 0 ? '1px solid var(--dash-border)' : undefined }}>{col}</th>
                 ))}
               </tr>

@@ -373,7 +373,7 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
           onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'var(--dash-item-bg-alt)'; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = 'var(--dash-text-2)'; (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
         >
-          {ceoMode ? '담당자 상세 보고서 보기' : '상세 분석 리포트 보기'}
+          {ceoMode ? '제안 PM 상세 보고서 보기' : '상세 분석 리포트 보기'}
           <ChevronRight style={{ width: '13px', height: '13px' }} />
         </button>
       </div>
@@ -389,7 +389,7 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
               <>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
                   <div>
-                    <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>영업담당자</div>
+                    <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>영업대표</div>
                     <input
                       value={regSalesManager}
                       onChange={(e) => setRegSalesManager(e.target.value)}
@@ -398,7 +398,7 @@ export function BidDetailPanel({ bid, detailLoading = false, aiStatuses, onOpenA
                     />
                   </div>
                   <div>
-                    <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>담당 PM</div>
+                    <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>제안 PM</div>
                     <input
                       value={regProjectPm}
                       onChange={(e) => setRegProjectPm(e.target.value)}

@@ -59,7 +59,7 @@ const ADMIN_SECTIONS: NavSection[] = [
     items: [{ icon: LayoutDashboard, label: '대시보드' }],
   },
   {
-    label: '어드민 설정',
+    label: '시스템 관리자 설정',
     items: [
       { icon: ShieldCheck, label: 'LLM 설정' },
       { icon: AlertTriangle, label: '독소조항 설정' },
@@ -95,7 +95,7 @@ export function Sidebar({ role, activePage, onNavigate, onToggle, analysisComple
     : role === 'proposal'
     ? 'linear-gradient(135deg, #0891B2, #0E7490)'
     : 'linear-gradient(135deg, #2563EB, #1D4ED8)';
-  const roleLabel = role === 'admin' ? '어드민' : role === 'ceo' ? 'CEO 모드' : role === 'proposal' ? '제안팀 모드' : '담당자 모드';
+  const roleLabel = role === 'admin' ? '시스템 관리자' : role === 'ceo' ? '경영진 모드' : role === '영업담당자' ? '영업대표 모드' : role === 'proposal' ? '제안 PM 모드' : '제안 PM 모드';
   const roleBadgeBg = role === 'admin' ? 'rgba(71,85,105,0.12)' : role === 'ceo' ? 'rgba(124,58,237,0.12)' : role === 'proposal' ? 'rgba(8,145,178,0.12)' : 'rgba(37,99,235,0.12)';
   const roleBadgeBorder = role === 'admin' ? 'rgba(71,85,105,0.25)' : role === 'ceo' ? 'rgba(124,58,237,0.25)' : role === 'proposal' ? 'rgba(8,145,178,0.25)' : 'rgba(37,99,235,0.25)';
 

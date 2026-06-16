@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Building2, Eye, EyeOff, ShieldCheck, BarChart3 } from 'lucide-react';
+import { Building2, Eye, EyeOff, ShieldCheck, BarChart3, TrendingUp } from 'lucide-react';
 import { SignUpForm } from './SignUpForm';
 
 export type UserRole = 'manager' | 'ceo' | 'pm' | '영업담당자' | '입찰담당자' | 'proposal' | 'admin';
@@ -12,11 +12,11 @@ export interface User {
 }
 
 const TEST_ACCOUNTS = [
-  { label: "담당자", username: "manager01", password: "1234" },
-  { label: "담당자", username: "manager02", password: "1234" },
-  { label: "담당자", username: "manager03", password: "1234" },
-  { label: "CEO", username: "ceo01", password: "1234" },
-  { label: "관리자", username: "admin01", password: "1234" },
+  { label: "영업대표", username: "sales01", password: "1234" },
+  { label: "제안 PM", username: "manager01", password: "1234" },
+  { label: "제안 PM", username: "manager02", password: "1234" },
+  { label: "경영진", username: "ceo01", password: "1234" },
+  { label: "시스템 관리자", username: "admin01", password: "1234" },
 ];
 
 interface LoginPageProps {
@@ -48,10 +48,19 @@ export function LoginPage({ onLogin, loginError }: LoginPageProps) {
 
   const roleCards = [
     {
+      icon: TrendingUp,
+      color: '#059669',
+      bg: 'rgba(5,150,105,0.1)',
+      title: '영업대표',
+      desc: '신규 입찰 기회 발굴 및 영업 전략 수립',
+      username: 'sales01',
+      password: '1234',
+    },
+    {
       icon: ShieldCheck,
       color: '#2563EB',
       bg: 'rgba(37,99,235,0.1)',
-      title: '담당자',
+      title: '제안 PM',
       desc: '공고 수집·분석·위험도 검토 및 제안목차 생성',
       username: 'manager01',
       password: '1234',
@@ -60,7 +69,7 @@ export function LoginPage({ onLogin, loginError }: LoginPageProps) {
       icon: BarChart3,
       color: '#7C3AED',
       bg: 'rgba(124,58,237,0.1)',
-      title: 'CEO',
+      title: '경영진',
       desc: '입찰 현황 요약·KPI·전략 리포트 확인',
       username: 'ceo01',
       password: '1234',
@@ -142,7 +151,7 @@ export function LoginPage({ onLogin, loginError }: LoginPageProps) {
                 <ShieldCheck style={{ width: '18px', height: '18px', color: '#475569' }} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>어드민</div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>시스템 관리자</div>
                 <div style={{ fontSize: '12px', color: '#64748b' }}>시스템 설정 및 관리</div>
               </div>
               <div style={{ fontSize: '10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>테스트 로그인</div>

@@ -179,7 +179,7 @@ export function AnalysisListPage({ bids, aiStatuses, bidFlags, onOpenAnalysisDet
             <h3 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 8px' }}>진행 프로젝트로 등록</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>영업담당자</div>
+                <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>영업대표</div>
                 <input
                   value={regSalesManager}
                   onChange={(e) => setRegSalesManager(e.target.value)}
@@ -188,7 +188,7 @@ export function AnalysisListPage({ bids, aiStatuses, bidFlags, onOpenAnalysisDet
                 />
               </div>
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>담당 PM</div>
+                <div style={{ fontSize: '12px', color: 'var(--dash-text-3)', marginBottom: '4px' }}>제안 PM</div>
                 <input
                   value={regProjectPm}
                   onChange={(e) => setRegProjectPm(e.target.value)}

@@ -4,11 +4,18 @@ import { registerApi } from '../services/api';
 
 const POSITIONS = ['CEO', 'PM', '영업담당자', '입찰담당자'] as const;
 
+const POSITION_DISPLAY_NAMES: Record<string, string> = {
+  CEO: '경영진',
+  PM: '제안 PM',
+  영업담당자: '영업대표',
+  입찰담당자: '제안 PM',
+};
+
 const POSITION_LABELS: Record<string, string> = {
-  CEO: '최고경영자 — 전략 리포트·KPI 확인',
-  PM: '프로젝트 매니저 — 입찰 전략 수립 총괄',
-  영업담당자: '영업담당자 — 신규 입찰 기회 발굴',
-  입찰담당자: '입찰담당자 — 공고 분석·서류 작성',
+  CEO: '경영진 — 전략 리포트·KPI 확인',
+  PM: '제안 PM — 입찰 전략 수립 총괄',
+  영업담당자: '영업대표 — 신규 입찰 기회 발굴',
+  입찰담당자: '제안 PM — 공고 분석·서류 작성',
 };
 
 interface SignUpFormProps {
@@ -212,7 +219,7 @@ export function SignUpForm({ onBack, onSuccess }: SignUpFormProps) {
               }}
             >
               <span style={{ fontSize: '13px', fontWeight: position === p ? 600 : 400, color: position === p ? '#2563EB' : 'var(--dash-text)' }}>
-                {p}
+                {POSITION_DISPLAY_NAMES[p] ?? p}
               </span>
               <span style={{ fontSize: '11px', color: 'var(--dash-text-3)', marginTop: '2px' }}>
                 {POSITION_LABELS[p]}

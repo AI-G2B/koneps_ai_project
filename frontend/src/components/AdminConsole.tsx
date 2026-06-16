@@ -50,9 +50,9 @@ export function AdminConsole({ user, onLogout }: AdminConsoleProps) {
             <ShieldCheck style={{ width: '20px', height: '20px', color: '#fff' }} />
           </div>
           <div>
-            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)' }}>koneps 관리자 콘솔</div>
+            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--dash-text)' }}>koneps 시스템 관리자 콘솔</div>
             <div style={{ fontSize: '11px', color: 'var(--dash-text-3)' }}>
-              {user.name} ({user.username}) · 관리자
+              {user.name} ({user.username}) · 시스템 관리자
             </div>
           </div>
         </div>

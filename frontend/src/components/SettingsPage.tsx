@@ -32,6 +32,7 @@ export function SettingsPage({ settings, onSave, agencyList, user, onUpdateProfi
   const [nameMsg, setNameMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const POSITIONS = ['CEO', 'PM', '영업담당자', '입찰담당자'] as const;
+  const POSITION_DISPLAY_NAMES: Record<string, string> = { CEO: '경영진', PM: '제안 PM', 영업담당자: '영업대표', 입찰담당자: '제안 PM' };
   const ROLE_TO_POSITION: Record<string, string> = { ceo: 'CEO', pm: 'PM', 영업담당자: '영업담당자', 입찰담당자: '입찰담당자', manager: 'PM' };
   const defaultPosition = ROLE_TO_POSITION[user?.role ?? ''] ?? 'PM';
   const [showPositionSection, setShowPositionSection] = useState(false);
@@ -45,7 +46,7 @@ export function SettingsPage({ settings, onSave, agencyList, user, onUpdateProfi
     setPositionMsg(null);
     try {
       await onUpdateProfile(user?.name ?? '', undefined, undefined, selectedPosition);
-      setPositionMsg({ type: 'success', text: `직급이 "${selectedPosition}"(으)로 변경되었습니다.` });
+      setPositionMsg({ type: 'success', text: `직급이 "${POSITION_DISPLAY_NAMES[selectedPosition] ?? selectedPosition}"(으)로 변경되었습니다.` });
       setTimeout(() => { setPositionMsg(null); setShowPositionSection(false); }, 3000);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : '직급 변경에 실패했습니다.';
@@ -64,8 +65,8 @@ export function SettingsPage({ settings, onSave, agencyList, user, onUpdateProfi
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const ROLE_LABELS: Record<string, string> = { ceo: '대표이사', pm: 'PM', 영업담당자: '영업담당자', 입찰담당자: '입찰담당자', manager: '담당자', admin: '관리자' };
-  const roleLabel = ROLE_LABELS[user?.role ?? ''] ?? '담당자';
+  const ROLE_LABELS: Record<string, string> = { ceo: '경영진', pm: '제안 PM', 영업담당자: '영업대표', 입찰담당자: '제안 PM', manager: '제안 PM', admin: '시스템 관리자' };
+  const roleLabel = ROLE_LABELS[user?.role ?? ''] ?? '제안 PM';
   const avatarGradient = user?.role === 'ceo'
     ? 'linear-gradient(135deg, #7C3AED, #5B21B6)'
     : 'linear-gradient(135deg, #2563EB, #1D4ED8)';
@@ -288,7 +289,7 @@ export function SettingsPage({ settings, onSave, agencyList, user, onUpdateProfi
                             }} />
                             <div>
                               <div style={{ fontSize: '13px', fontWeight: selectedPosition === p ? 600 : 400, color: selectedPosition === p ? '#2563EB' : 'var(--dash-text)' }}>
-                                {p}
+                                {POSITION_DISPLAY_NAMES[p] ?? p}
                               </div>
                             </div>
                           </button>

@@ -186,7 +186,7 @@ export function ProposalPage({
       {/* 고도화 예정 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: '8px', backgroundColor: 'rgba(249,115,22,0.06)', border: '1px solid rgba(249,115,22,0.2)' }}>
         <Info style={{ width: '15px', height: '15px', color: '#F97316', flexShrink: 0 }} />
-        <span style={{ fontSize: '12px', color: '#F97316' }}>진행도 표시, 담당자별 구분 뷰 등 기능은 고도화 예정입니다</span>
+        <span style={{ fontSize: '12px', color: '#F97316' }}>진행도 표시, 제안 PM별 구분 뷰 등 기능은 고도화 예정입니다</span>
       </div>
     </div>
   );
