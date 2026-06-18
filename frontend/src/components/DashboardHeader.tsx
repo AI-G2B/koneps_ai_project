@@ -126,10 +126,10 @@ export function DashboardHeader({ user, onLogout, onNavigate, notifications, onM
 
   const unread = notifications.filter(n => !n.isRead).length;
   const ROLE_LABELS: Record<string, string> = {
-    ceo: '대표이사', pm: 'PM', 영업담당자: '영업담당자', 입찰담당자: '입찰담당자',
-    manager: '담당자', proposal: '제안담당자', admin: '관리자',
+    ceo: '경영진', pm: '제안 PM', 영업담당자: '영업대표', 입찰담당자: '제안 PM',
+    manager: '제안 PM', proposal: '제안 PM', admin: '시스템 관리자',
   };
-  const roleLabel = ROLE_LABELS[user.role] ?? '담당자';
+  const roleLabel = ROLE_LABELS[user.role] ?? '제안 PM';
   const avatarGradient = user.role === 'ceo'
     ? 'linear-gradient(135deg, #7C3AED, #5B21B6)'
     : 'linear-gradient(135deg, #2563EB, #1D4ED8)';

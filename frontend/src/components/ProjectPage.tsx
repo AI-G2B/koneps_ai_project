@@ -211,7 +211,12 @@ function ManagerField({ label, value, onSave }: {
 
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ fontSize: '11px', color: 'var(--dash-text-4)', marginBottom: '3px' }}>{label}</div>
+      <div style={{
+        fontSize: '11px',
+        marginBottom: '3px',
+        fontWeight: 600,
+        color: label === '영업대표' ? '#059669' : label === '제안 PM' ? '#2563EB' : 'var(--dash-text-4)',
+      }}>{label}</div>
       {editing ? (
         <input
           autoFocus
@@ -307,12 +312,12 @@ function ProjectCard({ bid, isSelected, onSelect, aiStatus, onUpdateManagers }: 
           onClick={(e) => e.stopPropagation()}
         >
           <ManagerField
-            label="영업담당자"
+            label="영업대표"
             value={bid.salesManager ?? ''}
             onSave={(v) => onUpdateManagers(bid.id, v, bid.projectPm ?? '')}
           />
           <ManagerField
-            label="담당 PM"
+            label="제안 PM"
             value={bid.projectPm ?? ''}
             onSave={(v) => onUpdateManagers(bid.id, bid.salesManager ?? '', v)}
           />
