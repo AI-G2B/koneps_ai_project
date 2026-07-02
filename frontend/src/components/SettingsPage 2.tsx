@@ -31,7 +31,7 @@ export function SettingsPage({ settings, onSave, agencyList, user, onUpdateProfi
   const [nameSaving, setNameSaving] = useState(false);
   const [nameMsg, setNameMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const POSITIONS = ['CEO', 'PM', '영업담당자'] as const;
+  const POSITIONS = ['CEO', 'PM', '영업담당자', '입찰담당자'] as const;
   const POSITION_DISPLAY_NAMES: Record<string, string> = { CEO: '경영진', PM: '제안 PM', 영업담당자: '영업대표', 입찰담당자: '제안 PM' };
   const ROLE_TO_POSITION: Record<string, string> = { ceo: 'CEO', pm: 'PM', 영업담당자: '영업담당자', 입찰담당자: '입찰담당자', manager: 'PM' };
   const defaultPosition = ROLE_TO_POSITION[user?.role ?? ''] ?? 'PM';
