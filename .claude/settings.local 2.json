@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"http://localhost:8000/bids/type-stats\")",
+      "Bash(curl -s \"http://localhost:8000/bids?limit=1\")"
+    ]
+  }
+}

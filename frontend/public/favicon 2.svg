@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <linearGradient id="baseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E3A8A"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+    <linearGradient id="topGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#3B82F6"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <rect x="15" y="40" width="55" height="55" rx="14" fill="url(#baseGrad)" filter="url(#shadow)"/>
+
+  <rect x="45" y="15" width="55" height="55" rx="14" fill="url(#topGrad)" filter="url(#shadow)"/>
+
+  <line x1="72" y1="72" x2="102" y2="102" stroke="#0F172A" stroke-width="14" stroke-linecap="round" filter="url(#shadow)"/>
+
+  <circle cx="60" cy="60" r="24" fill="none" stroke="#FFFFFF" stroke-width="10" filter="url(#shadow)"/>
+  
+  <circle cx="60" cy="60" r="6" fill="#FFFFFF"/>
+</svg>
