@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, FileText, Sparkles, BarChart2,
-  Settings, HelpCircle, ChevronRight, TrendingUp,
+  Settings, HelpCircle, Building2, ChevronRight, TrendingUp,
   Bookmark, Briefcase, ShieldCheck, AlertTriangle, Activity, PanelLeftClose,
 } from 'lucide-react';
 import type { UserRole } from './LoginPage';
@@ -138,8 +138,8 @@ export function Sidebar({ role, activePage, onNavigate, onToggle, analysisComple
         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
         title="사이드바 숨기기"
       >
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden p-0.6" style={{ background: logoGradient }}>
-          <img src="/logo.png" alt="로고" className="w-full h-full object-contain" />
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: logoGradient }}>
+          <Building2 style={{ width: '16px', height: '16px', color: 'white' }} />
         </div>
         <div className="min-w-0 flex-1">
           <div style={{ fontSize: '10px', color: 'var(--dash-text-4)', lineHeight: 1 }}>나라장터</div>
