@@ -1,0 +1,54 @@
+# Docker 빌드 시 컨텍스트에서 제외할 항목 (이미지 크기/빌드 시간 감소)
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/venv
+**/.venv
+
+# Node
+**/node_modules
+**/dist
+**/.vite
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+
+# 환경/비밀
+.env
+**/.env
+**/.env.local
+**/.env.*.local
+
+# 다운로드 캐시 (호스트 볼륨으로 마운트)
+downloads/
+
+# 샘플 원본 — Dockerfile은 samples/ 만 COPY (PDF/XLSX는 .gitignore로도 제외)
+samples/**/*.pdf
+samples/**/*.xlsx
+samples/**/*.hwp
+samples/**/*.hwpx
+samples/**/*.doc
+samples/**/*.docx
+
+# IDE
+.vscode
+.idea
+*.swp
+.DS_Store
+
+# Docs (이미지에 들어갈 필요 없음)
+docs/
+
+# OS
+Thumbs.db

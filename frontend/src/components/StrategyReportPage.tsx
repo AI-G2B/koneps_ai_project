@@ -1,0 +1,124 @@
+import { AlertTriangle, Briefcase, TrendingUp, DollarSign } from 'lucide-react';
+import { type Bid, type BidFlags, formatBudget, getDaysUntilDeadline } from '../types';
+
+
+interface StrategyReportPageProps {
+  bids: Bid[];
+  bidFlags: Record<string, BidFlags>;
+  aiStatuses?: Record<string, unknown>;
+}
+
+const CEO_COLOR = '#7C3AED';
+const CEO_BG = 'rgba(124,58,237,0.08)';
+const CEO_BORDER = 'rgba(124,58,237,0.2)';
+
+export function StrategyReportPage({ bids, bidFlags }: StrategyReportPageProps) {
+  const inProgressBids = bids.filter(b => bidFlags[b.id]?.inProgress ?? false);
+
+  if (inProgressBids.length === 0) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <PageHeader />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 24px', gap: '12px', backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px' }}>
+          <div style={{ width: '52px', height: '52px', borderRadius: '14px', backgroundColor: CEO_BG, border: `1px solid ${CEO_BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Briefcase style={{ width: '26px', height: '26px', color: CEO_COLOR }} />
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--dash-text)', marginBottom: '6px' }}>아직 진행 중인 사업이 없습니다</div>
+            <div style={{ fontSize: '13px', color: 'var(--dash-text-4)' }}>제안 PM이 공고에 진행 등록을 하면 여기에 표시됩니다</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const totalBudget = inProgressBids.reduce((s, b) => s + b.budget, 0);
+  const dangerCount = inProgressBids.filter(b => b.risk === 'danger').length;
+  const dangerPct = Math.round((dangerCount / inProgressBids.length) * 100);
+
+  const sortedBids = [...inProgressBids].sort((a, b) => {
+    const order = { danger: 0, caution: 1, good: 2 };
+    return order[a.risk] - order[b.risk];
+  });
+
+  const summaryCards = [
+    { icon: Briefcase,   label: '총 진행 사업',      value: `${inProgressBids.length}건`,     color: CEO_COLOR,  bg: CEO_BG,                      border: CEO_BORDER },
+    { icon: DollarSign,  label: '총 사업 예산',      value: formatBudget(totalBudget),        color: '#0891B2',  bg: 'rgba(8,145,178,0.08)',       border: 'rgba(8,145,178,0.2)' },
+    { icon: AlertTriangle, label: '위험 공고 비율',   value: `${dangerPct}%`,                  color: '#EF4444',  bg: 'rgba(239,68,68,0.08)',       border: 'rgba(239,68,68,0.2)' },
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <PageHeader />
+
+      {/* 요약 카드 3개 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
+        {summaryCards.map((card) => (
+          <div key={card.label} style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: card.bg, border: `1px solid ${card.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <card.icon style={{ width: '16px', height: '16px', color: card.color }} />
+              </div>
+              <span style={{ fontSize: '12px', color: 'var(--dash-text-3)' }}>{card.label}</span>
+            </div>
+            <div style={{ fontSize: '22px', fontWeight: 700, color: 'var(--dash-text)' }}>{card.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 진행중 공고 현황 테이블 */}
+      <div style={{ backgroundColor: 'var(--dash-card)', border: '1px solid var(--dash-border)', borderRadius: '12px', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--dash-border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <TrendingUp style={{ width: '15px', height: '15px', color: CEO_COLOR }} />
+          <h2 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--dash-text)', margin: 0 }}>진행 중인 공고 현황</h2>
+          <span style={{ fontSize: '11px', padding: '1px 8px', borderRadius: '10px', backgroundColor: CEO_BG, color: CEO_COLOR }}>{inProgressBids.length}건</span>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ backgroundColor: 'var(--dash-card-deep)' }}>
+                {['공고명', '발주기관', '예산', '마감일'].map(col => (
+                  <th key={col} style={{ padding: '9px 14px', textAlign: 'left', fontSize: '11px', color: 'var(--dash-text-4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', borderBottom: '1px solid var(--dash-border)' }}>{col}</th>
+                ))}
+                {['영업대표', '제안 PM', '시작일'].map((col, i) => (
+                  <th key={col} style={{ padding: '9px 14px', textAlign: 'left', fontSize: '11px', color: 'var(--dash-text-4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', borderBottom: '1px solid var(--dash-border)', backgroundColor: 'rgba(124,58,237,0.04)', borderLeft: i === 0 ? '1px solid var(--dash-border)' : undefined }}>{col}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sortedBids.map((bid) => {
+                const daysLeft = getDaysUntilDeadline(bid.deadline);
+                const urgent = daysLeft <= 3;
+                return (
+                  <tr key={bid.id} style={{ borderBottom: '1px solid var(--dash-border-faint)' }}>
+                    <td style={{ padding: '10px 14px', maxWidth: '260px' }}>
+                      <div style={{ fontSize: '13px', color: 'var(--dash-text)', wordBreak: 'keep-all', overflowWrap: 'break-word', lineHeight: 1.4 }}>{bid.title}</div>
+                    </td>
+                    <td style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--dash-text-2)', whiteSpace: 'nowrap' }}>{bid.agency}</td>
+                    <td style={{ padding: '10px 14px', fontSize: '13px', color: 'var(--dash-text)', fontWeight: 500, whiteSpace: 'nowrap' }}>{formatBudget(bid.budget)}</td>
+                    <td style={{ padding: '10px 14px', fontSize: '12px', color: daysLeft < 0 ? 'var(--dash-text-4)' : urgent ? '#F27A75' : 'var(--dash-text-2)', fontWeight: daysLeft < 0 ? 400 : urgent ? 600 : 400, whiteSpace: 'nowrap' }}>
+                      {!bid.deadline || daysLeft >= 9999 ? '기간미정' : `${bid.deadline.substring(5)}${daysLeft < 0 ? ' (마감)' : urgent ? ` (D-${daysLeft})` : ''}`}
+                    </td>
+                    <td style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--dash-text-3)', whiteSpace: 'nowrap', width: '80px', backgroundColor: 'rgba(124,58,237,0.03)', borderLeft: '1px solid var(--dash-border)' }}>{bid.salesManager ?? '-'}</td>
+                    <td style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--dash-text-3)', whiteSpace: 'nowrap', width: '80px', backgroundColor: 'rgba(124,58,237,0.03)' }}>{bid.projectPm ?? '-'}</td>
+                    <td style={{ padding: '10px 14px', fontSize: '12px', color: 'var(--dash-text-3)', whiteSpace: 'nowrap', width: '80px', backgroundColor: 'rgba(124,58,237,0.03)' }}>{bid.inProgressAt ? bid.inProgressAt.substring(5) : '-'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+function PageHeader() {
+  return (
+    <div>
+      <h1 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--dash-text)', margin: '0 0 4px' }}>전략 리포트</h1>
+      <p style={{ fontSize: '13px', color: 'var(--dash-text-3)', margin: 0 }}>진행 중인 사업의 현황을 요약합니다</p>
+    </div>
+  );
+}
