@@ -54,14 +54,13 @@ class RegisterRequest(BaseModel):
     username: str
     password: str
     name: str
-    position: str  # CEO | PM | 영업담당자 | 입찰담당자
+    position: str  # CEO | PM | 영업담당자
 
 
 POSITION_TO_ROLE = {
     "CEO": "ceo",
     "PM": "pm",
     "영업담당자": "영업담당자",
-    "입찰담당자": "입찰담당자",
 }
 
 

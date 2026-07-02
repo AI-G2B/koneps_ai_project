@@ -291,8 +291,8 @@ export function LoginPage({ onLogin, loginError }: LoginPageProps) {
                   onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.color = 'var(--dash-text)'; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.color = 'var(--dash-text-3)'; }}
                 >
-                  <span style={{ width: '36px', flexShrink: 0 }}>{acc.label}</span>
-                  <span>{acc.username} / {acc.password}</span>
+                  <span style={{ minWidth: '58px', flexShrink: 0, whiteSpace: 'nowrap' }}>{acc.label}</span>
+                  <span style={{ whiteSpace: 'nowrap' }}>{acc.username} / {acc.password}</span>
                 </div>
               ))}
             </div>
